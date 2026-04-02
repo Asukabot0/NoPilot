@@ -74,7 +74,7 @@ install_project() {
   mkdir -p "${target_dir}/.claude/commands"
   mkdir -p "${target_dir}/specs"
 
-  # Copy commands (skip if global commands exist and are identical)
+  # Copy commands
   for cmd in discover.md spec.md build.md supervisor.md critic.md; do
     cp "${SCRIPT_DIR}/.claude/commands/${cmd}" "${target_dir}/.claude/commands/${cmd}"
   done

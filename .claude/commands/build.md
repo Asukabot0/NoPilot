@@ -11,6 +11,8 @@ You are an autonomous TDD executor. Follow industry best practices. Human involv
 
 ## Input
 
+Verify that `specs/spec.json` and `specs/discover.json` both exist. If either is missing, inform the user which upstream command to run first (`/discover` and/or `/spec`) and halt.
+
 Read `specs/spec.json` and `specs/discover.json`.
 
 ## Execution Flow
@@ -107,25 +109,25 @@ For each core scenario (SCENARIO-xxx) in discover.json:
 1. Generate a user operation script (sequence of actions)
 2. Simulate execution through the implemented code
 3. Verify key paths produce expected outcomes per EARS criteria
+4. Write the self-verification results into `specs/build_report.json`'s `acceptance_result` field (create the file with at minimum this section so the Critic can read it)
 
 **Critic Verification (independent session):**
-After self-verification passes, spawn Critic agent for independent validation:
+After self-verification passes and `acceptance_result` is written, spawn Critic agent for independent validation:
 - Spawn `.claude/commands/critic.md` using the Agent tool
-- Critic reads: specs/discover.json + specs/spec.json + specs/tests.json (no conversation history)
-- Critic independently verifies scenario walkthrough results against acceptance criteria
-- If Critic finds issues: attempt self-fix, re-verify. If persistent, pause for user.
+- Critic reads: `specs/build_report.json` (acceptance_result) + `specs/discover.json` (core_scenarios + acceptance criteria) + the actual implemented code (no conversation history)
+- Critic independently walks through each core scenario against the real code, then compares its results with the AI's acceptance_result
+- Critic writes results to `specs/build_review.json` with a recommendation of `pass`, `L2`, or `L3`
+- If `recommendation: "pass"`: both self-verification and Critic agree — proceed
+- If `recommendation: "L2"` or `"L3"`: Critic found divergence between AI's acceptance and actual behavior — route accordingly
 
 On pass (both self-verification and Critic): emit `ACCEPTANCE_PASS` → proceed to Step 7.
 On fail:
 - Behavior mismatch, fixable → emit `ACCEPTANCE_FAIL_L2` (L2 path)
 - Fundamental issue → emit `ACCEPTANCE_FAIL_L3` (L3 path)
 
-### Step 7: Supervisor Check + Report
+### Step 7: Report Generation + Supervisor Check
 
-Spawn Supervisor agent:
-- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
-- Pass `specs/build_report.json` as the **current stage output**
-- Check: does the final product match original intent? Complexity proportional?
+Generate `specs/build_report.json` first, then spawn the Supervisor to validate it.
 
 Generate `specs/build_report.json` with the following structure:
 
@@ -183,7 +185,22 @@ Generate `specs/build_report.json` with the following structure:
 }
 ```
 
-Report completion: "Build complete. All tests passing. Auto-acceptance verified. See specs/build_report.json for details."
+After writing `build_report.json`, spawn Supervisor agent:
+- Spawn `.claude/commands/supervisor.md` using the Agent tool
+- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
+- Pass `specs/build_report.json` as the **current stage output**
+- Check: does the final product match original intent? Complexity proportional?
+- Write the Supervisor's assessment into `build_report.json`'s `global_coherence_check` field
+- **If drift detected:** Pause, present to user, wait for resolution
+- **If aligned:** Report completion
+
+### Decision Ledger
+
+Append this stage's auto_decisions AND contract_amendments to `specs/decisions.json`. If the file already exists (from /spec), **append** to the arrays — do not overwrite.
+
+Each entry gets `"stage": "build"` and a timestamp. Contract amendments are appended to the `contract_amendments` array with the same structure.
+
+Report completion: "Build complete. All tests passing. Auto-acceptance verified. Decision trail in specs/decisions.json. See specs/build_report.json for details."
 
 ---
 

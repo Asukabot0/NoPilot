@@ -13,6 +13,8 @@ You are performing constrained design expansion. Module decomposition, interface
 
 ## Input
 
+Verify that `specs/discover.json` exists. If missing, inform the user: "Run /discover first to generate specs/discover.json." and halt.
+
 Read `specs/discover.json`. Check `discover.json.mode` to determine full or lite behavior.
 If `specs/build_report.json` exists (backtrack from /build), read it too for diagnostic context.
 
@@ -157,6 +159,30 @@ Read spec_review.json results. Check **three conditions**:
   - User actions: `APPROVED` → emit `APPROVED`, `CHANGES_REQUESTED` → emit `CHANGES_REQUESTED` → return to Phase 1
 
 After approval (or auto-continue):
+
+### Phase 5: Decision Ledger
+
+Append this stage's auto_decisions to `specs/decisions.json` (create if not exists). This file is the unified decision audit trail across all stages.
+
+```json
+{
+  "decisions": [
+    {
+      "stage": "spec",
+      "timestamp": "<ISO 8601>",
+      "decision": "",
+      "alternatives": [],
+      "rationale": "",
+      "impact": "",
+      "impact_level": "low | medium | high"
+    }
+  ],
+  "contract_amendments": []
+}
+```
+
+If the file already exists (e.g., from a previous /discover run), **append** to the `decisions` array — do not overwrite.
+
 "spec artifacts written to specs/. Run /build to continue."
 
 ## Lite Mode Behavior
