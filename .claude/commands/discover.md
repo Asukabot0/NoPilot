@@ -335,12 +335,24 @@ After both artifact files are written, spawn the Critic agent for independent re
 
 1. Spawn Critic agent using the Agent tool targeting `.claude/commands/critic.md`
 2. Critic reads only `specs/discover.json` (no conversation history — independent session)
-3. Critic verifies:
-   - Requirement quality and internal consistency
-   - Invariant completeness
-   - Acceptance criteria coverage
-4. **If issues found:** Critic attempts self-fix on discover.json, then re-verifies. If still failing, pause and present findings to user.
-5. **If passed:** Proceed to Supervisor check.
+3. Critic performs four checks:
+   - **6Cs quality audit** — re-evaluate each requirement's 6Cs assessment for AI self-approval bias
+   - **Invariant verification** — completeness, non-contradiction, scope accuracy
+   - **Acceptance criteria testability** — can concrete tests be derived directly?
+   - **Requirement coverage** — are all core scenarios covered? Any orphan requirements?
+4. Critic writes results to `specs/discover_review.json`
+5. **If issues found:** Critic attempts self-fix on discover.json, then re-verifies (**max 2 iterations**). If still failing, pause and present findings to user.
+6. **If passed:** Proceed to Supervisor check.
+
+### Checkpoint: Read discover_review.json
+
+After Critic completes, read `specs/discover_review.json` and check:
+- `6cs_audit.passed == true`
+- `invariant_verification.passed == true`
+- `acceptance_criteria_verification.passed == true`
+- `coverage_verification.passed == true`
+
+If all four pass → proceed to Supervisor. If any failed and Critic's self-fix was exhausted → pause, present the review findings to the user, wait for resolution.
 
 ## Supervisor Integration
 
@@ -353,8 +365,9 @@ After Critic passes (or user resolves Critic findings):
    - `tech_direction`
 3. Pass the complete `specs/discover.json` as the **current stage output**
 4. Supervisor checks global coherence: does the requirement set match the stated intent?
-5. **If drift detected:** Pause, present the drift diagnosis to the user, and wait for resolution before proceeding
-6. **If aligned:** Proceed — output the completion message above
+5. Write the Supervisor's assessment into `specs/discover_review.json`'s `global_coherence_check` field
+6. **If drift detected:** Pause, present the drift diagnosis to the user, and wait for resolution before proceeding
+7. **If aligned:** Proceed — output the completion message above
 
 ---
 

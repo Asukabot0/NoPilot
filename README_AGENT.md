@@ -68,7 +68,7 @@ Each command is defined in `.claude/commands/<name>.md`. Read the command file f
 - State machines for all three stages (states, events, guards)
 - Backtrack triggers and safety limits (`max_backtrack_count: 3`, cycle detection)
 - Enhancement guardrail toggles (`tracer_bullet`, `mutation_testing`, `multi_sample_6cs`)
-- Mode: `full` or `lite` (set during /discover Step 0)
+- Mode (`full` or `lite`) is determined during /discover Step 0 and stored in `discover.json.mode`
 
 ### Agents
 
