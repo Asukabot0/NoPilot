@@ -1,130 +1,136 @@
-# NoPilot — Agent Installation Guide
+# NoPilot — Agent Reference
 
-[中文版](docs/zh-CN/README_AGENT.md)
-
-You are reading this because you want to install NoPilot in a project. NoPilot is a three-stage development workflow (`/discover` → `/spec` → `/build`) that runs as Claude Code slash commands.
-
-## Prerequisites
-
-- Claude Code CLI installed and authenticated
-- A project directory (empty or existing — V1 supports Greenfield only)
+NoPilot is an AI Native three-stage development workflow (`/discover` → `/spec` → `/build`) running as Claude Code slash commands.
 
 ## Installation
 
-### 1. Copy workflow files into your project
+### 1. Copy files into the target project
 
 ```bash
-# From the NoPilot repo, copy these into your target project:
-cp workflow.json /path/to/your/project/
-cp -r .claude/commands/ /path/to/your/project/.claude/commands/
-mkdir -p /path/to/your/project/specs
+cp -r .claude/commands/ /path/to/project/.claude/commands/
+cp workflow.json /path/to/project/
+mkdir -p /path/to/project/specs
 ```
 
-Your project should now have:
+Result:
 
 ```
-your-project/
-├── workflow.json
-├── .claude/
-│   └── commands/
-│       ├── discover.md
-│       ├── spec.md
-│       ├── build.md
-│       ├── supervisor.md
-│       └── critic.md
-└── specs/                  # Artifacts will be written here at runtime
+project/
+├── .claude/commands/
+│   ├── discover.md
+│   ├── spec.md
+│   ├── build.md
+│   ├── supervisor.md
+│   └── critic.md
+├── specs/               # Runtime artifacts (empty until first run)
+└── workflow.json
 ```
 
-### 2. That's it
+### 2. Add context to the project's CLAUDE.md
 
-No dependencies. No build step. No configuration. The slash commands are self-contained.
+Append to the project's `CLAUDE.md` (create if absent):
 
-## Usage
+```markdown
+## NoPilot
 
-Run the three commands in order inside Claude Code:
+AI Native development workflow. Run `/discover` → `/spec` → `/build` in order.
+
+- `/discover` — Requirement space exploration (direction → MVP → requirement lock)
+- `/spec` — Constrained design expansion (modules, interfaces, data models)
+- `/build` — Autonomous TDD implementation (tracer bullet, per-module TDD, auto-acceptance)
+
+Artifacts live in `specs/`. Refer to `workflow.json` for state machines and guardrails.
+
+Supervisor (intent guardian) and Critic (independent challenger) are core guardrails spawned at stage boundaries. Cannot be disabled.
+```
+
+### 3. Done
+
+No dependencies. No build step. No config beyond the above.
+
+---
+
+## Technical Reference
+
+### Commands
+
+| Command | Reads | Writes |
+|---------|-------|--------|
+| `/discover` | `workflow.json` | `specs/discover.json`, `specs/discover_history.json` |
+| `/spec` | `specs/discover.json` | `specs/spec.json`, `specs/spec_review.json` |
+| `/build` | `specs/spec.json`, `specs/discover.json` | `specs/tests.json`, `specs/build_report.json` |
+
+Each command is defined in `.claude/commands/<name>.md`. Read the command file for full behavior.
+
+### Workflow Definition
+
+`workflow.json` contains:
+- State machines for all three stages (states, events, guards)
+- Backtrack triggers and safety limits (`max_backtrack_count: 3`, cycle detection)
+- Enhancement guardrail toggles (`tracer_bullet`, `mutation_testing`, `multi_sample_6cs`)
+- Mode: `full` or `lite` (set during /discover Step 0)
+
+### Agents
+
+Two sub-agents spawned by commands. Both **core guardrails** (cannot be disabled):
+
+| Agent | Prompt | Role | Spawned By |
+|-------|--------|------|------------|
+| Supervisor | `.claude/commands/supervisor.md` | Global coherence (forest) | /discover, /spec, /build |
+| Critic | `.claude/commands/critic.md` | Backward verification (trees) | /discover, /spec, /build |
+
+**Supervisor input:** `discover.json` anchor (`constraints` + `selected_direction` + `tech_direction`) + current stage output.
+
+**Critic input:** Contract artifacts only. Independent session (no conversation history).
+
+### ID Naming
+
+| Entity | Format | Example |
+|--------|--------|---------|
+| Requirement | `REQ-xxx` | `REQ-001` |
+| Acceptance criterion | `REQ-xxx-AC-n` | `REQ-001-AC-1` |
+| Invariant | `INV-xxx` | `INV-001` |
+| Module | `MOD-xxx` | `MOD-001` |
+| Core scenario | `SCENARIO-xxx` | `SCENARIO-001` |
+| Test case | `TEST-xxx` | `TEST-001` |
+| Property test | `PROP-xxx` | `PROP-001` |
+
+### Traceability Chain
 
 ```
-/discover    →    /spec    →    /build
+discover.json          spec.json              tests.json
+REQ-xxx      ───────→  MOD-xxx                TEST-xxx
+  requirement_refs ←──   requirement_refs ←──   requirement_refs
+  acceptance_criteria    acceptance_criteria_refs  ears_ref
+
+INV-xxx      ───────→  MOD-xxx                PROP-xxx
+                         invariant_refs   ←──   invariant_ref
+
+SCENARIO-xxx ───────→  tracer bullet path  ──→ auto-acceptance
 ```
 
-### /discover
+Coverage guards in `tests.json` enforce that every REQ and INV is covered.
 
-Explores the requirement space. You provide a project idea, AI generates possibilities, you make decisions.
+### State Machine Events
 
-**What happens:**
-1. Step 0: AI asks about constraints (tech stack, platform, timeline, etc.) and recommends `full` or `lite` mode
-2. Layer 1: AI generates 3-5 product directions. You pick one.
-3. Layer 2: AI expands into feature list + tech recommendation + failure scenarios. You prune and confirm.
-4. Layer 3: AI generates detailed requirements with acceptance criteria. You review and approve.
+**discover:** `SELECT`, `MERGE`, `REJECT_ALL`, `APPROVE`, `BACKTRACK`, `REVISE`, `FORCE_OVERRIDE`, `BACKTRACK_MVP`, `BACKTRACK_DIR`
 
-**Artifacts produced:** `specs/discover.json`, `specs/discover_history.json`
+**spec:** `COMPLETE`, `CONTRADICTION`, `GAP_HIGH_IMPACT`, `USER_DECISION`, `L0_ISSUE`, `REVIEW_CLEAN`, `REVIEW_HAS_ISSUES`, `REVIEW_FIXABLE`, `APPROVED`, `CHANGES_REQUESTED`
 
-### /spec
+**build:** `PLAN_READY`, `TESTS_GENERATED_AUTO`, `TESTS_GENERATED_REVIEW`, `TRACER_PASS`, `TRACER_L0L1_FAIL`, `TRACER_L2L3_FAIL`, `SKIP`, `ALL_MODULES_DONE`, `L0_ISSUE`, `L1_RESOLVED`, `L2_ISSUE`, `L3_ISSUE`, `ENV_RESOLVED`, `ENV_EXHAUSTED_WITH_ALT`, `ENV_EXHAUSTED_NO_ALT`, `ACCEPT_DEGRADATION`, `CUT_FEATURE`, `MODIFY_SPEC`, `RETRY_DIFFERENT_APPROACH`, `BACKTRACK_DISCOVER`, `BACKTRACK_SPEC`, `AMENDMENT_RECORDED`, `REPLAN_READY`, `REPLAN_INCOMPLETE`, `ALL_PASS`, `FAILURES`, `ACCEPTANCE_PASS`, `ACCEPTANCE_FAIL_L2`, `ACCEPTANCE_FAIL_L3`
 
-Expands requirements into module-level technical specifications. Mostly autonomous — only pauses if issues found.
+### Exception Tiers (build)
 
-**What happens:**
-1. AI reads `specs/discover.json` and designs modules, interfaces, data models
-2. Critic agent (independent session) verifies spec satisfies all requirements
-3. Supervisor agent checks for complexity drift
-4. If no issues: auto-continues. If issues found: pauses for your review.
+| Tier | Impact | Action |
+|------|--------|--------|
+| L0 | Environment | Auto-retry |
+| L1 | No contract impact | Self-resolve + record |
+| L2 | Contract impact | Pause for product decision |
+| L3 | Fundamental | Terminate + backtrack |
 
-**Artifacts produced:** `specs/spec.json`, `specs/spec_review.json`
+L2 accepts only: `ACCEPT_DEGRADATION`, `CUT_FEATURE`, `MODIFY_SPEC`, `RETRY_DIFFERENT_APPROACH`, `BACKTRACK_DISCOVER`. Reject code-level instructions.
 
-### /build
+### Modes
 
-Autonomous TDD implementation. Near-zero human involvement.
-
-**What happens:**
-1. AI generates execution plan and test cases
-2. Tracer bullet: implements thinnest end-to-end slice to validate assumptions
-3. Per-module TDD: test → implement → pass → next module
-4. Auto-acceptance: verifies code actually matches your original intent
-5. Supervisor checks final output coherence
-
-**Artifacts produced:** `specs/tests.json`, `specs/build_report.json`, and your project code
-
-## Modes
-
-- **full** (default): Complete workflow with all guardrails. For real projects.
-- **lite**: Reduced ceremony. Skips multi-direction divergence, simplified requirements format. AI recommends mode after constraint collection.
-
-## Backtracking
-
-At any point you can say "go back" and the workflow backtracks to an earlier stage. Safety limits: max 3 backtracks total, cycle detection prevents infinite loops.
-
-## Exception Handling During /build
-
-| Level | What Happened | AI Behavior |
-|-------|--------------|-------------|
-| L0 | Environment issue (API down, wrong config) | Auto-retries, then asks you to fix infra |
-| L1 | Implementation detail (no contract impact) | Self-resolves silently |
-| L2 | Affects spec contract | Pauses. You choose: accept degradation, cut feature, retry differently, or backtrack |
-| L3 | Fundamental issue | Terminates. You decide: backtrack to /spec or /discover |
-
-You never need to write or debug code. L2 decisions are product-level ("cut this feature"), not code-level ("fix this function").
-
-## Customization
-
-Edit `workflow.json` to:
-- Change mode default (`full` / `lite`)
-- Adjust retry limits (`max_retries_per_module`, `max_backtrack_count`)
-- Toggle enhancement guardrails (`tracer_bullet`, `mutation_testing`, `multi_sample_6cs`)
-- Modify constraint dimensions for Step 0
-
-Core guardrails (Supervisor, Critic, backward verification, auto-acceptance) cannot be disabled — they define correctness.
-
-## Artifact Reference
-
-All artifacts are JSON files in `specs/`:
-
-| File | Written By | Purpose |
-|------|-----------|---------|
-| `discover.json` | /discover | Locked requirements, tech direction, invariants, core scenarios |
-| `discover_history.json` | /discover | Exploration decisions and backtrack log |
-| `spec.json` | /spec | Module definitions, interfaces, data models, dependency graph |
-| `spec_review.json` | /spec | Critic + Supervisor verification results |
-| `tests.json` | /build | Test cases (example-based + property-based) |
-| `build_report.json` | /build | Execution results, amendments, diagnostics |
-
-Each downstream stage reads upstream artifacts automatically. You don't need to pass files manually.
+- **full**: All guardrails, independent Critic sessions, tracer bullet enabled
+- **lite**: Skip Layer 1 divergence, simplified quality checks, same-session Critic, tracer bullet disabled
