@@ -21,64 +21,30 @@ NoPilot 是一个三阶段工作流，从需求探索到代码交付，下游人
 
 - 已安装并配置 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
 
-### 第一步：将 NoPilot 复制到你的项目中
+### 方式 A：项目安装（推荐）
+
+将 NoPilot 安装到单个项目中。命令、工作流定义、CLAUDE.md 上下文，全部自包含。
 
 ```bash
-# 克隆 NoPilot
 git clone https://github.com/Asukabot0/NoPilot.git
-
-# 将框架文件复制到你的项目
-cp -r NoPilot/.claude/commands/ your-project/.claude/commands/
-cp NoPilot/workflow.json your-project/
-mkdir -p your-project/specs
+cd NoPilot
+./install.sh --project /path/to/your/project
 ```
 
-或使用 git subtree：
+自动完成：复制命令、`workflow.json`、`README_AGENT.md`，创建 `specs/`，并将 NoPilot 上下文追加到 `CLAUDE.md`。
+
+### 方式 B：全局安装
+
+让 `/discover`、`/spec`、`/build` 在所有 Claude Code 会话中可用。每个项目仍需 `--project` 来设置项目级文件。
 
 ```bash
-cd your-project
-git subtree add --prefix=.nopilot https://github.com/Asukabot0/NoPilot.git main --squash
-# 然后将文件复制到位
-cp -r .nopilot/.claude/commands/ .claude/commands/
-cp .nopilot/workflow.json ./
-mkdir -p specs
+git clone https://github.com/Asukabot0/NoPilot.git
+cd NoPilot
+./install.sh --global              # 命令 → ~/.claude/commands/
+./install.sh --project /path/to/your/project  # 项目文件 + CLAUDE.md
 ```
 
-### 第二步：在你的 CLAUDE.md 中添加 NoPilot 上下文
-
-将以下内容添加到项目的 `CLAUDE.md`（如果没有则新建一个）：
-
-```markdown
-## NoPilot
-
-AI Native 开发工作流框架。
-
-### Commands
-
-- `/discover` — 需求空间探索。三层收敛漏斗：方向 → MVP → 需求锁定。
-- `/spec` — 受约束的设计展开。将 discover.json 转化为模块级规格。
-- `/build` — 自主 TDD 实现。生成测试、tracer bullet、逐模块 TDD、自动验收。
-
-### Workflow
-
-按顺序执行：`/discover` → `/spec` → `/build`
-
-每个命令从 `specs/` 读取上游制品并写入自己的产出。
-参见 `workflow.json` 了解状态机定义和护栏配置。
-
-### Artifacts
-
-所有结构化制品存放在 `specs/`。这些是下游阶段消费的机器可读 JSON 契约。
-
-### Agents
-
-- **Supervisor**（意图守护者）：在阶段完成时检查全局一致性。
-- **Critic**（独立质疑者）：在检查点以独立会话进行质量验证。
-
-两者都是核心护栏，不可关闭。
-```
-
-### 第三步：开始使用
+### 开始使用
 
 ```bash
 cd your-project

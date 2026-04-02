@@ -21,64 +21,30 @@ NoPilot is a three-stage workflow that takes you from requirement exploration to
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured
 
-### Step 1: Copy NoPilot into your project
+### Option A: Project Install (recommended)
+
+Installs NoPilot into a single project. Commands, workflow definition, and CLAUDE.md context — all self-contained.
 
 ```bash
-# Clone NoPilot
 git clone https://github.com/Asukabot0/NoPilot.git
-
-# Copy the framework files into your project
-cp -r NoPilot/.claude/commands/ your-project/.claude/commands/
-cp NoPilot/workflow.json your-project/
-mkdir -p your-project/specs
+cd NoPilot
+./install.sh --project /path/to/your/project
 ```
 
-Or add as a git subtree:
+This copies commands, `workflow.json`, `README_AGENT.md`, creates `specs/`, and appends NoPilot context to your `CLAUDE.md`.
+
+### Option B: Global Install
+
+Makes `/discover`, `/spec`, `/build` available in all Claude Code sessions. You still need `--project` per project for the project-level files.
 
 ```bash
-cd your-project
-git subtree add --prefix=.nopilot https://github.com/Asukabot0/NoPilot.git main --squash
-# Then copy the files into place
-cp -r .nopilot/.claude/commands/ .claude/commands/
-cp .nopilot/workflow.json ./
-mkdir -p specs
+git clone https://github.com/Asukabot0/NoPilot.git
+cd NoPilot
+./install.sh --global              # Commands → ~/.claude/commands/
+./install.sh --project /path/to/your/project  # Project files + CLAUDE.md
 ```
 
-### Step 2: Add NoPilot context to your CLAUDE.md
-
-Add the following to your project's `CLAUDE.md` (create one if it doesn't exist):
-
-```markdown
-## NoPilot
-
-AI Native development workflow framework.
-
-### Commands
-
-- `/discover` — Requirement space exploration. Three-layer convergence funnel: direction → MVP → requirement lock.
-- `/spec` — Constrained design expansion. Translates discover.json into module-level specifications.
-- `/build` — Autonomous TDD implementation. Generates tests, tracer bullet, per-module TDD, auto-acceptance.
-
-### Workflow
-
-Run commands in order: `/discover` → `/spec` → `/build`
-
-Each command reads upstream artifacts from `specs/` and writes its own artifacts there.
-Refer to `workflow.json` for state machine definitions and guardrail configuration.
-
-### Artifacts
-
-All structured artifacts live in `specs/`. These are machine-readable JSON contracts consumed by downstream stages.
-
-### Agents
-
-- **Supervisor** (intent guardian): Spawned at stage completion to check global coherence.
-- **Critic** (independent challenger): Spawned at checkpoints in independent session for quality verification.
-
-Both are core guardrails and cannot be disabled.
-```
-
-### Step 3: Start using
+### Start using
 
 ```bash
 cd your-project
