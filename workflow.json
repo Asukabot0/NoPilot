@@ -1,0 +1,262 @@
+{
+  "name": "nopilot",
+  "version": "3.0",
+  "mode": "full",
+  "max_backtrack_count": 3,
+  "backtrack_cycle_detection": true,
+  "agents": {
+    "supervisor": {
+      "trigger": "stage_complete",
+      "input": ["discover.json#constraints", "discover.json#selected_direction", "current_stage_output"],
+      "output_field": "global_coherence_check",
+      "classification": "core_guardrail",
+      "on_drift": "pause_notify_user"
+    },
+    "critic": {
+      "trigger": "checkpoint_review",
+      "input": ["relevant_contract_artifacts_only"],
+      "output_field": "independent_review",
+      "session": "independent",
+      "classification": "core_guardrail",
+      "on_issue": "self_fix_then_reverify_then_pause_if_still_failing"
+    }
+  },
+  "enhancement_guardrails": {
+    "tracer_bullet": { "enabled": true, "phase": "build" },
+    "mutation_testing": { "enabled": false, "phase": "build" },
+    "multi_sample_6cs": { "enabled": false, "phase": "discover" }
+  },
+  "stages": {
+    "discover": {
+      "command": "/discover",
+      "description": "Requirement space exploration and convergence",
+      "context_dependencies": [],
+      "backtrack_context": ["specs/discover_history.json"],
+      "outputs": ["specs/discover.json", "specs/discover_history.json"],
+      "checkpoint": "required",
+      "constraint_dimensions": [
+        "tech_stack", "time", "platform", "exclusions", "budget", "existing_assets"
+      ],
+      "states": {
+        "initial": "direction",
+        "direction": {
+          "on": {
+            "SELECT": "mvp",
+            "MERGE": "mvp",
+            "REJECT_ALL": "direction"
+          }
+        },
+        "mvp": {
+          "on": {
+            "APPROVE": "lock",
+            "BACKTRACK": "direction"
+          }
+        },
+        "lock": {
+          "on": {
+            "APPROVE": "$complete",
+            "REVISE": "lock",
+            "FORCE_OVERRIDE": "$complete",
+            "BACKTRACK_MVP": "mvp",
+            "BACKTRACK_DIR": "direction"
+          },
+          "guards": {
+            "APPROVE": {
+              "6cs_all_pass": true,
+              "no_unresolved_conflicts": true,
+              "invariants_extracted": true
+            },
+            "FORCE_OVERRIDE": {
+              "note": "User acknowledges unresolved issues and proceeds anyway"
+            }
+          }
+        }
+      },
+      "allowed_actions": {
+        "direction": [
+          { "type": "SELECT", "params": { "index": "number" } },
+          { "type": "MERGE", "params": { "indices": "number[]", "note": "string" } },
+          { "type": "REJECT_ALL", "params": { "reason": "string" } }
+        ],
+        "mvp": [
+          { "type": "APPROVE" },
+          { "type": "BACKTRACK" }
+        ],
+        "lock": [
+          { "type": "APPROVE" },
+          { "type": "REVISE", "params": { "requirement_ids": "string[]", "changes": "string" } },
+          { "type": "FORCE_OVERRIDE", "params": { "acknowledged_issues": "string[]" } },
+          { "type": "BACKTRACK_MVP" },
+          { "type": "BACKTRACK_DIR" }
+        ]
+      }
+    },
+    "spec": {
+      "command": "/spec",
+      "description": "Constrained design expansion to module-level specifications",
+      "context_dependencies": ["specs/discover.json"],
+      "backtrack_context": ["specs/build_report.json"],
+      "outputs": ["specs/spec.json", "specs/spec_review.json"],
+      "checkpoint": "conditional",
+      "checkpoint_trigger": "review_issues_found OR high_impact_auto_decisions_exist OR information_gap_with_options",
+      "states": {
+        "initial": "expanding",
+        "expanding": {
+          "on": {
+            "COMPLETE": "self_reviewing",
+            "CONTRADICTION": "$backtrack:discover",
+            "GAP_HIGH_IMPACT": "awaiting_user",
+            "L0_ISSUE": "expanding"
+          }
+        },
+        "awaiting_user": {
+          "on": {
+            "USER_DECISION": "expanding"
+          },
+          "allowed_actions": [
+            { "type": "USER_DECISION", "params": { "choice": "string" } }
+          ]
+        },
+        "self_reviewing": {
+          "on": {
+            "REVIEW_CLEAN": "$complete",
+            "REVIEW_HAS_ISSUES": "awaiting_review",
+            "REVIEW_FIXABLE": "expanding"
+          }
+        },
+        "awaiting_review": {
+          "on": {
+            "APPROVED": "$complete",
+            "CHANGES_REQUESTED": "expanding"
+          },
+          "allowed_actions": [
+            { "type": "APPROVED" },
+            { "type": "CHANGES_REQUESTED", "params": { "changes": "string" } }
+          ]
+        }
+      }
+    },
+    "build": {
+      "command": "/build",
+      "description": "TDD implementation per spec with tracer bullet and auto-acceptance",
+      "context_dependencies": ["specs/spec.json", "specs/discover.json"],
+      "backtrack_context": [],
+      "outputs": ["specs/tests.json", "specs/build_report.json"],
+      "test_review_checkpoint": "optional",
+      "max_retries_per_module": 3,
+      "states": {
+        "initial": "planning",
+        "planning": {
+          "on": {
+            "PLAN_READY": "testing",
+            "L3_ISSUE": "diagnosing"
+          }
+        },
+        "testing": {
+          "on": {
+            "TESTS_GENERATED_AUTO": "tracer_bullet",
+            "TESTS_GENERATED_REVIEW": "awaiting_test_review",
+            "L3_ISSUE": "diagnosing"
+          },
+          "guards": {
+            "TESTS_GENERATED_REVIEW": { "test_review_checkpoint": "required" },
+            "TESTS_GENERATED_AUTO": { "test_review_checkpoint": "optional" }
+          }
+        },
+        "awaiting_test_review": {
+          "on": {
+            "APPROVED": "tracer_bullet",
+            "REQUEST_CHANGES": "testing"
+          },
+          "allowed_actions": [
+            { "type": "APPROVED" },
+            { "type": "REQUEST_CHANGES", "params": { "changes": "string" } }
+          ]
+        },
+        "tracer_bullet": {
+          "on": {
+            "TRACER_PASS": "implementing",
+            "TRACER_L0L1_FAIL": "tracer_bullet",
+            "TRACER_L2L3_FAIL": "diagnosing",
+            "SKIP": "implementing"
+          },
+          "guards": {
+            "SKIP": { "guardrails.enhancement.tracer_bullet.enabled": false }
+          }
+        },
+        "implementing": {
+          "on": {
+            "ALL_MODULES_DONE": "verifying",
+            "L0_ISSUE": "env_waiting",
+            "L1_RESOLVED": "implementing",
+            "L2_ISSUE": "awaiting_user",
+            "L3_ISSUE": "diagnosing"
+          }
+        },
+        "env_waiting": {
+          "on": {
+            "ENV_RESOLVED": "implementing",
+            "ENV_EXHAUSTED_WITH_ALT": "awaiting_user",
+            "ENV_EXHAUSTED_NO_ALT": "diagnosing"
+          }
+        },
+        "awaiting_user": {
+          "on": {
+            "ACCEPT_DEGRADATION": "amending",
+            "CUT_FEATURE": "replanning",
+            "MODIFY_SPEC": "$backtrack:spec",
+            "RETRY_DIFFERENT_APPROACH": "implementing",
+            "BACKTRACK_DISCOVER": "$backtrack:discover"
+          },
+          "allowed_actions": [
+            { "type": "ACCEPT_DEGRADATION", "params": { "detail": "string" } },
+            { "type": "CUT_FEATURE", "params": { "feature": "string" } },
+            { "type": "MODIFY_SPEC" },
+            { "type": "RETRY_DIFFERENT_APPROACH", "params": { "hint": "string?" } },
+            { "type": "BACKTRACK_DISCOVER" }
+          ]
+        },
+        "amending": {
+          "on": {
+            "AMENDMENT_RECORDED": "implementing"
+          }
+        },
+        "replanning": {
+          "on": {
+            "REPLAN_READY": "implementing",
+            "REPLAN_INCOMPLETE": "diagnosing"
+          }
+        },
+        "diagnosing": {
+          "on": {
+            "BACKTRACK_SPEC": "$backtrack:spec",
+            "BACKTRACK_DISCOVER": "$backtrack:discover"
+          },
+          "allowed_actions": [
+            { "type": "BACKTRACK_SPEC" },
+            { "type": "BACKTRACK_DISCOVER" }
+          ]
+        },
+        "verifying": {
+          "on": {
+            "ALL_PASS": "accepting",
+            "FAILURES": "implementing"
+          }
+        },
+        "accepting": {
+          "on": {
+            "ACCEPTANCE_PASS": "$complete",
+            "ACCEPTANCE_FAIL_L2": "awaiting_user",
+            "ACCEPTANCE_FAIL_L3": "diagnosing"
+          }
+        }
+      }
+    }
+  },
+  "backtrack_triggers": [
+    { "from": "spec", "to": "discover", "condition": "contradiction_in_discover_json" },
+    { "from": "build", "to": "spec", "condition": "spec_interface_infeasible" },
+    { "from": "build", "to": "discover", "condition": "requirement_level_fundamental_issue" }
+  ],
+  "backtrack_strategy": "full_rerun"
+}
