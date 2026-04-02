@@ -120,12 +120,9 @@ On fail:
 - Behavior mismatch, fixable → emit `ACCEPTANCE_FAIL_L2` (L2 path)
 - Fundamental issue → emit `ACCEPTANCE_FAIL_L3` (L3 path)
 
-### Step 7: Supervisor Check + Report
+### Step 7: Report Generation + Supervisor Check
 
-Spawn Supervisor agent:
-- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
-- Pass `specs/build_report.json` as the **current stage output**
-- Check: does the final product match original intent? Complexity proportional?
+Generate `specs/build_report.json` first, then spawn the Supervisor to validate it.
 
 Generate `specs/build_report.json` with the following structure:
 
@@ -183,7 +180,22 @@ Generate `specs/build_report.json` with the following structure:
 }
 ```
 
-Report completion: "Build complete. All tests passing. Auto-acceptance verified. See specs/build_report.json for details."
+After writing `build_report.json`, spawn Supervisor agent:
+- Spawn `.claude/commands/supervisor.md` using the Agent tool
+- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
+- Pass `specs/build_report.json` as the **current stage output**
+- Check: does the final product match original intent? Complexity proportional?
+- Write the Supervisor's assessment into `build_report.json`'s `global_coherence_check` field
+- **If drift detected:** Pause, present to user, wait for resolution
+- **If aligned:** Report completion
+
+### Decision Ledger
+
+Append this stage's auto_decisions AND contract_amendments to `specs/decisions.json`. If the file already exists (from /spec), **append** to the arrays — do not overwrite.
+
+Each entry gets `"stage": "build"` and a timestamp. Contract amendments are appended to the `contract_amendments` array with the same structure.
+
+Report completion: "Build complete. All tests passing. Auto-acceptance verified. Decision trail in specs/decisions.json. See specs/build_report.json for details."
 
 ---
 
