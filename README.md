@@ -15,31 +15,95 @@ NoPilot is a three-stage workflow that takes you from requirement exploration to
 
 **What you get:** Structured JSON artifacts at each stage that serve as machine-readable contracts, ensuring perfect traceability from requirements through to delivered code.
 
-## Why This Approach
+## Installation
 
-Traditional development workflows separate concerns by phase (requirements → design → build), forcing sequential work and heavy human coordination at each boundary. NoPilot inverts the model:
+### Prerequisites
+
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured
+
+### Step 1: Copy NoPilot into your project
+
+```bash
+# Clone NoPilot
+git clone https://github.com/Asukabot0/NoPilot.git
+
+# Copy the framework files into your project
+cp -r NoPilot/.claude/commands/ your-project/.claude/commands/
+cp NoPilot/workflow.json your-project/
+mkdir -p your-project/specs
+```
+
+Or add as a git subtree:
+
+```bash
+cd your-project
+git subtree add --prefix=.nopilot https://github.com/Asukabot0/NoPilot.git main --squash
+# Then copy the files into place
+cp -r .nopilot/.claude/commands/ .claude/commands/
+cp .nopilot/workflow.json ./
+mkdir -p specs
+```
+
+### Step 2: Add NoPilot context to your CLAUDE.md
+
+Add the following to your project's `CLAUDE.md` (create one if it doesn't exist):
+
+```markdown
+## NoPilot
+
+AI Native development workflow framework.
+
+### Commands
+
+- `/discover` — Requirement space exploration. Three-layer convergence funnel: direction → MVP → requirement lock.
+- `/spec` — Constrained design expansion. Translates discover.json into module-level specifications.
+- `/build` — Autonomous TDD implementation. Generates tests, tracer bullet, per-module TDD, auto-acceptance.
+
+### Workflow
+
+Run commands in order: `/discover` → `/spec` → `/build`
+
+Each command reads upstream artifacts from `specs/` and writes its own artifacts there.
+Refer to `workflow.json` for state machine definitions and guardrail configuration.
+
+### Artifacts
+
+All structured artifacts live in `specs/`. These are machine-readable JSON contracts consumed by downstream stages.
+
+### Agents
+
+- **Supervisor** (intent guardian): Spawned at stage completion to check global coherence.
+- **Critic** (independent challenger): Spawned at checkpoints in independent session for quality verification.
+
+Both are core guardrails and cannot be disabled.
+```
+
+### Step 3: Start using
+
+```bash
+cd your-project
+claude   # Open Claude Code
+```
+
+Then type `/discover` to begin exploring your project space.
+
+## Why This Approach
 
 1. **Humans are decision-makers, not executors.** You define intent and choose from possibilities. AI generates options and runs them. You never say "how" — only "which one."
 
-2. **Less human involvement downstream.** Deep participation in `/discover` (where direction is uncertain) means you can go AFK during `/build` (where direction is locked). Better upstream decisions = less downstream babysitting.
+2. **Less human involvement downstream.** Deep participation in `/discover` (where direction is uncertain) means you can go AFK during `/build` (where direction is locked).
 
-3. **All dimensions appear simultaneously.** Requirements, feasibility, competitive risks, and effort don't come in separate phases — they emerge together so you decide with full context.
+3. **All dimensions appear simultaneously.** Requirements, feasibility, competitive risks, and effort emerge together so you decide with full context.
 
-4. **Spec is contract, not document.** Every output is structured JSON consumed by downstream stages. When you need to review, adapters provide human-friendly summaries, not raw JSON.
+4. **Spec is contract, not document.** Every output is structured JSON consumed by downstream stages.
 
-5. **AI autonomy with full audit trail.** Low-risk technical details are decided by AI without interrupting flow. Every decision gets recorded so you can always trace why something happened.
+5. **AI autonomy with full audit trail.** Low-risk technical details are decided by AI without interrupting flow. Every decision gets recorded.
 
-6. **First principles upstream, best practices downstream.** Strategic questions are reasoned from fundamentals. Execution uses proven patterns. Speed where it counts; deliberation where it matters.
-
-7. **Failures route to decisions, not execution.** When something breaks, it means an upstream decision needs revision, not that code needs debugging. Users request "try a different approach" (a decision), not "fix this bug" (code work).
-
-8. **Guardrails serve current capabilities, not lock future ones.** Core guardrails (backward verification, auto-acceptance) define correctness. Enhancement guardrails (tracer bullet, mutation testing) are training wheels. As AI improves, enhancement guardrails can be individually reduced or disabled.
+6. **Failures route to decisions, not execution.** When something breaks, it means an upstream decision needs revision, not that code needs debugging.
 
 ## Workflow
 
-Run in order:
-
-```bash
+```
 /discover    # Lock requirements
 → /spec      # Design to module level
 → /build     # Implement with TDD
@@ -57,79 +121,59 @@ Two independent agents provide cross-cutting quality assurance. Both are **core 
 - Monitors whether the overall output still matches your original intent and constraints
 - Activated at stage completion: after `/discover`, `/spec`, `/build`
 - Detects cumulative drift (each decision locally reasonable, but aggregate result diverged)
-- When drift detected: pauses and presents diagnosis. You decide: accept complexity / cut scope / backtrack
 
 **Critic — Independent Challenger (magnifying glass)**
 - Provides adversarial quality review in isolated session (no shared generation context)
 - Prevents "same AI grades its own work" by running independently
-- Reads only final artifacts, never generation history
 - Activated at checkpoints: requirement lock, spec backward verification, build scenario verification
-- When issues found: attempts self-fix first (only current artifact, never upstream). If self-fix succeeds, continues. If not, pauses for you
 
-**Relationship:** Supervisor watches direction (forest). Critic watches quality (trees). Independent, can run in parallel.
+### Key Concepts
 
-## V1 Scope
-
-**What's included:**
-- Three-stage workflow running on Claude Code as slash commands
-- Greenfield projects only (new projects from scratch)
-- Pure prompt engineering (no external services required)
-- Full core guardrails (Supervisor, Critic, backward verification, auto-acceptance)
-- Enhancement guardrails: tracer bullet enabled, mutation testing disabled
-
-**What's not included:**
-- Brownfield/incremental iteration (V2)
-- iOS remote agent tool (V4)
-- External model routing (V3+)
-- Custom memory/context management (V2+)
-
-## Getting Started
-
-1. **Read the design spec:** `docs/superpowers/specs/2026-04-02-nopilot-workflow-design.md`
-2. **Review the implementation plan:** `docs/superpowers/plans/2026-04-02-nopilot-v1.md`
-3. **Understand workflow definition:** `workflow.json` contains all state machines, guardrails, and checkpoint logic
-4. **Run in Claude Code:** Start with `/discover` to explore your project space
-
-## Key Concepts
-
-**Artifacts:**
-- `specs/discover.json` — Locked requirements with acceptance criteria and invariants
-- `specs/discover_history.json` — Exploration log of directions considered, features pruned, decisions made
-- `specs/spec.json` — Module decomposition, interfaces, data models, dependency graph
-- `specs/spec_review.json` — Backward verification and global coherence check results
-- `specs/tests.json` — Test cases derived from requirements and invariants
-- `specs/build_report.json` — Execution plan, TDD results, auto-acceptance verification, contract amendments
-
-**Key Decision Points:**
-- `/discover` Layer 1: Select product direction
-- `/discover` Layer 2: Define MVP features and technical approach
-- `/discover` Layer 3: Lock requirements with 6Cs quality checks
-- `/spec` checkpoint: Review design before proceeding to build (auto-skip if clean)
-- `/build` checkpoint: Review tests before implementation (optional by default)
+**Artifacts (generated at runtime in `specs/`):**
+- `discover.json` — Locked requirements with acceptance criteria and invariants
+- `discover_history.json` — Exploration log of directions considered and decisions made
+- `spec.json` — Module decomposition, interfaces, data models, dependency graph
+- `spec_review.json` — Backward verification and global coherence check results
+- `tests.json` — Test cases derived from requirements and invariants
+- `build_report.json` — Execution plan, TDD results, auto-acceptance verification
 
 **Exception Handling (Tiered):**
-- L0/L1: Environmental issues or low-impact problems → AI self-fixes
-- L2: Contract-impacting issues → Pause for product decision (accept degradation, cut feature, modify spec, retry different approach, backtrack)
-- L3: Fundamental issues → Diagnostic report + choice to backtrack to spec or discover
+- L0/L1: Environmental or low-impact → AI self-fixes
+- L2: Contract-impacting → Pause for product decision (accept degradation, cut feature, modify spec, retry, backtrack)
+- L3: Fundamental issue → Diagnostic report + choice to backtrack
 
 **Backtrack Safety:**
 - Max 3 backtracks total across all stages
 - Cycle detection: if A→B→A→B repeats, terminate and report
 - Cost awareness: users informed of re-run time before confirming backtrack
 
-## Evolution Path
+## File Structure
 
-**V1:** Claude Code slash commands, Greenfield only, full enhancement guardrails
-**V2:** Incremental iteration, custom memory systems, context management optimization
-**V3:** Multi-model routing, external guardrails, advanced scheduling
-**V4:** iOS remote agent with async orchestration
+```
+your-project/
+├── .claude/commands/
+│   ├── discover.md      # /discover slash command
+│   ├── spec.md          # /spec slash command
+│   ├── build.md         # /build slash command
+│   ├── supervisor.md    # Supervisor agent (spawned by commands)
+│   └── critic.md        # Critic agent (spawned by commands)
+├── specs/               # Runtime artifacts (generated by commands)
+│   ├── discover.json
+│   ├── discover_history.json
+│   ├── spec.json
+│   ├── spec_review.json
+│   ├── tests.json
+│   └── build_report.json
+├── workflow.json         # Master workflow definition
+└── CLAUDE.md            # Your project context (add NoPilot section)
+```
 
----
+## V1 Scope
 
-For implementation details, agent prompts, and workflow state machines, see:
-- `/discover` command: `.claude/commands/discover.md`
-- `/spec` command: `.claude/commands/spec.md`
-- `/build` command: `.claude/commands/build.md`
-- Supervisor agent: `.claude/commands/supervisor.md`
-- Critic agent: `.claude/commands/critic.md`
-- Workflow definition: `workflow.json`
+**Included:** Three-stage workflow on Claude Code, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor, Critic, backward verification, auto-acceptance).
+
+**Not included:** Brownfield/incremental iteration (V2), iOS remote agent (V4), multi-model routing (V3+).
+
+## License
+
+MIT
