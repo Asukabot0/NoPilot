@@ -1,13 +1,12 @@
 {
   "name": "nopilot",
   "version": "3.0",
-  "mode": "full",
   "max_backtrack_count": 3,
   "backtrack_cycle_detection": true,
   "agents": {
     "supervisor": {
       "trigger": "stage_complete",
-      "input": ["discover.json#constraints", "discover.json#selected_direction", "current_stage_output"],
+      "input": ["discover.json#constraints", "discover.json#selected_direction", "discover.json#tech_direction", "current_stage_output"],
       "output_field": "global_coherence_check",
       "classification": "core_guardrail",
       "on_drift": "pause_notify_user"
@@ -38,7 +37,12 @@
         "tech_stack", "time", "platform", "exclusions", "budget", "existing_assets"
       ],
       "states": {
-        "initial": "direction",
+        "initial": "constraints",
+        "constraints": {
+          "on": {
+            "MODE_SELECTED": "direction"
+          }
+        },
         "direction": {
           "on": {
             "SELECT": "mvp",

@@ -303,7 +303,7 @@ Write two JSON files to the `specs/` directory.
   "decision_log": [
     {
       "layer": "<direction|mvp|lock>",
-      "action": "<SELECT|MERGE|REJECT_ALL|APPROVE|BACKTRACK_MVP|BACKTRACK_DIR|REVISE|FORCE_OVERRIDE>",
+      "action": "<SELECT|MERGE|REJECT_ALL|APPROVE|BACKTRACK|BACKTRACK_MVP|BACKTRACK_DIR|REVISE|FORCE_OVERRIDE>",
       "detail": "",
       "timestamp": "<ISO 8601>"
     }

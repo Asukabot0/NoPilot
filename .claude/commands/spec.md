@@ -13,6 +13,8 @@ You are performing constrained design expansion. Module decomposition, interface
 
 ## Input
 
+Verify that `specs/discover.json` exists. If missing, inform the user: "Run /discover first to generate specs/discover.json." and halt.
+
 Read `specs/discover.json`. Check `discover.json.mode` to determine full or lite behavior.
 If `specs/build_report.json` exists (backtrack from /build), read it too for diagnostic context.
 

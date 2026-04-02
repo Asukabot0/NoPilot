@@ -11,6 +11,8 @@ You are an autonomous TDD executor. Follow industry best practices. Human involv
 
 ## Input
 
+Verify that `specs/spec.json` and `specs/discover.json` both exist. If either is missing, inform the user which upstream command to run first (`/discover` and/or `/spec`) and halt.
+
 Read `specs/spec.json` and `specs/discover.json`.
 
 ## Execution Flow
@@ -107,13 +109,16 @@ For each core scenario (SCENARIO-xxx) in discover.json:
 1. Generate a user operation script (sequence of actions)
 2. Simulate execution through the implemented code
 3. Verify key paths produce expected outcomes per EARS criteria
+4. Write the self-verification results into `specs/build_report.json`'s `acceptance_result` field (create the file with at minimum this section so the Critic can read it)
 
 **Critic Verification (independent session):**
-After self-verification passes, spawn Critic agent for independent validation:
+After self-verification passes and `acceptance_result` is written, spawn Critic agent for independent validation:
 - Spawn `.claude/commands/critic.md` using the Agent tool
-- Critic reads: specs/discover.json + specs/spec.json + specs/tests.json (no conversation history)
-- Critic independently verifies scenario walkthrough results against acceptance criteria
-- If Critic finds issues: attempt self-fix, re-verify. If persistent, pause for user.
+- Critic reads: `specs/build_report.json` (acceptance_result) + `specs/discover.json` (core_scenarios + acceptance criteria) + the actual implemented code (no conversation history)
+- Critic independently walks through each core scenario against the real code, then compares its results with the AI's acceptance_result
+- Critic writes results to `specs/build_review.json` with a recommendation of `pass`, `L2`, or `L3`
+- If `recommendation: "pass"`: both self-verification and Critic agree — proceed
+- If `recommendation: "L2"` or `"L3"`: Critic found divergence between AI's acceptance and actual behavior — route accordingly
 
 On pass (both self-verification and Critic): emit `ACCEPTANCE_PASS` → proceed to Step 7.
 On fail:

@@ -56,9 +56,9 @@ No dependencies. No build step. No config beyond the above.
 
 | Command | Reads | Writes |
 |---------|-------|--------|
-| `/discover` | `workflow.json` | `specs/discover.json`, `specs/discover_history.json` |
+| `/discover` | (user input only) | `specs/discover.json`, `specs/discover_history.json`, `specs/discover_review.json` |
 | `/spec` | `specs/discover.json` | `specs/spec.json`, `specs/spec_review.json` |
-| `/build` | `specs/spec.json`, `specs/discover.json` | `specs/tests.json`, `specs/build_report.json` |
+| `/build` | `specs/spec.json`, `specs/discover.json` | `specs/tests.json`, `specs/build_report.json`, `specs/build_review.json` |
 
 Each command is defined in `.claude/commands/<name>.md`. Read the command file for full behavior.
 
@@ -77,11 +77,14 @@ Two sub-agents spawned by commands. Both **core guardrails** (cannot be disabled
 | Agent | Prompt | Role | Spawned By |
 |-------|--------|------|------------|
 | Supervisor | `.claude/commands/supervisor.md` | Global coherence (forest) | /discover, /spec, /build |
-| Critic | `.claude/commands/critic.md` | Backward verification (trees) | /discover, /spec, /build |
+| Critic | `.claude/commands/critic.md` | Independent quality verification (trees) | /discover, /spec, /build |
 
 **Supervisor input:** `discover.json` anchor (`constraints` + `selected_direction` + `tech_direction`) + current stage output.
 
-**Critic input:** Contract artifacts only. Independent session (no conversation history).
+**Critic input per phase:**
+- `/discover`: `discover.json` only → 6Cs quality audit, invariant verification, acceptance criteria testability, coverage check → writes `discover_review.json`
+- `/spec`: `discover.json` + `spec.json` → backward verification, undeclared behavior check → writes `spec_review.json`
+- `/build`: `build_report.json` (acceptance_result) + `discover.json` (core_scenarios) + actual code → independent scenario walkthrough vs AI acceptance → writes `build_review.json`
 
 ### ID Naming
 
