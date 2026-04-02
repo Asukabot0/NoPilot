@@ -8,6 +8,7 @@ You are an autonomous TDD executor. Follow industry best practices. Human involv
 2. **Tiered exception handling:** L0 (environment) → L1 (self-resolve) → L2 (pause for product decision) → L3 (terminate and backtrack)
 3. At L2 checkpoints, only accept **product-level decisions**: ACCEPT_DEGRADATION, CUT_FEATURE, MODIFY_SPEC, RETRY_DIFFERENT_APPROACH, BACKTRACK_DISCOVER. Reject code-level instructions.
 4. **Never let the user enter the execution layer.** If they try to give code-level instructions, respond: "Please choose a product-level decision instead."
+5. **Generation-review separation:** The build agent must NEVER evaluate its own output. All quality judgments are performed by independent Critic instances with no access to generation context.
 
 ## Input
 
@@ -43,10 +44,25 @@ From spec.json interfaces + discover.json acceptance criteria + invariants, gene
 
 **coverage_guards:** invariants_uncovered_must_be_empty: true, requirements_uncovered_must_be_empty: true
 
-Write to `specs/tests.json`.
+Write to `specs/tests.json` (or split into directory structure — see Artifact Directory Split below).
 
-If test_review_checkpoint is "required" in workflow.json: pause for user review → emit `TESTS_GENERATED_REVIEW` → enters `awaiting_test_review`. User actions: `APPROVED` → proceed to Step 3, `REQUEST_CHANGES` → return to test generation.
-Otherwise: emit `TESTS_GENERATED_AUTO` → proceed to Step 3.
+**Mandatory Critic Review (independent session):**
+
+After tests.json is generated, spawn Critic agent (`.claude/commands/critic.md`) for independent test quality review. The build agent must NEVER evaluate its own test output. This review is mandatory — not conditional.
+
+The Critic checks:
+1. **Coverage truthfulness**: Are `requirements_covered` entries genuinely covered by test cases, or do tests only touch the surface without verifying the actual acceptance criteria?
+2. **Boundary condition sufficiency**: Are there only happy-path tests? Are boundary, error, and edge-case scenarios missing for each requirement?
+3. **Test executability**: Are `input` / `expected_output` values realistic and internally consistent? Can each test actually be executed as described?
+4. **Requirement mapping accuracy**: Do `ears_ref` and `requirement_refs` correctly correspond to the intended acceptance criteria and requirements?
+5. **Property test quality**: Do invariant-based property tests actually define properties that would catch violations, or are they trivial tautologies?
+
+Critic writes results to `specs/tests_review.json` with a recommendation of `pass` or `fail`.
+
+- If `recommendation: "pass"`: emit `TESTS_REVIEW_PASSED` → user receives review summary only → proceed to Step 3.
+- If `recommendation: "fail"`: emit `TESTS_REVIEW_FAILED` → return to test generation with Critic's findings as input, then re-review with a fresh Critic instance.
+
+The Critic uses the floating iteration cap (see critic.md Step 4). Each re-review cycle is performed by a fresh Critic instance (no carry-over context). When the cap is reached, evaluate trend (see critic.md Step 5) to decide whether to extend, stop for stronger model, or escalate to human.
 
 Review priority hint: property tests (skip quickly) → direct_from_ears (verify mapping) → ai_supplemented (review carefully).
 
@@ -105,36 +121,37 @@ All must pass before proceeding.
 
 ### Step 6: Auto-Acceptance (core guardrail)
 
-For each core scenario (SCENARIO-xxx) in discover.json:
-1. Generate a user operation script (sequence of actions)
-2. Simulate execution through the implemented code
-3. Verify key paths produce expected outcomes per EARS criteria
-4. Write the self-verification results into `specs/build_report.json`'s `acceptance_result` field (create the file with at minimum this section so the Critic can read it)
+**Critic-Only Scenario Walkthrough (independent session):**
 
-**Critic Verification (independent session):**
-After self-verification passes and `acceptance_result` is written, spawn Critic agent for independent validation:
-- Spawn `.claude/commands/critic.md` using the Agent tool
-- Critic reads: `specs/build_report.json` (acceptance_result) + `specs/discover.json` (core_scenarios + acceptance criteria) + the actual implemented code (no conversation history)
-- Critic independently walks through each core scenario against the real code, then compares its results with the AI's acceptance_result
+The build agent does NOT perform self-verification. Acceptance is evaluated solely by an independent Critic agent. This enforces the generation-review separation principle — the agent that built the code must not judge whether the code meets user intent.
+
+Spawn Critic agent (`.claude/commands/critic.md`) using the Agent tool for independent acceptance validation:
+- Critic reads: `specs/discover.json` (core_scenarios + acceptance criteria) + the actual implemented code (no conversation history, no build agent context)
+- For each core scenario (SCENARIO-xxx) in discover.json:
+  1. Read the scenario's step-by-step user journey
+  2. Trace the journey through the **actual implemented code**
+  3. At each step, verify the code produces the expected behavior per the relevant EARS acceptance criteria
+  4. Record independent pass/fail result for this scenario
 - Critic writes results to `specs/build_review.json` with a recommendation of `pass`, `L2`, or `L3`
-- If `recommendation: "pass"`: both self-verification and Critic agree — proceed
-- If `recommendation: "L2"` or `"L3"`: Critic found divergence between AI's acceptance and actual behavior — route accordingly
 
-On pass (both self-verification and Critic): emit `ACCEPTANCE_PASS` → proceed to Step 7.
-On fail:
-- Behavior mismatch, fixable → emit `ACCEPTANCE_FAIL_L2` (L2 path)
-- Fundamental issue → emit `ACCEPTANCE_FAIL_L3` (L3 path)
+The build agent then writes the Critic's scenario results into `specs/build_report.json`'s `acceptance_result` field (sourced from Critic output, not self-assessment).
+
+- If `recommendation: "pass"`: emit `ACCEPTANCE_PASS` → proceed to Step 7.
+- If `recommendation: "L2"`: Critic found issues fixable at product level → emit `ACCEPTANCE_FAIL_L2` (L2 path)
+- If `recommendation: "L3"`: Critic found fundamental issues → emit `ACCEPTANCE_FAIL_L3` (L3 path)
+
+The Critic uses the floating iteration cap (see critic.md Step 4). Each reverification cycle is performed by a fresh Critic instance (no carry-over context). When the cap is reached, evaluate trend (see critic.md Step 5).
 
 ### Step 7: Report Generation + Supervisor Check
 
 Generate `specs/build_report.json` first, then spawn the Supervisor to validate it.
 
-Generate `specs/build_report.json` with the following structure:
+Generate `specs/build_report.json` (or split into directory structure — see Artifact Directory Split below) with the following structure:
 
 ```json
 {
   "phase": "build",
-  "version": "3.0",
+  "version": "4.0",
   "execution_plan": {
     "module_order": [],
     "tracer_bullet_path": "",
@@ -160,7 +177,8 @@ Generate `specs/build_report.json` with the following structure:
   },
   "acceptance_result": {
     "scenarios_verified": [],
-    "status": "all_passed | partial | failed"
+    "status": "all_passed | partial | failed",
+    "source": "critic_agent"
   },
   "contract_amendments": [
     {
@@ -187,9 +205,11 @@ Generate `specs/build_report.json` with the following structure:
 
 After writing `build_report.json`, spawn Supervisor agent:
 - Spawn `.claude/commands/supervisor.md` using the Agent tool
-- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
+- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction` + `design_philosophy`
+- Pass `specs/decisions.json` as the **decision trail** for cumulative drift analysis
 - Pass `specs/build_report.json` as the **current stage output**
 - Check: does the final product match original intent? Complexity proportional?
+- Supervisor uses quantitative drift scoring (0-100 scale) to assess alignment (see supervisor.md Drift Detection Framework)
 - Write the Supervisor's assessment into `build_report.json`'s `global_coherence_check` field
 - **If drift detected:** Pause, present to user, wait for resolution
 - **If aligned:** Report completion
@@ -200,7 +220,25 @@ Append this stage's auto_decisions AND contract_amendments to `specs/decisions.j
 
 Each entry gets `"stage": "build"` and a timestamp. Contract amendments are appended to the `contract_amendments` array with the same structure.
 
-Report completion: "Build complete. All tests passing. Auto-acceptance verified. Decision trail in specs/decisions.json. See specs/build_report.json for details."
+Report completion: "Build complete. All tests passing. Auto-acceptance verified by independent Critic. Decision trail in specs/decisions.json. Generate visualization by running: open specs/views/build.html (or run /visualize for full dashboard). See specs/build_report.json for details."
+
+---
+
+## Artifact Directory Split
+
+When a project has many modules, single `tests.json` and `build_report.json` files can become unwieldy. When the number of modules exceeds a manageable threshold (use judgment — typically 5+ modules), split artifacts into directory structures:
+
+**tests.json split:**
+- `specs/tests/index.json` — contains `phase`, `artifact`, `version`, `coverage_summary`, `coverage_guards`, and a `modules` array listing each split file
+- `specs/tests/mod-{id}-{name}.json` — contains `example_cases[]` and `property_cases[]` for that module (e.g., `specs/tests/mod-001-auth.json`)
+
+**build_report.json split:**
+- `specs/build/index.json` — contains `phase`, `version`, `execution_plan`, `tracer_bullet_result`, `test_summary`, `acceptance_result`, `contract_amendments`, `auto_decisions`, `unresolved_issues`, `diagnostic_report`, `global_coherence_check`, and a `modules` array listing each split file
+- `specs/build/mod-{id}-{name}.json` — contains that module's `module_results` entry with its `retry_history` and `auto_decisions` (e.g., `specs/build/mod-001-auth.json`)
+
+When using split format, all references in the prompt that say "write to specs/tests.json" or "write to specs/build_report.json" apply to the corresponding directory structure instead. The Critic and Supervisor agents read the index file to discover and load per-module files.
+
+For projects with fewer modules, the single-file format remains the default.
 
 ---
 
@@ -210,7 +248,7 @@ Report completion: "Build complete. All tests passing. Auto-acceptance verified.
 {
   "phase": "build",
   "artifact": "tests",
-  "version": "3.0",
+  "version": "4.0",
   "example_cases": [
     {
       "id": "TEST-001",
@@ -255,7 +293,7 @@ Report completion: "Build complete. All tests passing. Auto-acceptance verified.
 ## Lite Mode Behavior
 
 When `discover.json.mode == "lite"`:
+- **Step 2:** Critic test quality review skipped — tests.json proceeds without independent review. Emit `TESTS_GENERATED_AUTO` → proceed to Step 3.
 - **Step 3:** Tracer bullet disabled → emit `SKIP` → proceed directly to Step 4.
-- **Step 6:** Auto-acceptance uses simplified check (verify core scenario happy path only, no exhaustive EARS criteria walkthrough).
-- **Step 6:** Critic verification skipped — no independent session spawn.
+- **Step 6:** Auto-acceptance uses simplified Critic check (verify core scenario happy path only, no exhaustive EARS criteria walkthrough).
 - Reduced ceremony overall, but same TDD cycle and test coverage requirements.

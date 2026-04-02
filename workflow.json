@@ -1,12 +1,45 @@
 {
   "name": "nopilot",
-  "version": "3.0",
+  "version": "4.0",
   "max_backtrack_count": 3,
   "backtrack_cycle_detection": true,
+
+  "framework_principles": {
+    "generation_review_separation": {
+      "description": "Generating agents must NEVER evaluate their own output. All review/assessment is performed by independent agents in isolated sessions.",
+      "applies_to": "all_stages",
+      "enforcement": "mandatory"
+    },
+    "iterative_verification": {
+      "description": "Review cycles use fresh agent instances each round to avoid anchoring bias. Limits float by complexity.",
+      "max_iterations": {
+        "simple": 3,
+        "moderate": 5,
+        "complex": 10
+      },
+      "on_limit_reached": {
+        "converging": "extend_iterations",
+        "diverging": "escalate_model",
+        "oscillating": "escalate_human"
+      }
+    },
+    "agent_consensus": {
+      "description": "Before asking the human, the executing agent spawns a consulting agent anchored on design philosophy and first principles. If they disagree, one more round of discussion attempts convergence.",
+      "consulting_agent_anchors": ["design_philosophy", "first_principles"],
+      "decision_tiers": {
+        "low_impact": { "scope": "technical implementation details", "auto_approve": true, "log_to": "decisions.json" },
+        "medium_impact": { "scope": "architecture decisions not affecting product direction", "notify_human": true, "auto_approve_if_no_objection": true },
+        "high_impact": { "scope": "product direction, user-visible behavior", "require_human_confirmation": true }
+      },
+      "max_consensus_rounds": 2,
+      "on_no_convergence": "present_both_viewpoints_to_human"
+    }
+  },
+
   "agents": {
     "supervisor": {
       "trigger": "stage_complete",
-      "input": ["discover.json#constraints", "discover.json#selected_direction", "discover.json#tech_direction", "current_stage_output"],
+      "input": ["discover.json#constraints", "discover.json#selected_direction", "discover.json#tech_direction", "discover.json#design_philosophy", "decisions.json", "current_stage_output"],
       "output_field": "global_coherence_check",
       "classification": "core_guardrail",
       "on_drift": "pause_notify_user"
@@ -17,14 +50,58 @@
       "output_field": "independent_review",
       "session": "independent",
       "classification": "core_guardrail",
-      "on_issue": "self_fix_then_reverify_then_pause_if_still_failing"
+      "on_issue": "self_fix_then_reverify_with_fresh_instance",
+      "iteration_limits": "dynamic_by_complexity",
+      "6cs_grading": {
+        "mandatory_block": ["completeness", "consistency", "correctness"],
+        "advisory_warn": ["clarity", "conciseness", "concreteness"]
+      }
     }
   },
+
   "enhancement_guardrails": {
     "tracer_bullet": { "enabled": true, "phase": "build" },
     "mutation_testing": { "enabled": false, "phase": "build" },
     "multi_sample_6cs": { "enabled": false, "phase": "discover" }
   },
+
+  "artifact_structure": {
+    "description": "Large artifacts split into directory structure with index file. Small artifacts remain as single files.",
+    "split_threshold": "when_artifact_exceeds_reasonable_single_file_size_or_contains_multiple_modules",
+    "discover": {
+      "single_file": "specs/discover.json",
+      "directory": {
+        "path": "specs/discover/",
+        "index": "index.json",
+        "children": ["requirements.json", "scenarios.json", "history.json"]
+      }
+    },
+    "spec": {
+      "single_file": "specs/spec.json",
+      "directory": {
+        "path": "specs/spec/",
+        "index": "index.json",
+        "children_pattern": "mod-{id}-{name}.json"
+      }
+    },
+    "build": {
+      "single_file": "specs/build_report.json",
+      "directory": {
+        "path": "specs/build/",
+        "index": "index.json",
+        "children_pattern": "mod-{id}-{name}.json"
+      }
+    },
+    "tests": {
+      "single_file": "specs/tests.json",
+      "directory": {
+        "path": "specs/tests/",
+        "index": "index.json",
+        "children_pattern": "mod-{id}-{name}.json"
+      }
+    }
+  },
+
   "stages": {
     "discover": {
       "command": "/discover",
@@ -33,12 +110,19 @@
       "backtrack_context": ["specs/discover_history.json"],
       "outputs": ["specs/discover.json", "specs/discover_history.json", "specs/discover_review.json"],
       "checkpoint": "required",
-      "constraint_dimensions": [
-        "tech_stack", "time", "platform", "exclusions", "budget", "existing_assets"
-      ],
       "states": {
-        "initial": "constraints",
-        "constraints": {
+        "initial": "idea_collection",
+        "idea_collection": {
+          "on": {
+            "IDEA_CAPTURED": "idea_structuring"
+          }
+        },
+        "idea_structuring": {
+          "on": {
+            "IDEA_CONFIRMED": "constraint_collection"
+          }
+        },
+        "constraint_collection": {
           "on": {
             "MODE_SELECTED": "direction"
           }
@@ -52,8 +136,13 @@
         },
         "mvp": {
           "on": {
-            "APPROVE": "lock",
+            "APPROVE": "design_philosophy",
             "BACKTRACK": "direction"
+          }
+        },
+        "design_philosophy": {
+          "on": {
+            "PHILOSOPHY_CONFIRMED": "lock"
           }
         },
         "lock": {
@@ -66,9 +155,10 @@
           },
           "guards": {
             "APPROVE": {
-              "6cs_all_pass": true,
+              "critic_review_passed": true,
               "no_unresolved_conflicts": true,
-              "invariants_extracted": true
+              "invariants_extracted": true,
+              "completeness_threshold_met": true
             },
             "FORCE_OVERRIDE": {
               "note": "User acknowledges unresolved issues and proceeds anyway"
@@ -107,7 +197,7 @@
         "initial": "expanding",
         "expanding": {
           "on": {
-            "COMPLETE": "self_reviewing",
+            "COMPLETE": "reviewing",
             "CONTRADICTION": "$backtrack:discover",
             "GAP_HIGH_IMPACT": "awaiting_user",
             "L0_ISSUE": "expanding"
@@ -121,7 +211,7 @@
             { "type": "USER_DECISION", "params": { "choice": "string" } }
           ]
         },
-        "self_reviewing": {
+        "reviewing": {
           "on": {
             "REVIEW_CLEAN": "$complete",
             "REVIEW_HAS_ISSUES": "awaiting_review",
@@ -146,7 +236,7 @@
       "context_dependencies": ["specs/spec.json", "specs/discover.json"],
       "backtrack_context": [],
       "outputs": ["specs/tests.json", "specs/build_report.json", "specs/build_review.json"],
-      "test_review_checkpoint": "optional",
+      "test_review_checkpoint": "required",
       "max_retries_per_module": 3,
       "states": {
         "initial": "planning",
@@ -158,24 +248,15 @@
         },
         "testing": {
           "on": {
-            "TESTS_GENERATED_AUTO": "tracer_bullet",
-            "TESTS_GENERATED_REVIEW": "awaiting_test_review",
+            "TESTS_GENERATED": "test_reviewing",
             "L3_ISSUE": "diagnosing"
-          },
-          "guards": {
-            "TESTS_GENERATED_REVIEW": { "test_review_checkpoint": "required" },
-            "TESTS_GENERATED_AUTO": { "test_review_checkpoint": "optional" }
           }
         },
-        "awaiting_test_review": {
+        "test_reviewing": {
           "on": {
-            "APPROVED": "tracer_bullet",
-            "REQUEST_CHANGES": "testing"
-          },
-          "allowed_actions": [
-            { "type": "APPROVED" },
-            { "type": "REQUEST_CHANGES", "params": { "changes": "string" } }
-          ]
+            "TEST_REVIEW_PASSED": "tracer_bullet",
+            "TEST_REVIEW_FAILED": "testing"
+          }
         },
         "tracer_bullet": {
           "on": {
@@ -257,6 +338,7 @@
       }
     }
   },
+
   "backtrack_triggers": [
     { "from": "spec", "to": "discover", "condition": "contradiction_in_discover_json" },
     { "from": "build", "to": "spec", "condition": "spec_interface_infeasible" },

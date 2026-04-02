@@ -45,12 +45,17 @@ If you encounter information gaps:
 
 ### Phase 2: Artifact Generation
 
-Write `specs/spec.json` with the following structure:
+Write the spec artifact. For small projects, use a single file. For larger projects with many modules, use a directory structure:
+
+- **Single file:** `specs/spec.json` — suitable when the module count is small
+- **Directory structure:** `specs/spec/index.json` + `specs/spec/mod-{id}-{name}.json` — suitable when the module count is large. `index.json` contains the top-level structure (dependency_graph, external_dependencies, global_error_strategy, auto_decisions, contract_amendments, context_dependencies) and a `module_refs` array listing the module file names. Each `mod-{id}-{name}.json` contains a single module definition.
+
+Use the following structure (shown as single-file format; directory format splits modules into separate files):
 
 ```json
 {
   "phase": "spec",
-  "version": "3.0",
+  "version": "4.0",
   "status": "approved",
   "modules": [
     {
@@ -126,23 +131,28 @@ Write `specs/spec.json` with the following structure:
 Ensure every interface has `requirement_refs` and `acceptance_criteria_refs` for traceability.
 Ensure every module has `invariant_refs` where applicable.
 
-Emit event: `COMPLETE` → enters `self_reviewing` state.
+Emit event: `COMPLETE` → enters `reviewing` state.
 
-### Phase 3: Verification (Critic + Supervisor)
+### Phase 3: Independent Review (Critic + Supervisor)
 
-After writing spec.json, spawn two agents:
+After writing spec.json, spawn two independent review agents. These agents run in **separate sessions with no access to the generation conversation history** — this separation is critical to prevent self-approval bias.
 
-**Critic Agent** (independent session):
-- Spawn `.claude/commands/critic.md` using the Agent tool
-- Critic reads only specs/discover.json and specs/spec.json (no conversation history)
+**Critic Agent** (independent session, no conversation history):
+- Spawn `.claude/commands/critic.md` using the Agent tool in a **fresh session**
+- Critic reads only specs/discover.json and specs/spec.json — never the generation conversation
 - Performs backward verification: for each acceptance criterion, can the spec satisfy it?
 - Checks for undeclared core behaviors
+- Uses a floating iteration cap (not a fixed number) based on review complexity — simple: 3, medium: 5, complex: 7-10
+- Each self-fix iteration is reverified by a **new Critic instance** (no carry-over context from previous cycles)
+- If the cap is reached, evaluates the trend (converging / diverging / oscillating) to decide next action
 - Results written to specs/spec_review.json
 
-**Supervisor Agent:**
-- Spawn `.claude/commands/supervisor.md` using the Agent tool
+**Supervisor Agent** (independent session, no conversation history):
+- Spawn `.claude/commands/supervisor.md` using the Agent tool in a **fresh session**
 - Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
 - Pass `specs/spec.json` as the **current stage output**
+- Supervisor also reads `design_philosophy` from discover.json and `specs/decisions.json` (the cumulative decision audit trail) for drift analysis
+- Uses quantitative drift scoring (0-100) rather than binary judgment — see supervisor.md for score ranges and recommended actions
 - Checks global coherence: has complexity bloated? Does the design still match intent?
 - Results written to spec_review.json global_coherence_check field
 
@@ -183,7 +193,7 @@ Append this stage's auto_decisions to `specs/decisions.json` (create if not exis
 
 If the file already exists (e.g., from a previous /discover run), **append** to the `decisions` array — do not overwrite.
 
-"spec artifacts written to specs/. Run /build to continue."
+"spec artifacts written to specs/. Generate visualization by running: open specs/views/spec.html (or run /visualize for full dashboard). Run /build to continue."
 
 ## Lite Mode Behavior
 
