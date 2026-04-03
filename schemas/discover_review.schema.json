@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Discover Review Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["review_phase", "6cs_audit", "invariant_verification", "acceptance_criteria_verification", "coverage_verification", "global_coherence_check"],
+  "properties": {
+    "review_phase": {
+      "type": "string",
+      "enum": ["discover"]
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "review_mode": {
+      "type": "string",
+      "enum": ["THOROUGH", "ADVERSARIAL", "SIMPLE"]
+    },
+    "review_mode_justification": {
+      "type": "string"
+    },
+    "iteration": {
+      "type": "number"
+    },
+    "fix_iteration_summary": {
+      "type": "object"
+    },
+    "session": {
+      "type": "string"
+    },
+    "review_complexity": {
+      "type": "string",
+      "enum": ["simple", "medium", "complex"]
+    },
+    "self_fix_cap": {},
+    "6cs_audit": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "severity", "dimension"],
+            "properties": {
+              "id": { "type": "string" },
+              "severity": { "type": "string" },
+              "dimension": { "type": "string" },
+              "target": { "type": "string" },
+              "finding": { "type": "string" },
+              "evidence": { "type": "string" },
+              "original_severity": { "type": "string" },
+              "confidence": { "type": "string" }
+            }
+          }
+        },
+        "issues": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "invariant_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "completeness_gaps": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "contradictions": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "acceptance_criteria_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "untestable_criteria": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "coverage_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "uncovered_scenarios": { "type": "array", "items": { "type": "string" } },
+        "orphan_requirements": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "ai_bias_detection": {
+      "type": "object",
+      "properties": {
+        "patterns_found": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "self_fix_log": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "trend_evaluation": {
+      "type": "object",
+      "properties": {
+        "assessed": { "type": "boolean" }
+      }
+    },
+    "global_coherence_check": {
+      "type": "object"
+    }
+  }
+}

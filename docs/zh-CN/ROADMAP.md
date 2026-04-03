@@ -37,12 +37,14 @@
 
 ### 真正轻量的 Lite 模式
 - [ ] Lite 模式下制品 schema 降级（功能列表替代完整 EARS，不变量可选）
+- [ ] Lite discover 阶段减重：为「方向已明确」场景精简 Layer 3 步骤（[#17](https://github.com/Asukabot0/NoPilot/issues/17)）
 - [ ] Lite 模式 Layer 1/2 搜索改为推荐而非必选
 - [ ] Lite /spec：同会话 Critic，不启动独立会话
 - [ ] Lite /build：tracer bullet 和自动验收使用简化检查
 - [ ] AI 模式推荐使用明确的启发规则（约束数量、功能数量、平台复杂度）
 
 ### Brownfield 支持
+- [ ] Feature 级制品隔离：每个 feature 独立目录 `specs/<feature-slug>/`，`.active` 指针标记当前上下文（[#17](https://github.com/Asukabot0/NoPilot/issues/17)）
 - [ ] `/discover` 读取已有代码库作为上下文（文件结构、已有 API、技术栈检测）
 - [ ] Layer 1 跳过方向发散——方向就是"扩展这个已有项目"
 - [ ] Layer 2 在已有架构上下文中呈现功能（什么能直接加、什么需要重构）

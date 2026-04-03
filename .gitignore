@@ -9,5 +9,10 @@ specs/*.json
 lash/
 .claude/commands/lash-*.md
 
+# Lash-generated runtime directives
+AGENTS.md
+CLAUDE.md
+opencode.md
+
 # OS files
 .DS_Store

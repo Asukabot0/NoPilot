@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Spec Index Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["phase", "version", "status", "module_refs", "dependency_graph", "external_dependencies", "global_error_strategy", "auto_decisions", "contract_amendments", "context_dependencies"],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["spec"]
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "draft", "in_progress"]
+    },
+    "module_refs": {
+      "type": "array",
+      "description": "List of child module file names (e.g. 'mod-001-auth.json')",
+      "items": { "type": "string" }
+    },
+    "dependency_graph": {
+      "type": "object",
+      "required": ["edges"],
+      "properties": {
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "type"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["calls", "subscribes", "depends"]
+              },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "external_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "purpose"],
+        "properties": {
+          "name": { "type": "string" },
+          "purpose": { "type": "string" },
+          "module_refs": { "type": "array", "items": { "type": "string" } },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "test_strategy": {
+            "type": "string",
+            "enum": ["mock", "sandbox", "real"]
+          }
+        }
+      }
+    },
+    "global_error_strategy": {
+      "type": "object",
+      "properties": {
+        "api_error_format": { "type": "string" },
+        "external_service": { "type": "string" },
+        "logging": { "type": "string" }
+      }
+    },
+    "auto_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "rationale", "impact_level"],
+        "properties": {
+          "decision": { "type": "string" },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" },
+          "impact": { "type": "string" },
+          "impact_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "contract_amendments": {
+      "type": "array"
+    },
+    "context_dependencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

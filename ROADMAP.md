@@ -60,12 +60,14 @@
 
 ### True Lite Mode
 - [ ] Reduced artifact schemas in lite mode (feature list instead of full EARS, optional invariants)
+- [ ] Lite discover phase weight reduction: streamline Layer 3 steps for "direction already clear" scenarios ([#17](https://github.com/Asukabot0/NoPilot/issues/17))
 - [ ] Lite mode skips search requirement in Layer 1/2
 - [ ] Lite /spec: same-session Critic only, no independent session
 - [ ] Lite /build: tracer bullet and auto-acceptance use simplified checks
 - [ ] AI mode recommendation uses explicit heuristics (constraint count, feature count, platform complexity)
 
 ### Brownfield Support
+- [ ] Feature-scoped artifact isolation: `specs/<feature-slug>/` per feature, `.active` pointer for current context ([#17](https://github.com/Asukabot0/NoPilot/issues/17))
 - [ ] `/discover` reads existing codebase as context (file structure, existing APIs, tech stack detection)
 - [ ] Layer 1 skips direction divergence — direction is "extend this existing project"
 - [ ] Layer 2 presents features in context of existing architecture (what fits, what requires refactoring)

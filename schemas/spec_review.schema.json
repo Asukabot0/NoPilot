@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Spec Review Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["review_phase", "backward_verification", "global_coherence_check"],
+  "properties": {
+    "review_phase": {
+      "type": "string",
+      "enum": ["spec"]
+    },
+    "reviewer": {
+      "type": "string"
+    },
+    "session": {
+      "type": "string",
+      "enum": ["independent", "same_session"]
+    },
+    "review_complexity": {
+      "type": "string",
+      "enum": ["simple", "medium", "complex"]
+    },
+    "self_fix_cap": {},
+    "backward_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "findings": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "acceptance_criteria_coverage": { "type": "object" },
+        "undeclared_behaviors": { "type": "array" },
+        "invariant_coverage": { "type": "object" },
+        "dependency_graph_check": { "type": "object" },
+        "interface_completeness_check": { "type": "object" },
+        "requirement_coverage": { "type": "object" },
+        "fix_iterations_used": { "type": "number" },
+        "fix_iterations_max": { "type": "number" },
+        "final_verdict": { "type": "string" },
+        "uncovered_criteria": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "invariant_violations": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "undeclared_core_behaviors": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "technical_behaviors_logged": {
+      "type": "array"
+    },
+    "high_impact_decisions": {
+      "type": "array"
+    },
+    "ai_bias_detection": {
+      "type": "object",
+      "properties": {
+        "patterns_found": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "self_fix_log": {
+      "type": "array",
+      "items": { "type": "object" }
+    },
+    "trend_evaluation": {
+      "type": "object",
+      "properties": {
+        "assessed": { "type": "boolean" }
+      }
+    },
+    "global_coherence_check": {
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Discover Index Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["phase", "version", "status", "mode", "constraints", "selected_direction", "design_philosophy", "tech_direction", "domain_model", "non_functional_requirements", "mvp_features", "context_dependencies"],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["discover"]
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "draft", "in_progress"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["full", "lite"]
+    },
+    "constraints": {
+      "type": "object",
+      "required": ["tech_stack", "exclusions", "existing_assets"],
+      "properties": {
+        "tech_stack": { "type": "array", "items": { "type": "string" } },
+        "time": { "type": ["string", "null"] },
+        "platform": { "type": "array", "items": { "type": "string" } },
+        "exclusions": { "type": "array", "items": { "type": "string" } },
+        "budget": { "type": ["string", "null"] },
+        "existing_assets": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "selected_direction": {
+      "type": "object",
+      "required": ["description", "differentiator", "rationale", "grounding"],
+      "properties": {
+        "description": { "type": "string" },
+        "differentiator": { "type": "string" },
+        "rationale": { "type": "string" },
+        "pre_mortem": { "type": "array", "items": { "type": "string" } },
+        "grounding": {
+          "type": "string",
+          "enum": ["search_verified", "ai_judgment_only"]
+        }
+      }
+    },
+    "design_philosophy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["principle", "justification"],
+        "properties": {
+          "principle": { "type": "string" },
+          "justification": { "type": "string" },
+          "source_decisions": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "tech_direction": {
+      "type": "object",
+      "required": ["stack", "architecture_style"],
+      "properties": {
+        "stack": { "type": "array", "items": { "type": "string" } },
+        "architecture_style": { "type": "string" },
+        "product_impact": { "type": "string" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "domain_model": {
+      "type": "object",
+      "required": ["entities", "relationships"],
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "description"],
+            "properties": {
+              "name": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "relationships": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "type"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "type": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "non_functional_requirements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "description", "source", "priority"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["performance", "security", "scale", "availability", "compliance", "accessibility"]
+          },
+          "description": { "type": "string" },
+          "target": { "type": "string" },
+          "source": {
+            "type": "string",
+            "enum": ["user_stated", "ai_inferred"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["must_have", "should_have", "nice_to_have"]
+          }
+        }
+      }
+    },
+    "mvp_features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "feasibility": { "type": "string" },
+          "competitive_notes": { "type": "string" },
+          "source_refs": { "type": "array", "items": { "type": "string" } },
+          "requirement_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "context_dependencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "child_files": {
+      "type": "object",
+      "description": "References to child files in the split directory structure",
+      "properties": {
+        "requirements": { "type": "string" },
+        "scenarios": { "type": "string" },
+        "history": { "type": "string" }
+      }
+    }
+  }
+}

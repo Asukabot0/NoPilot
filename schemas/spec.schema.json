@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Spec Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["phase", "version", "status", "modules", "dependency_graph", "external_dependencies", "global_error_strategy", "auto_decisions", "contract_amendments", "context_dependencies"],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["spec"]
+    },
+    "version": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["approved", "draft", "in_progress"]
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "responsibility", "interfaces", "data_models", "requirement_refs"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^MOD-\\d{3}$"
+          },
+          "name": { "type": "string" },
+          "responsibility": { "type": "string" },
+          "source_root": { "type": "string" },
+          "owned_files": { "type": "array", "items": { "type": "string" } },
+          "interfaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["type", "name"],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["api", "internal", "event"]
+                },
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "input_schema": { "type": "object" },
+                "output_schema": { "type": "object" },
+                "errors": { "type": "array", "items": { "type": "string" } },
+                "api_detail": {},
+                "requirement_refs": { "type": "array", "items": { "type": "string" } },
+                "acceptance_criteria_refs": { "type": "array", "items": { "type": "string" } }
+              }
+            }
+          },
+          "data_models": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "fields": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["name", "type"],
+                    "properties": {
+                      "name": { "type": "string" },
+                      "type": { "type": "string" },
+                      "constraints": { "type": "string" }
+                    }
+                  }
+                },
+                "relationships": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["target", "type"],
+                    "properties": {
+                      "target": { "type": "string" },
+                      "type": {
+                        "type": "string",
+                        "enum": ["has_many", "belongs_to", "has_one"]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "state_machine": {},
+          "nfr_constraints": {
+            "type": "object",
+            "properties": {
+              "performance": {},
+              "security": {},
+              "other": {}
+            }
+          },
+          "requirement_refs": { "type": "array", "items": { "type": "string" } },
+          "invariant_refs": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "dependency_graph": {
+      "type": "object",
+      "required": ["edges"],
+      "properties": {
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "type"],
+            "properties": {
+              "from": { "type": "string" },
+              "to": { "type": "string" },
+              "type": {
+                "type": "string",
+                "enum": ["calls", "subscribes", "depends"]
+              },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "external_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "purpose"],
+        "properties": {
+          "name": { "type": "string" },
+          "purpose": { "type": "string" },
+          "module_refs": { "type": "array", "items": { "type": "string" } },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "test_strategy": {
+            "type": "string",
+            "enum": ["mock", "sandbox", "real"]
+          }
+        }
+      }
+    },
+    "global_error_strategy": {
+      "type": "object",
+      "properties": {
+        "api_error_format": { "type": "string" },
+        "external_service": { "type": "string" },
+        "logging": { "type": "string" }
+      }
+    },
+    "auto_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "rationale", "impact_level"],
+        "properties": {
+          "decision": { "type": "string" },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" },
+          "impact": { "type": "string" },
+          "impact_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "contract_amendments": {
+      "type": "array"
+    },
+    "context_dependencies": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

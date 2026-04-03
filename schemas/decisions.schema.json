@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Decisions Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["decisions", "contract_amendments"],
+  "properties": {
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["stage", "timestamp", "decision", "rationale", "impact_level"],
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": ["discover", "spec", "build"]
+          },
+          "timestamp": { "type": "string" },
+          "decision": { "type": "string" },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" },
+          "impact": { "type": "string" },
+          "impact_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "contract_amendments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "detail"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["degradation", "cut_feature"]
+          },
+          "detail": { "type": "string" },
+          "impact": { "type": "string" },
+          "user_decision": { "type": "string" }
+        }
+      }
+    }
+  }
+}

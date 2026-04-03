@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tests Review Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["phase", "session", "review_complexity", "self_fix_cap", "coverage_truthfulness", "boundary_condition_sufficiency", "executability_verification", "requirement_mapping_verification", "property_test_verification", "ai_bias_detection", "self_fix_log", "trend_evaluation", "recommendation"],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["tests_review"]
+    },
+    "session": {
+      "type": "string",
+      "enum": ["independent"]
+    },
+    "review_complexity": {
+      "type": "string",
+      "enum": ["simple", "medium", "complex"]
+    },
+    "self_fix_cap": {},
+    "coverage_truthfulness": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "false_coverage_claims": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["requirement_id", "finding", "severity", "confidence"],
+            "properties": {
+              "requirement_id": { "type": "string" },
+              "finding": { "type": "string" },
+              "severity": { "type": "string", "enum": ["block", "warn"] },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+              "ai_bias_flags": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "boundary_condition_sufficiency": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "missing_cases": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["target_id", "finding", "severity", "confidence"],
+            "properties": {
+              "target_id": { "type": "string" },
+              "finding": { "type": "string" },
+              "severity": { "type": "string", "enum": ["block", "warn"] },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+              "ai_bias_flags": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "executability_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["test_id", "finding", "severity", "confidence"],
+            "properties": {
+              "test_id": { "type": "string" },
+              "finding": { "type": "string" },
+              "severity": { "type": "string", "enum": ["block", "warn"] },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+              "ai_bias_flags": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "requirement_mapping_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["test_id", "finding", "severity", "confidence"],
+            "properties": {
+              "test_id": { "type": "string" },
+              "finding": { "type": "string" },
+              "severity": { "type": "string", "enum": ["block", "warn"] },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+              "ai_bias_flags": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "property_test_verification": {
+      "type": "object",
+      "required": ["passed"],
+      "properties": {
+        "passed": { "type": "boolean" },
+        "issues": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["property_id", "finding", "severity", "confidence"],
+            "properties": {
+              "property_id": { "type": "string" },
+              "finding": { "type": "string" },
+              "severity": { "type": "string", "enum": ["block", "warn"] },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] },
+              "ai_bias_flags": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "ai_bias_detection": {
+      "type": "object",
+      "required": ["patterns_found"],
+      "properties": {
+        "patterns_found": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["bias_type", "target_id", "evidence", "confidence"],
+            "properties": {
+              "bias_type": {
+                "type": "string",
+                "enum": ["over_engineering", "optimistic_assessment", "missing_negative_paths", "concept_conflation", "self_approval_bias", "anchoring", "symmetric_completion"]
+              },
+              "target_id": { "type": "string" },
+              "evidence": { "type": "string" },
+              "confidence": { "type": "string", "enum": ["high", "medium", "low"] }
+            }
+          }
+        }
+      }
+    },
+    "self_fix_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["iteration", "fixes_applied", "reverify_result", "remaining_blocks", "remaining_warns"],
+        "properties": {
+          "iteration": { "type": "number" },
+          "fixes_applied": { "type": "array", "items": { "type": "string" } },
+          "reverify_result": { "type": "string", "enum": ["passed", "still_failing"] },
+          "remaining_blocks": { "type": "number" },
+          "remaining_warns": { "type": "number" }
+        }
+      }
+    },
+    "trend_evaluation": {
+      "type": "object",
+      "required": ["assessed"],
+      "properties": {
+        "assessed": { "type": "boolean" },
+        "trend": { "type": ["string", "null"], "enum": ["converging", "diverging", "oscillating", null] },
+        "action": { "type": ["string", "null"], "enum": ["extended", "stop_stronger_model", "stop_human_decision", null] },
+        "detail": { "type": ["string", "null"] }
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["pass", "fail"]
+    },
+    "detail": { "type": "string" }
+  }
+}

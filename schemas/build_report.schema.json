@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Build Report Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["phase", "version", "execution_plan", "tracer_bullet_result", "module_results", "test_summary", "acceptance_result", "contract_amendments", "auto_decisions", "unresolved_issues"],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["build"]
+    },
+    "version": {
+      "type": "string"
+    },
+    "execution_plan": {
+      "type": "object",
+      "required": ["module_order", "tracer_bullet_path", "rationale"],
+      "properties": {
+        "module_order": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "tracer_bullet_path": { "type": "string" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "tracer_bullet_result": {
+      "type": "object",
+      "required": ["status"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "skipped"]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "module_results": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["module_ref", "status"],
+        "properties": {
+          "module_ref": {
+            "type": "string",
+            "pattern": "^MOD-\\d{3}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["completed", "cut", "degraded"]
+          },
+          "retry_history": { "type": "array" },
+          "auto_decisions": { "type": "array" }
+        }
+      }
+    },
+    "test_summary": {
+      "type": "object",
+      "required": ["total", "passed", "failed", "skipped"],
+      "properties": {
+        "total": { "type": "number" },
+        "passed": { "type": "number" },
+        "failed": { "type": "number" },
+        "skipped": { "type": "number" }
+      }
+    },
+    "acceptance_result": {
+      "type": "object",
+      "required": ["scenarios_verified", "status", "source"],
+      "properties": {
+        "scenarios_verified": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "status": {
+          "type": "string",
+          "enum": ["all_passed", "partial", "failed"]
+        },
+        "source": {
+          "type": "string",
+          "enum": ["critic_agent"]
+        }
+      }
+    },
+    "contract_amendments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "detail"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["degradation", "cut_feature"]
+          },
+          "detail": { "type": "string" },
+          "impact": { "type": "string" },
+          "user_decision": { "type": "string" }
+        }
+      }
+    },
+    "auto_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "rationale", "impact_level"],
+        "properties": {
+          "decision": { "type": "string" },
+          "alternatives": { "type": "array", "items": { "type": "string" } },
+          "rationale": { "type": "string" },
+          "impact": { "type": "string" },
+          "impact_level": {
+            "type": "string",
+            "enum": ["low", "medium", "high"]
+          }
+        }
+      }
+    },
+    "unresolved_issues": {
+      "type": "array"
+    },
+    "diagnostic_report": {},
+    "global_coherence_check": {
+      "type": "object"
+    }
+  }
+}

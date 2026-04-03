@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Discover History Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["explored_directions", "pruned_features", "decision_log"],
+  "properties": {
+    "explored_directions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "differentiator", "status"],
+        "properties": {
+          "description": { "type": "string" },
+          "differentiator": { "type": "string" },
+          "risk": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["selected", "abandoned", "merged"]
+          },
+          "abandonment_reason": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "pruned_features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "reason", "deferred_to"],
+        "properties": {
+          "name": { "type": "string" },
+          "reason": { "type": "string" },
+          "deferred_to": {
+            "type": "string",
+            "enum": ["v2", "cut"]
+          }
+        }
+      }
+    },
+    "decision_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer", "action", "detail", "timestamp"],
+        "properties": {
+          "layer": {
+            "type": "string",
+            "enum": ["direction", "mvp", "lock"]
+          },
+          "action": {
+            "type": "string",
+            "enum": ["SELECT", "MERGE", "REJECT_ALL", "APPROVE", "BACKTRACK", "BACKTRACK_MVP", "BACKTRACK_DIR", "REVISE", "FORCE_OVERRIDE"]
+          },
+          "detail": { "type": "string" },
+          "timestamp": { "type": "string" }
+        }
+      }
+    },
+    "completeness_snapshots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer", "dimensions", "timestamp"],
+        "properties": {
+          "layer": {
+            "type": "string",
+            "enum": ["1", "2", "3"]
+          },
+          "dimensions": {
+            "type": "object",
+            "required": ["core_feature_definition", "user_scenario_coverage", "technical_constraints", "boundary_conditions", "non_functional_requirements"],
+            "properties": {
+              "core_feature_definition": { "type": "number", "minimum": 0, "maximum": 100 },
+              "user_scenario_coverage": { "type": "number", "minimum": 0, "maximum": 100 },
+              "technical_constraints": { "type": "number", "minimum": 0, "maximum": 100 },
+              "boundary_conditions": { "type": "number", "minimum": 0, "maximum": 100 },
+              "non_functional_requirements": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          },
+          "gaps_noted": { "type": "array", "items": { "type": "string" } },
+          "timestamp": { "type": "string" }
+        }
+      }
+    }
+  }
+}

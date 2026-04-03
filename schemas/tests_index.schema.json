@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Tests Index Artifact",
+  "version": "3.0",
+  "type": "object",
+  "required": ["phase", "artifact", "version", "coverage_summary", "coverage_guards", "modules"],
+  "properties": {
+    "phase": {
+      "type": "string",
+      "enum": ["build"]
+    },
+    "artifact": {
+      "type": "string",
+      "enum": ["tests"]
+    },
+    "version": {
+      "type": "string"
+    },
+    "coverage_summary": {
+      "type": "object",
+      "required": ["requirements_covered", "requirements_uncovered", "invariants_covered", "invariants_uncovered"],
+      "properties": {
+        "requirements_covered": { "type": "array", "items": { "type": "string" } },
+        "requirements_uncovered": { "type": "array", "items": { "type": "string" } },
+        "invariants_covered": { "type": "array", "items": { "type": "string" } },
+        "invariants_uncovered": { "type": "array", "items": { "type": "string" } },
+        "state_transitions_covered": { "type": "array", "items": { "type": "string" } },
+        "illegal_transitions_tested": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "coverage_guards": {
+      "type": "object",
+      "required": ["invariants_uncovered_must_be_empty", "requirements_uncovered_must_be_empty"],
+      "properties": {
+        "invariants_uncovered_must_be_empty": { "type": "boolean" },
+        "requirements_uncovered_must_be_empty": { "type": "boolean" }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "description": "List of child module test file names (e.g. 'mod-001-auth.json')",
+      "items": { "type": "string" }
+    }
+  }
+}
