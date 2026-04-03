@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Discover Artifact",
-  "version": "3.0",
+  "version": "4.0",
   "type": "object",
   "required": ["phase", "version", "status", "mode", "constraints", "selected_direction", "tech_direction", "requirements", "invariants", "core_scenarios", "mvp_features", "context_dependencies"],
   "properties": {
