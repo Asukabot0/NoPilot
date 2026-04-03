@@ -24,6 +24,8 @@
       }
     },
     "agent_consensus": {
+      "status": "declared_not_yet_wired",
+      "note": "This principle is declared but not yet referenced by /spec or /build command files. It will be incrementally adopted in future iterations. Currently, agents still escalate directly to the human.",
       "description": "Before asking the human, the executing agent spawns a consulting agent anchored on design philosophy and first principles. If they disagree, one more round of discussion attempts convergence.",
       "consulting_agent_anchors": ["design_philosophy", "first_principles"],
       "decision_tiers": {
@@ -39,7 +41,7 @@
   "agents": {
     "supervisor": {
       "trigger": "stage_complete",
-      "input": ["discover.json#constraints", "discover.json#selected_direction", "discover.json#tech_direction", "discover.json#design_philosophy", "decisions.json", "current_stage_output"],
+      "input": ["discover.json|discover/index.json#constraints", "discover.json|discover/index.json#selected_direction", "discover.json|discover/index.json#tech_direction", "discover.json|discover/index.json#design_philosophy", "decisions.json", "current_stage_output"],
       "output_field": "global_coherence_check",
       "classification": "core_guardrail",
       "on_drift": "pause_notify_user"
@@ -107,8 +109,8 @@
       "command": "/discover",
       "description": "Requirement space exploration and convergence",
       "context_dependencies": [],
-      "backtrack_context": ["specs/discover_history.json"],
-      "outputs": ["specs/discover.json", "specs/discover_history.json", "specs/discover_review.json"],
+      "backtrack_context": ["specs/discover_history.json", "specs/discover/history.json"],
+      "outputs": ["specs/discover.json", "specs/discover/index.json", "specs/discover_history.json", "specs/discover/history.json", "specs/discover_review.json"],
       "checkpoint": "required",
       "states": {
         "initial": "idea_collection",
@@ -188,9 +190,9 @@
     "spec": {
       "command": "/spec",
       "description": "Constrained design expansion to module-level specifications",
-      "context_dependencies": ["specs/discover.json"],
-      "backtrack_context": ["specs/build_report.json"],
-      "outputs": ["specs/spec.json", "specs/spec_review.json"],
+      "context_dependencies": ["specs/discover.json", "specs/discover/index.json"],
+      "backtrack_context": ["specs/build_report.json", "specs/build/index.json"],
+      "outputs": ["specs/spec.json", "specs/spec/index.json", "specs/spec_review.json"],
       "checkpoint": "conditional",
       "checkpoint_trigger": "review_issues_found OR high_impact_auto_decisions_exist OR information_gap_with_options",
       "states": {
@@ -233,10 +235,10 @@
     "build": {
       "command": "/build",
       "description": "TDD implementation per spec with tracer bullet and auto-acceptance",
-      "context_dependencies": ["specs/spec.json", "specs/discover.json"],
+      "context_dependencies": ["specs/spec.json", "specs/spec/index.json", "specs/discover.json", "specs/discover/index.json"],
       "backtrack_context": [],
-      "outputs": ["specs/tests.json", "specs/build_report.json", "specs/build_review.json"],
-      "test_review_checkpoint": "required",
+      "outputs": ["specs/tests.json", "specs/tests/index.json", "specs/tests_review.json", "specs/build_report.json", "specs/build/index.json", "specs/build_review.json"],
+      "test_review_checkpoint": "required_in_full_mode",
       "max_retries_per_module": 3,
       "states": {
         "initial": "planning",
@@ -248,8 +250,13 @@
         },
         "testing": {
           "on": {
-            "TESTS_GENERATED": "test_reviewing",
+            "TESTS_GENERATED_REVIEW": "test_reviewing",
+            "TESTS_GENERATED_AUTO": "tracer_bullet",
             "L3_ISSUE": "diagnosing"
+          },
+          "guards": {
+            "TESTS_GENERATED_REVIEW": { "discover.mode": "full" },
+            "TESTS_GENERATED_AUTO": { "discover.mode": "lite" }
           }
         },
         "test_reviewing": {
@@ -266,7 +273,7 @@
             "SKIP": "implementing"
           },
           "guards": {
-            "SKIP": { "guardrails.enhancement.tracer_bullet.enabled": false }
+            "SKIP": { "enhancement_guardrails.tracer_bullet.enabled": false }
           }
         },
         "implementing": {

@@ -13,10 +13,10 @@ You are performing constrained design expansion. Module decomposition, interface
 
 ## Input
 
-Verify that `specs/discover.json` exists. If missing, inform the user: "Run /discover first to generate specs/discover.json." and halt.
+Verify that a discover artifact exists (`specs/discover.json` or `specs/discover/index.json`). If missing, inform the user: "Run /discover first to generate the discover artifact." and halt.
 
-Read `specs/discover.json`. Check `discover.json.mode` to determine full or lite behavior.
-If `specs/build_report.json` exists (backtrack from /build), read it too for diagnostic context.
+Read the discover artifact. If it is split, read `specs/discover/index.json` first, then load `requirements.json`, `scenarios.json`, and `history.json` as needed. Check the artifact's `mode` to determine full or lite behavior.
+If `specs/build_report.json` or `specs/build/index.json` exists (backtrack from /build), read it too for diagnostic context.
 
 ## Process
 
@@ -24,7 +24,7 @@ If `specs/build_report.json` exists (backtrack from /build), read it too for dia
 
 Emit event: `expanding` (initial state)
 
-Read discover.json and expand into module-level specifications:
+Read the discover artifact and expand it into module-level specifications:
 
 1. **Module decomposition:** Break the system into modules with clear single responsibilities
 2. **Interface design:** For each module, define interfaces (api / internal / event) with schemas
@@ -124,7 +124,7 @@ Use the following structure (shown as single-file format; directory format split
     }
   ],
   "contract_amendments": [],
-  "context_dependencies": ["specs/discover.json"]
+  "context_dependencies": ["specs/discover.json or specs/discover/index.json"]
 }
 ```
 
@@ -139,7 +139,7 @@ After writing spec.json, spawn two independent review agents. These agents run i
 
 **Critic Agent** (independent session, no conversation history):
 - Spawn `.claude/commands/critic.md` using the Agent tool in a **fresh session**
-- Critic reads only specs/discover.json and specs/spec.json — never the generation conversation
+- Critic reads only the discover artifact and spec artifact (`specs/discover.json` or `specs/discover/index.json`; `specs/spec.json` or `specs/spec/index.json`) — never the generation conversation
 - Performs backward verification: for each acceptance criterion, can the spec satisfy it?
 - Checks for undeclared core behaviors
 - Uses a floating iteration cap (not a fixed number) based on review complexity — simple: 3, medium: 5, complex: 7-10
@@ -149,8 +149,8 @@ After writing spec.json, spawn two independent review agents. These agents run i
 
 **Supervisor Agent** (independent session, no conversation history):
 - Spawn `.claude/commands/supervisor.md` using the Agent tool in a **fresh session**
-- Pass the following from `specs/discover.json` as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
-- Pass `specs/spec.json` as the **current stage output**
+- Pass the following from the discover artifact as the **anchor**: `constraints` + `selected_direction` + `tech_direction`
+- Pass the spec artifact (`specs/spec.json` or `specs/spec/index.json`) as the **current stage output**
 - Supervisor also reads `design_philosophy` from discover.json and `specs/decisions.json` (the cumulative decision audit trail) for drift analysis
 - Uses quantitative drift scoring (0-100) rather than binary judgment — see supervisor.md for score ranges and recommended actions
 - Checks global coherence: has complexity bloated? Does the design still match intent?
@@ -161,7 +161,7 @@ After writing spec.json, spawn two independent review agents. These agents run i
 Read spec_review.json results. Check **three conditions**:
 1. `backward_verification.passed == true` (Critic passed)
 2. `global_coherence_check.intent_alignment == "aligned"` (Supervisor aligned)
-3. No entries in `spec.json.auto_decisions` with `impact_level: "high"` (no high-impact auto decisions)
+3. No entries in the spec artifact's `auto_decisions` with `impact_level: "high"` (no high-impact auto decisions)
 
 - **All three pass** → emit `REVIEW_CLEAN` → auto-continue to /build
 - **Critic self-fixed issues successfully** → emit `REVIEW_FIXABLE` → return to Phase 1 (expanding) to integrate fixes
@@ -199,5 +199,5 @@ If the file already exists (e.g., from a previous /discover run), **append** to 
 
 When `discover.json.mode == "lite"`:
 - **Phase 1:** Same design expansion, but simplified schemas are acceptable (fewer interface details, optional state machines)
-- **Phase 3:** Checkpoint auto-skips unless Supervisor or Critic finds issues. Critic uses same-session backward verification only (no independent session spawn). Record `backward_verification.session: "same_session"` in spec_review.json.
+- **Phase 3:** Checkpoint auto-skips unless Supervisor or Critic finds issues. Critic uses same-session backward verification only (no independent session spawn). This is an **intentional lite-mode exemption** from the generation-review separation principle — lite mode trades review rigor for speed. Record `backward_verification.session: "same_session"` in spec_review.json.
 - **Phase 4:** Auto-continue unless issues are found. No pause for user review by default.
