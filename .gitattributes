@@ -1,0 +1,3 @@
+# 将所有 .md 文件标记为可检测的编程语言
+*.md linguist-detectable=true
+*.md linguist-documentation=false
