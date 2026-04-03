@@ -247,7 +247,7 @@ export function spawnWorker(
   const [bin, ...args] = cmd;
   const proc = spawn(bin, args, {
     cwd: worktreePath,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: 'ignore',
     env: workerEnv(),
     detached: false,
   });
@@ -286,7 +286,7 @@ export async function resumeWorker(handle: WorkerHandle, feedback: string): Prom
     const [bin, ...args] = cmd;
     const proc = spawn(bin, args, {
       cwd: handle.worktree_path,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: 'ignore',
       env: workerEnv(),
     });
     proc.on('error', () => { /* binary not found — handled by caller via heartbeat */ });
@@ -314,7 +314,7 @@ export async function resumeWorker(handle: WorkerHandle, feedback: string): Prom
     const [bin, ...args] = cmd;
     const proc = spawn(bin, args, {
       cwd: handle.worktree_path,
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: 'ignore',
       env: workerEnv(),
     });
     proc.on('error', () => { /* binary not found — handled by caller via heartbeat */ });
