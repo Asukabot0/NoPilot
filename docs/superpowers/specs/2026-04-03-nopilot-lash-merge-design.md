@@ -54,13 +54,26 @@ nopilot/
 │   ├── lash-build.md
 │   ├── lash-tracer.md
 │   ├── lash-batch.md
-│   └── lash-verify.md
+│   ├── lash-verify.md
+│   ├── lash-conflict-resolver.md ← renamed from conflict_resolver.md
+│   ├── lash-orchestrator.md      ← renamed from orchestrator.md
+│   └── lash-worker-instructions.md ← renamed from worker_instructions.md
 │
-├── schemas/                      ← JSON Schema (copied to project by `nopilot init`)
-│   ├── discover.schema.json
+├── schemas/                      ← 14 JSON Schema files (copied to project by `nopilot init`)
+│   ├── discover.schema.json      ← discover phase (4 files)
 │   ├── discover_index.schema.json
 │   ├── discover_history.schema.json
-│   └── discover_review.schema.json
+│   ├── discover_review.schema.json
+│   ├── spec.schema.json          ← spec phase (3 files)
+│   ├── spec_index.schema.json
+│   ├── spec_review.schema.json
+│   ├── build_report.schema.json  ← build phase (3 files)
+│   ├── build_index.schema.json
+│   ├── build_review.schema.json
+│   ├── tests.schema.json         ← test artifacts (3 files)
+│   ├── tests_index.schema.json
+│   ├── tests_review.schema.json
+│   └── decisions.schema.json     ← decision ledger (1 file)
 │
 ├── workflow.json                 ← state machine definitions (copied to project by `nopilot init`)
 │
@@ -117,18 +130,20 @@ Build runtime operations. All 15 subcommands preserved with identical argument s
 
 ## Migration Strategy
 
-### Translation Order (by dependency)
+### Translation Order (recommended, not dependency-imposed)
+
+All 8 Lash modules have zero cross-imports — the CLI uses lazy imports inside handler functions. The ordering below is conceptual (simplest first, CLI last since it wires everything together), not mandated by import dependencies. Steps 3-10 are parallelizable after shared types are defined in Step 2.
 
 ```
-config (37 lines, no deps)
-  → build-state (329 lines, depends on config)
-    → plan-generator (374 lines, standalone algorithm)
-      → failure-classifier (364 lines, standalone regex)
-        → test-runner (262 lines, subprocess calls)
-          → worktree-manager (272 lines, git subprocess calls)
-            → task-packager (336 lines, file I/O)
-              → platform-launcher (511 lines, subprocess management)
-                → cli (432 lines, wires everything together)
+config (37 lines)
+  → build-state (329 lines)
+    → plan-generator (374 lines)      ─┐
+    → failure-classifier (364 lines)   ─┤  independent, parallelizable
+    → test-runner (262 lines)          ─┤
+    → worktree-manager (272 lines)     ─┘
+      → task-packager (336 lines)
+        → platform-launcher (511 lines)
+          → cli (432 lines, wires everything together)
 ```
 
 Total: ~2,921 lines of Python → TypeScript.
@@ -158,14 +173,22 @@ Total: ~2,921 lines of Python → TypeScript.
 
 ### Prompt File Changes
 
-Global replacement only:
+Two mechanical global replacements (no logic changes):
 
 ```diff
+# Replacement 1: CLI invocation
 - python3 -m lash <subcommand>
 + lash <subcommand>
+
+# Replacement 2: internal prompt path references (5 occurrences)
+- lash/prompts/<name>.md
++ commands/<name>.md
 ```
 
-No logic changes to any prompt file.
+Additionally, 3 non-`lash-` prefixed prompt files are renamed for namespace consistency:
+- `conflict_resolver.md` → `lash-conflict-resolver.md`
+- `orchestrator.md` → `lash-orchestrator.md`
+- `worker_instructions.md` → `lash-worker-instructions.md`
 
 ## Build & Publish Configuration
 
@@ -206,7 +229,7 @@ No logic changes to any prompt file.
     "test:watch": "vitest",
     "lint": "tsc --noEmit"
   },
-  "engines": { "node": ">=18.0.0" },
+  "engines": { "node": ">=18.19.0" },
   "dependencies": {
     "commander": "^13.0.0"
   },
