@@ -9,11 +9,12 @@ An AI Native personal development workflow framework for Greenfield projects.
 NoPilot is a three-stage workflow that takes you from requirement exploration to shipping code with minimal human involvement downstream. Each stage builds on the previous, with AI handling possibility generation and execution while humans make decisions.
 
 **Stages:**
-- `/discover` — Explore the requirement space through three layers: direction selection → MVP definition → requirement lock
+- `/discover` — Progressive idea collection → direction selection → MVP definition → design philosophy → requirement lock
 - `/spec` — Expand locked requirements into module-level design specifications
-- `/build` — Autonomous TDD implementation with tracer bullet validation and auto-acceptance
+- `/build` — Autonomous TDD implementation with tracer bullet validation and independent acceptance review
+- `/visualize` — Generate interactive HTML dashboards from JSON artifacts
 
-**What you get:** Structured JSON artifacts at each stage that serve as machine-readable contracts, ensuring perfect traceability from requirements through to delivered code.
+**What you get:** Structured JSON artifacts at each stage that serve as machine-readable contracts, with HTML visualization for human review. Perfect traceability from requirements through to delivered code.
 
 ## Installation
 
@@ -70,9 +71,10 @@ Then type `/discover` to begin exploring your project space.
 ## Workflow
 
 ```
-/discover    # Lock requirements
+/discover    # Collect idea → explore directions → lock requirements
 → /spec      # Design to module level
 → /build     # Implement with TDD
+→ /visualize # Generate HTML dashboards for human review
 ```
 
 Each command reads upstream artifacts from `specs/` and writes its own. All artifacts are JSON contracts consumed by downstream stages.
@@ -85,13 +87,21 @@ Two independent agents provide cross-cutting quality assurance. Both are **core 
 
 **Supervisor — Intent Guardian (telescope)**
 - Monitors whether the overall output still matches your original intent and constraints
-- Activated at stage completion: after `/discover`, `/spec`, `/build`
-- Detects cumulative drift (each decision locally reasonable, but aggregate result diverged)
+- Systematic drift detection: scope creep, gold plating, tech-driven drift, requirement dilution, constraint erosion
+- Quantitative drift scoring (0-100) with recommended actions, not just binary pass/fail
+- Checks design philosophy compliance and decision chain analysis
 
 **Critic — Independent Challenger (magnifying glass)**
-- Provides adversarial quality review in isolated session (no shared generation context)
-- Prevents "same AI grades its own work" by running independently
+- The **sole quality evaluator** — generating agents must never self-approve their own output
+- AI bias detection catalog: over-engineering, optimistic assessment, missing negative paths, concept conflation, self-approval bias, anchoring, symmetric completion
+- Floating iteration caps (3/5/7-10 by complexity) with trend evaluation at limits
 - Activated at checkpoints: requirement lock, spec backward verification, build test review, build acceptance review
+
+### Framework Principles (V4.0)
+
+1. **Generation-review separation:** Generating agents must never evaluate their own output. All review is performed by independent Critic instances in isolated sessions.
+2. **Iterative verification:** Review cycles use fresh agent instances each round to avoid anchoring bias. Iteration limits float by complexity with trend evaluation (converging → extend, diverging → escalate model, oscillating → escalate human).
+3. **Agent consensus:** Before escalating to the human, the executing agent spawns a consulting agent anchored on design philosophy and first principles to attempt resolution. *(declared, incrementally adopting)*
 
 ### Key Concepts
 
@@ -141,11 +151,11 @@ your-project/
 └── CLAUDE.md            # Your project context (add NoPilot section)
 ```
 
-## V1 Scope
+## Current Scope (V4.0)
 
-**Included:** Three-stage workflow on Claude Code, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor, Critic, backward verification, auto-acceptance).
+**Included:** Three-stage workflow on Claude Code, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor with drift detection, Critic with AI bias catalog), generation-review separation, progressive idea collection, design philosophy extraction, completeness tracking, domain model and NFR outputs, artifact visualization, directory-split support for large projects.
 
-**Not included:** Brownfield/incremental iteration (V2), iOS remote agent (V4), multi-model routing (V3+).
+**Not included:** Brownfield/incremental iteration, agent consensus (declared, not yet wired), iOS remote agent, multi-model routing.
 
 ## License
 
