@@ -10,6 +10,7 @@ AI Native development workflow. Run `/discover` → `/spec` → `/build` in orde
 - `/discover` — Requirement space exploration (direction → MVP → requirement lock)
 - `/spec` — Constrained design expansion (modules, interfaces, data models)
 - `/build` — Autonomous TDD implementation (tracer bullet, per-module TDD, auto-acceptance)
+- `/visualize` — Generate HTML dashboards for runtime artifacts in `specs/views/`
 
 Artifacts live in `specs/`. Refer to `workflow.json` for state machines and guardrails.
 
@@ -56,7 +57,7 @@ install_global() {
   local target="$HOME/.claude/commands"
   mkdir -p "$target"
 
-  for cmd in discover.md spec.md build.md supervisor.md critic.md; do
+  for cmd in discover.md spec.md build.md supervisor.md critic.md visualize.md; do
     cp "${SCRIPT_DIR}/.claude/commands/${cmd}" "${target}/${cmd}"
   done
 
@@ -75,7 +76,7 @@ install_project() {
   mkdir -p "${target_dir}/specs"
 
   # Copy commands
-  for cmd in discover.md spec.md build.md supervisor.md critic.md; do
+  for cmd in discover.md spec.md build.md supervisor.md critic.md visualize.md; do
     cp "${SCRIPT_DIR}/.claude/commands/${cmd}" "${target_dir}/.claude/commands/${cmd}"
   done
 
@@ -89,7 +90,7 @@ install_project() {
   append_claude_md "$target_dir"
 
   echo "Project install complete:"
-  echo "  ${target_dir}/.claude/commands/  (5 commands)"
+  echo "  ${target_dir}/.claude/commands/  (6 commands)"
   echo "  ${target_dir}/workflow.json"
   echo "  ${target_dir}/specs/"
   echo "  ${target_dir}/CLAUDE.md"
