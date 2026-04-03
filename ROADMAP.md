@@ -21,7 +21,7 @@
 
 ---
 
-## V1.1 — Quality Framework Overhaul (Current)
+## V1.1 — Quality Framework Overhaul
 
 **Status:** Delivered. Schema version 4.0.
 
