@@ -2,11 +2,10 @@
 
 [中文版](docs/zh-CN/ROADMAP.md)
 
-## V1 — Core Pipeline (Current)
+## V1.0 — Core Pipeline
 
-**Status:** Implemented. Claude Code slash commands, Greenfield only.
+**Status:** Delivered.
 
-**Delivered:**
 - Three-stage workflow: `/discover` → `/spec` → `/build`
 - Three-layer convergence funnel in /discover (Step 0 + Layer 1/2/3)
 - Constrained design expansion in /spec
@@ -20,13 +19,37 @@
 - State machine flow control via workflow.json
 - Structured JSON artifacts with cross-stage traceability (REQ → MOD → TEST/PROP)
 
+---
+
+## V1.1 — Quality Framework Overhaul (Current)
+
+**Status:** Delivered. Schema version 4.0.
+
+**Delivered:**
+- `/discover` progressive idea collection: idea capture → structuring → targeted constraint collection (replaces one-shot checklist)
+- `/discover` completeness tracking: per-layer assessment with visual progress bars and thresholds
+- `/discover` design philosophy extraction: 3-5 principles distilled from user decisions, written to `discover.json`
+- `/discover` domain model + non-functional requirements outputs
+- Generation-review separation (framework principle): generating agents must never evaluate their own output
+- Iterative verification loop: fresh Critic instances per round, floating caps (3/5/7-10 by complexity), trend evaluation (converging/diverging/oscillating)
+- Supervisor systematic drift detection: 5 drift patterns (scope creep, gold plating, tech-driven drift, requirement dilution, constraint erosion), quantitative scoring (0-100), design philosophy compliance
+- Critic universal evaluation framework: AI bias catalog (7 patterns), confidence calibration, severity grading (block/warn)
+- 6Cs tiered enforcement: Completeness/Consistency/Correctness mandatory; Clarity/Conciseness/Concreteness advisory
+- Independent Critic test review in /build (mandatory in full mode)
+- Agent consensus mechanism (declared, incrementally adopting)
+- Artifact directory split support for large projects (`specs/spec/index.json` + per-module files)
+- `/visualize` command: HTML dashboard generation from JSON artifacts
+- Decision ledger: unified `specs/decisions.json` audit trail across stages
+
+**Runtime adapter:** [Lash](https://github.com/Asukabot0/NoPilot) — cross-platform multi-agent orchestration engine implementing the `/build` phase with parallel TDD execution, git worktree isolation, and platform-as-agent architecture.
+
 **Known limitations:**
 - Greenfield only — no support for existing codebases
 - Full backtrack re-runs all downstream stages (no incremental update)
-- All guardrails rely on same-model self-evaluation (Critic uses independent session but same model)
+- Agent consensus declared but not yet wired into /spec and /build command files
 - No MCP/script enforcement for models with weak instruction following
 - No formal JSON Schema validation of artifacts
-- Context window pressure on large projects (adapter must manage, but no tooling provided)
+- Context window pressure on large projects (directory split helps but no auto-detection)
 - No persistent memory across projects
 
 ---
