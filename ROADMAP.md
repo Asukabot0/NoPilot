@@ -41,7 +41,7 @@
 - `/visualize` command: HTML dashboard generation from JSON artifacts
 - Decision ledger: unified `specs/decisions.json` audit trail across stages
 
-**Runtime adapter:** [Lash](https://github.com/Asukabot0/NoPilot) — cross-platform multi-agent orchestration engine implementing the `/build` phase with parallel TDD execution, git worktree isolation, and platform-as-agent architecture.
+**Runtime adapter:** [Lash](https://github.com/Asukabot0/NoPilot) — cross-platform multi-agent orchestration engine implementing the `/build` phase with parallel TDD execution, git worktree isolation, and platform-as-agent architecture (archived in favor of V1.2 merged package).
 
 **Known limitations:**
 - Greenfield only — no support for existing codebases
@@ -51,6 +51,33 @@
 - No formal JSON Schema validation of artifacts
 - Context window pressure on large projects (directory split helps but no auto-detection)
 - No persistent memory across projects
+
+---
+
+## V1.2 — Runtime Unification
+
+**Status:** Delivered.
+
+**Delivered:**
+- Lash rewritten from Python 3.10 to TypeScript (ES2022 + strict mode)
+- Merged into NoPilot as single npm package (no separate installation)
+- Dual CLI: `nopilot` (framework) + `lash` (build runtime) via single `npm install -g nopilot`
+- Technology stack: Commander.js (CLI), Vitest (testing), pnpm (package management)
+- 202 tests passing (multicore test execution, 4.5s full suite)
+- Git worktree isolation per Worker preserved
+- Platform-as-Agent architecture (Claude Code, Codex, OpenCode) preserved
+- External test verification workflow preserved
+- L0-L3 failure classification with regex pattern matching preserved
+- Module Critic + Build Critic + Supervisor quality gates preserved
+- Full NoPilot V1.1 schema 4.0 compatibility maintained
+- Lash repository archived (legacy Python codebase)
+
+**Architecture highlights:**
+- Config via `lash.config.json` (auto-discovered in `./` or `./lash/`)
+- JSON protocol for CLI subcommands (15 atomic operations)
+- Atomic state persistence with 21 transition types
+- Crash recovery and health monitoring built-in
+- No external runtime dependencies (npm packages only)
 
 ---
 
@@ -74,6 +101,11 @@
 - [ ] `/spec` reads existing code to avoid module conflicts and leverage existing patterns
 - [ ] `/build` generates code that integrates with existing codebase (imports, conventions, test framework)
 - [ ] Backtrack re-runs only affect new/changed artifacts, not existing code
+- **(Lash) Brownfield Build Runtime:**
+  - [ ] Workers receive existing codebase context in task packages
+  - [ ] Worktree strategy: branch from existing code, not empty branch
+  - [ ] Test runner auto-detects existing test framework and integrates
+  - [ ] Incremental builds: only re-run affected modules on backtrack
 
 ### Search Hardening
 - [ ] Graceful degradation when search fails: `grounding: "ai_judgment_only"` with user notification
@@ -83,6 +115,15 @@
 ### Pre-flight Environment Check
 - [ ] `/spec` completion triggers environment readiness check (API keys, database access, required CLIs)
 - [ ] Missing dependencies surfaced before `/build` starts, not during L0 exceptions
+
+### Lash UX & Reliability
+- [ ] Progress feedback: structured summary after each Worker spawn/complete/merge event
+- [ ] Human-readable error messages by default (JSON via `--json` flag)
+- [ ] Auto-discover `lash.config.json` (search `./` and `./lash/`)
+- [ ] Worker completion detection via marker file (not `git diff` heuristic)
+- [ ] Heartbeat-based Worker health monitoring
+- [ ] Auto-resume crashed Workers (not just detect crash)
+- [ ] Merge conflict auto-resolution for trivial conflicts (formatting, import ordering)
 
 ---
 
@@ -155,6 +196,11 @@
 - [ ] `/discover` Step 0 constraint dimensions are extensible at runtime
 - [ ] AI can suggest new constraint dimensions based on project context
 - [ ] User can add custom dimensions mid-discovery without restarting
+
+### Taste Clarification — Architecture & Implementation Layer
+- [ ] `/discover` clarifies architecture taste ambiguity (e.g. monolith vs modular vs event-driven preference) during Step 0c when relevant
+- [ ] `/discover` clarifies data processing strategy taste (e.g. eager vs lazy evaluation, batch vs streaming preference) during Step 0c when relevant
+- [ ] `/discover` clarifies error handling philosophy taste (e.g. fail-fast vs defensive, silent degradation vs hard stops) during Step 0c when relevant
 
 ### Richer Traceability
 - [ ] Acceptance criteria → interface-level mapping (not just module-level)

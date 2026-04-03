@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Tests Review Artifact",
-  "version": "3.0",
+  "version": "4.0",
   "type": "object",
   "required": ["phase", "session", "review_complexity", "self_fix_cap", "coverage_truthfulness", "boundary_condition_sufficiency", "executability_verification", "requirement_mapping_verification", "property_test_verification", "ai_bias_detection", "self_fix_log", "trend_evaluation", "recommendation"],
   "properties": {

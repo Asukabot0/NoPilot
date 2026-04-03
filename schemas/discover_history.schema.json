@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Discover History Artifact",
-  "version": "3.0",
+  "version": "4.0",
   "type": "object",
   "required": ["explored_directions", "pruned_features", "decision_log"],
   "properties": {
