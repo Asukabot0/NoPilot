@@ -197,7 +197,9 @@ function reconstructCycle(
   const path: string[] = [start];
   let cur = start;
   while (cur !== cycleNode) {
-    cur = parent[cur] as string;
+    const next = parent[cur];
+    if (next === null || next === undefined) break;
+    cur = next;
     path.push(cur);
   }
   path.reverse();

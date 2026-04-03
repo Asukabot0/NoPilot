@@ -131,7 +131,9 @@ export function createInitialState(specHash: string): BuildState {
  * Load BuildState from disk. Returns null if file does not exist.
  * Throws Error with 'invalid_state_file' on corrupt or incomplete data.
  */
-export function loadState(statePath: string = 'specs/build-state.json'): BuildState | null {
+export const DEFAULT_STATE_PATH = 'specs/build-state.json';
+
+export function loadState(statePath: string = DEFAULT_STATE_PATH): BuildState | null {
   if (!existsSync(statePath)) {
     return null;
   }
@@ -161,13 +163,13 @@ export function loadState(statePath: string = 'specs/build-state.json'): BuildSt
  * Atomically write state to disk using a tmp file + fs.renameSync.
  * Throws Error with 'write_error' on failure.
  */
-export function saveState(state: BuildState, statePath: string = 'specs/build-state.json'): void {
+export function saveState(state: BuildState, statePath: string = DEFAULT_STATE_PATH): void {
   const dirPath = dirname(resolve(statePath));
   const tmpPath = `${dirPath}/.build-state.json.tmp`;
 
   try {
     writeFileSync(tmpPath, JSON.stringify(state, null, 2), 'utf-8');
-    renameSync(tmpPath, statePath);
+    renameSync(tmpPath, resolve(statePath));
   } catch (exc) {
     throw new Error(`write_error: ${exc}`);
   }
@@ -354,7 +356,7 @@ export function getResumePoint(state: BuildState): ResumePoint {
  * Copy state file to a timestamped archive path in the same directory.
  * Returns { archive_path: string }.
  */
-export function archiveState(statePath: string = 'specs/build-state.json'): ArchiveResult {
+export function archiveState(statePath: string = DEFAULT_STATE_PATH): ArchiveResult {
   const ts = new Date().toISOString().replace(/:/g, '-');
   const dirPath = dirname(resolve(statePath));
   const archiveFilename = `build-state-archive-${ts}.json`;

@@ -35,6 +35,9 @@ export function jsonOutput(data: unknown): string {
     if (value instanceof Date) {
       return value.toISOString();
     }
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
     return value;
   }, 2);
 }

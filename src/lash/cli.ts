@@ -325,7 +325,7 @@ program
     try {
       runnerConfig = detectTestRunner(testPath);
     } catch (exc) {
-      err(String(exc));
+      return err(String(exc));
     }
     try {
       const result = await runTests(testPath, runnerConfig, opts.filter ?? null);
@@ -376,8 +376,8 @@ stateCmd
   .requiredOption('--spec-hash <hash>', 'Spec file hash')
   .option('--state-path <path>', 'State file path (default: specs/build-state.json)')
   .action(async (opts: { specHash: string; statePath?: string }) => {
-    const { createInitialState, saveState } = await import('./build-state.js');
-    const statePath = opts.statePath ?? 'specs/build-state.json';
+    const { createInitialState, saveState, DEFAULT_STATE_PATH } = await import('./build-state.js');
+    const statePath = opts.statePath ?? DEFAULT_STATE_PATH;
     try {
       const state = createInitialState(opts.specHash);
       saveState(state, statePath);
@@ -393,18 +393,18 @@ stateCmd
   .option('--data <json>', 'JSON object with transition data')
   .option('--state-path <path>', 'State file path (default: specs/build-state.json)')
   .action(async (eventName: string, opts: { data?: string; statePath?: string }) => {
-    const { loadState, recordTransition, saveState } = await import('./build-state.js');
-    const statePath = opts.statePath ?? 'specs/build-state.json';
+    const { loadState, recordTransition, saveState, DEFAULT_STATE_PATH } = await import('./build-state.js');
+    const statePath = opts.statePath ?? DEFAULT_STATE_PATH;
     try {
       const state = loadState(statePath);
       if (state === null) {
-        err(`no state file found at ${statePath}`);
+        return err(`no state file found at ${statePath}`);
       }
       let data: Record<string, unknown> = {};
       if (opts.data) {
         data = JSON.parse(opts.data);
       }
-      const updated = recordTransition(state!, eventName, data);
+      const updated = recordTransition(state, eventName, data);
       saveState(updated, statePath);
       out(updated);
     } catch (exc) {
@@ -417,14 +417,14 @@ stateCmd
   .description('Load state and get resume point')
   .option('--state-path <path>', 'State file path (default: specs/build-state.json)')
   .action(async (opts: { statePath?: string }) => {
-    const { loadState, getResumePoint } = await import('./build-state.js');
-    const statePath = opts.statePath ?? 'specs/build-state.json';
+    const { loadState, getResumePoint, DEFAULT_STATE_PATH } = await import('./build-state.js');
+    const statePath = opts.statePath ?? DEFAULT_STATE_PATH;
     try {
       const state = loadState(statePath);
       if (state === null) {
-        err(`no state file found at ${statePath}`);
+        return err(`no state file found at ${statePath}`);
       }
-      const result = getResumePoint(state!);
+      const result = getResumePoint(state);
       out(result);
     } catch (exc) {
       err(String(exc));

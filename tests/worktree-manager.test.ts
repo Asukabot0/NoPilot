@@ -6,14 +6,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
-// Mock node:child_process at the exec level so _runGit is intercepted.
-// vi.hoisted() ensures mockExec is declared before vi.mock hoisting.
+// Mock node:child_process at the execFile level so runGit is intercepted.
+// vi.hoisted() ensures mockExecFile is declared before vi.mock hoisting.
 // ---------------------------------------------------------------------------
 
-const { mockExec } = vi.hoisted(() => ({ mockExec: vi.fn() }));
+const { mockExecFile } = vi.hoisted(() => ({ mockExecFile: vi.fn() }));
 
 vi.mock('node:child_process', () => ({
-  exec: mockExec,
+  execFile: mockExecFile,
 }));
 
 // Mock node:util promisify to return an async wrapper around the mocked exec.
@@ -48,20 +48,20 @@ const PROJECT_ROOT = '/fake/project';
  * Queue a successful exec result (returncode 0).
  */
 function queueOk(stdout = '', stderr = '') {
-  mockExec.mockImplementationOnce(
-    (_cmd: string, _opts: unknown, cb: (err: null, result: { stdout: string; stderr: string }) => void) => {
+  mockExecFile.mockImplementationOnce(
+    (_file: string, _args: string[], _opts: unknown, cb: (err: null, result: { stdout: string; stderr: string }) => void) => {
       cb(null, { stdout, stderr });
     },
   );
 }
 
 /**
- * Queue a failed exec result (non-zero exit code).
- * node child_process exec throws an Error with stdout/stderr attached when exit != 0.
+ * Queue a failed execFile result (non-zero exit code).
+ * node child_process execFile throws an Error with stdout/stderr attached when exit != 0.
  */
 function queueFail(stdout = '', stderr = '', code = 1) {
-  mockExec.mockImplementationOnce(
-    (_cmd: string, _opts: unknown, cb: (err: Error & { stdout?: string; stderr?: string; code?: number }, result?: unknown) => void) => {
+  mockExecFile.mockImplementationOnce(
+    (_file: string, _args: string[], _opts: unknown, cb: (err: Error & { stdout?: string; stderr?: string; code?: number }, result?: unknown) => void) => {
       const err = Object.assign(new Error(stderr || 'git error'), { stdout, stderr, code });
       cb(err);
     },
@@ -69,7 +69,7 @@ function queueFail(stdout = '', stderr = '', code = 1) {
 }
 
 beforeEach(() => {
-  mockExec.mockReset();
+  mockExecFile.mockReset();
 });
 
 // ---------------------------------------------------------------------------
@@ -88,11 +88,10 @@ describe('createWorktree (TEST-031)', () => {
     expect(result.branch_name).toBe('lash/MOD-003');
 
     // Verify worktree add command was called with correct args
-    const worktreeCmd: string = mockExec.mock.calls[1][0];
-    expect(worktreeCmd).toContain('worktree');
-    expect(worktreeCmd).toContain('add');
-    expect(worktreeCmd).toContain('lash/MOD-003');
-    expect(worktreeCmd).toContain(JSON.stringify(expectedPath));
+    const worktreeArgs: string[] = mockExecFile.mock.calls[1][1];
+    expect(worktreeArgs).toContain('worktree');
+    expect(worktreeArgs).toContain('add');
+    expect(worktreeArgs).toContain(expectedPath);
   });
 
   it('throws worktree_exists when worktree already exists', async () => {
@@ -164,9 +163,9 @@ describe('mergeToMain conflict (TEST-033)', () => {
     expect(result.conflict_files).toContain('tests/test_foo.py');
 
     // Verify merge --abort was called
-    const abortCmd: string = mockExec.mock.calls[3][0];
-    expect(abortCmd).toContain('merge');
-    expect(abortCmd).toContain('--abort');
+    const abortArgs: string[] = mockExecFile.mock.calls[3][1];
+    expect(abortArgs).toContain('merge');
+    expect(abortArgs).toContain('--abort');
   });
 });
 
@@ -201,16 +200,16 @@ describe('cleanupWorktree (TEST-035)', () => {
 
     await cleanupWorktree('MOD-003', PROJECT_ROOT);
 
-    expect(mockExec).toHaveBeenCalledTimes(2);
+    expect(mockExecFile).toHaveBeenCalledTimes(2);
 
-    const firstCmd: string = mockExec.mock.calls[0][0];
-    expect(firstCmd).toContain('worktree');
-    expect(firstCmd).toContain('remove');
-    expect(firstCmd).toContain(JSON.stringify(join(PROJECT_ROOT, '.lash', 'worktrees', 'MOD-003')));
+    const firstArgs: string[] = mockExecFile.mock.calls[0][1];
+    expect(firstArgs).toContain('worktree');
+    expect(firstArgs).toContain('remove');
+    expect(firstArgs).toContain(join(PROJECT_ROOT, '.lash', 'worktrees', 'MOD-003'));
 
-    const secondCmd: string = mockExec.mock.calls[1][0];
-    expect(secondCmd).toContain('branch');
-    expect(secondCmd).toContain('lash/MOD-003');
+    const secondArgs: string[] = mockExecFile.mock.calls[1][1];
+    expect(secondArgs).toContain('branch');
+    expect(secondArgs).toContain('lash/MOD-003');
   });
 
   it('throws git_error on failure', async () => {

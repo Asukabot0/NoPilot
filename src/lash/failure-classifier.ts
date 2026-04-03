@@ -133,8 +133,6 @@ const PATTERNS: PatternEntry[] = [
   ],
 ];
 
-// Regex to extract file/line info from Python tracebacks
-const FILE_LINE_RE = /File "([^"]+)", line (\d+)/gi;
 
 // ---------------------------------------------------------------------------
 // Internal helpers

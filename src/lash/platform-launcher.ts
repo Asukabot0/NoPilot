@@ -284,11 +284,12 @@ export async function resumeWorker(handle: WorkerHandle, feedback: string): Prom
       '-p', feedback,
     ];
     const [bin, ...args] = cmd;
-    spawn(bin, args, {
+    const proc = spawn(bin, args, {
       cwd: handle.worktree_path,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: workerEnv(),
     });
+    proc.on('error', () => { /* binary not found — handled by caller via heartbeat */ });
   } else if (platform === 'codex') {
     const cmd = ['codex', 'exec', 'resume', '--last'];
     const [bin, ...args] = cmd;
@@ -311,11 +312,12 @@ export async function resumeWorker(handle: WorkerHandle, feedback: string): Prom
       '--session', handle.session_id,
     ];
     const [bin, ...args] = cmd;
-    spawn(bin, args, {
+    const proc = spawn(bin, args, {
       cwd: handle.worktree_path,
       stdio: ['ignore', 'pipe', 'pipe'],
       env: workerEnv(),
     });
+    proc.on('error', () => { /* binary not found — handled by caller via heartbeat */ });
   } else {
     throw new Error(`Unknown platform: ${platform}`);
   }

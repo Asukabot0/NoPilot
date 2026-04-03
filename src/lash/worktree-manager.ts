@@ -2,12 +2,12 @@
  * MOD-003: worktree_manager — Create and manage isolated git worktrees for Workers.
  * Translated from Python lash/worktree_manager.py.
  */
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { MergeResult, WorktreeInfo, PreserveResult, UnexpectedFilesResult } from './types.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -21,12 +21,12 @@ interface GitResult {
 
 /**
  * Run a git command, capturing output. Does NOT throw on non-zero return.
+ * Uses execFile (no shell) to avoid shell injection.
  * Mirrors Python _run_git(): subprocess.run(["git", ...], capture_output=True, text=True)
  */
-export async function _runGit(args: string[], cwd?: string): Promise<GitResult> {
-  const cmd = ['git', ...args].map((a) => JSON.stringify(a)).join(' ');
+export async function runGit(args: string[], cwd?: string): Promise<GitResult> {
   try {
-    const { stdout, stderr } = await execAsync(cmd, { cwd });
+    const { stdout, stderr } = await execFileAsync('git', args, { cwd });
     return { stdout, stderr, returncode: 0 };
   } catch (error: unknown) {
     const e = error as { stdout?: string; stderr?: string; code?: number };
@@ -78,14 +78,14 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
   const branch = _branchName(moduleId);
 
   // Get current HEAD sha to branch from
-  const headResult = await _runGit(['rev-parse', 'HEAD'], projectRoot);
+  const headResult = await runGit(['rev-parse', 'HEAD'], projectRoot);
   if (headResult.returncode !== 0) {
     throw new Error(`git_error: could not resolve HEAD: ${headResult.stderr.trim()}`);
   }
   const headSha = headResult.stdout.trim();
 
   // Create the worktree on a new branch
-  const result = await _runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
+  const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
   if (result.returncode !== 0) {
     const stderr = result.stderr.trim();
     if (stderr.includes('already exists') || stderr.includes('already checked out')) {
@@ -110,25 +110,25 @@ export async function mergeToMain(moduleId: string, projectRoot: string = '.'): 
   const branch = _branchName(moduleId);
 
   // Verify worktree exists
-  const listResult = await _runGit(['worktree', 'list'], projectRoot);
+  const listResult = await runGit(['worktree', 'list'], projectRoot);
   const path = _worktreePath(moduleId, projectRoot);
   if (!listResult.stdout.includes(path)) {
     throw new Error(`no_worktree: no worktree found for ${moduleId}`);
   }
 
   // Switch to main
-  const checkoutResult = await _runGit(['checkout', 'main'], projectRoot);
+  const checkoutResult = await runGit(['checkout', 'main'], projectRoot);
   if (checkoutResult.returncode !== 0) {
     throw new Error(`git_error: could not checkout main: ${checkoutResult.stderr.trim()}`);
   }
 
   // Attempt merge --no-ff
-  const mergeResult = await _runGit(['merge', '--no-ff', branch], projectRoot);
+  const mergeResult = await runGit(['merge', '--no-ff', branch], projectRoot);
 
   if (mergeResult.returncode !== 0) {
     // Conflict — abort and report conflict files
     const conflictFiles = _parseConflictFiles(mergeResult.stdout);
-    await _runGit(['merge', '--abort'], projectRoot);
+    await runGit(['merge', '--abort'], projectRoot);
     return {
       success: false,
       branch_name: branch,
@@ -138,7 +138,7 @@ export async function mergeToMain(moduleId: string, projectRoot: string = '.'): 
   }
 
   // Success — get merge commit sha
-  const commitResult = await _runGit(['rev-parse', 'HEAD'], projectRoot);
+  const commitResult = await runGit(['rev-parse', 'HEAD'], projectRoot);
   const mergeCommit = commitResult.returncode === 0 ? commitResult.stdout.trim() : null;
 
   return {
@@ -160,13 +160,13 @@ export async function cleanupWorktree(moduleId: string, projectRoot: string = '.
   const branch = _branchName(moduleId);
 
   // Remove the worktree
-  const removeResult = await _runGit(['worktree', 'remove', '--force', path], projectRoot);
+  const removeResult = await runGit(['worktree', 'remove', '--force', path], projectRoot);
   if (removeResult.returncode !== 0) {
     throw new Error(`git_error: could not remove worktree: ${removeResult.stderr.trim()}`);
   }
 
   // Delete the branch
-  const branchResult = await _runGit(['branch', '-D', branch], projectRoot);
+  const branchResult = await runGit(['branch', '-D', branch], projectRoot);
   if (branchResult.returncode !== 0) {
     throw new Error(`git_error: could not delete branch ${branch}: ${branchResult.stderr.trim()}`);
   }
@@ -201,14 +201,14 @@ export async function createConflictResolutionWorktree(
   const branch = _branchName(resolveModuleId);
 
   // Get sha of source branch HEAD
-  const headResult = await _runGit(['rev-parse', sourceBranch], projectRoot);
+  const headResult = await runGit(['rev-parse', sourceBranch], projectRoot);
   if (headResult.returncode !== 0) {
     throw new Error(`git_error: could not resolve ${sourceBranch}: ${headResult.stderr.trim()}`);
   }
   const headSha = headResult.stdout.trim();
 
   // Create the conflict resolution worktree
-  const result = await _runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
+  const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
   if (result.returncode !== 0) {
     throw new Error(`git_error: ${result.stderr.trim()}`);
   }
@@ -229,7 +229,7 @@ export async function checkUnexpectedFiles(
   const worktree = _worktreePath(moduleId, projectRoot);
 
   // Get list of modified files in the worktree compared to its base
-  const result = await _runGit(['diff', '--name-only', 'HEAD'], worktree);
+  const result = await runGit(['diff', '--name-only', 'HEAD'], worktree);
 
   if (result.returncode !== 0 || !result.stdout.trim()) {
     return { clean: true, unexpected_files: [] };
