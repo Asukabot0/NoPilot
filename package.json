@@ -1,0 +1,33 @@
+{
+  "name": "nopilot",
+  "version": "1.0.0",
+  "description": "AI Native development workflow with Lash multi-agent build engine",
+  "type": "module",
+  "bin": {
+    "nopilot": "./dist/nopilot-cli.js",
+    "lash": "./dist/lash/cli.js"
+  },
+  "files": [
+    "dist",
+    "commands",
+    "schemas",
+    "workflow.json"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  },
+  "dependencies": {
+    "commander": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
