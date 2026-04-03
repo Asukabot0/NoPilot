@@ -18,10 +18,10 @@ Check which artifact files exist in the `specs/` directory:
 
 | Artifact | File(s) | Page |
 |----------|---------|------|
-| Discover | `specs/discover.json` (+ optional `specs/discover_history.json`) | `specs/views/discover.html` |
+| Discover | `specs/discover.json` OR `specs/discover/index.json` (+ optional `specs/discover_history.json` or `specs/discover/history.json`) | `specs/views/discover.html` |
 | Spec | `specs/spec.json` OR `specs/spec/index.json` | `specs/views/spec.html` |
 | Build | `specs/build_report.json` OR `specs/build/index.json` (+ optional `specs/tests.json` or `specs/tests/index.json`) | `specs/views/build.html` |
-| Review | `specs/discover_review.json`, `specs/spec_review.json`, `specs/build_review.json` | Included in respective pages |
+| Review | `specs/discover_review.json`, `specs/spec_review.json`, `specs/tests_review.json`, `specs/build_review.json` | Included in respective pages |
 
 If **no artifacts exist at all**, inform the user: "No artifacts found in specs/. Run /discover to start." and halt.
 
@@ -35,7 +35,7 @@ For each detected artifact, generate the corresponding HTML page. Read the JSON 
 
 ### specs/views/discover.html
 
-Read `specs/discover.json` and optionally `specs/discover_history.json` + `specs/discover_review.json`.
+Read `specs/discover.json` or `specs/discover/index.json`. When using the split format, also read `specs/discover/requirements.json`, `specs/discover/scenarios.json`, and optionally `specs/discover/history.json`. Also read `specs/discover_history.json` and `specs/discover_review.json` when present.
 
 Generate these sections:
 
@@ -118,7 +118,7 @@ Generate these sections:
 
 ### specs/views/build.html
 
-Read `specs/build_report.json` (or `specs/build/index.json` + per-module files) and optionally `specs/tests.json` (or `specs/tests/index.json`) + `specs/build_review.json`.
+Read `specs/build_report.json` (or `specs/build/index.json` + per-module files) and optionally `specs/tests.json` (or `specs/tests/index.json`) + `specs/tests_review.json` + `specs/build_review.json`.
 
 Generate these sections:
 
@@ -131,7 +131,7 @@ Generate these sections:
 #### 2. TDD Results Summary
 - Large stat cards: total tests, passed (green), failed (red), skipped (gray)
 - Pass rate as a progress bar
-- From `test_summary` in build_report.json
+- From `test_summary` in the build report artifact
 
 #### 3. Test Coverage Matrix (conditional)
 - Only render if `specs/tests.json` (or `specs/tests/index.json`) exists
@@ -152,9 +152,10 @@ Generate these sections:
 - Card per amendment showing type, detail, impact, user decision
 
 #### 6. Review Status (conditional)
-- Only render if `specs/build_review.json` exists
-- Show scenario walkthrough alignment results
-- Highlight any mismatches between critic and AI acceptance
+- Render `specs/tests_review.json` when present as a test-quality review panel
+- Render `specs/build_review.json` when present as an acceptance review panel
+- For test review, show pass/fail status for coverage truthfulness, boundary condition sufficiency, executability, requirement mapping, and property test quality
+- For acceptance review, show per-scenario walkthrough results, the `acceptance_summary.status`, and highlight failed scenarios prominently
 
 ---
 

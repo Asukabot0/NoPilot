@@ -21,7 +21,8 @@ project/
 │   ├── spec.md
 │   ├── build.md
 │   ├── supervisor.md
-│   └── critic.md
+│   ├── critic.md
+│   └── visualize.md
 ├── specs/               # Runtime artifacts (empty until first run)
 └── workflow.json
 ```
@@ -38,6 +39,7 @@ AI Native development workflow. Run `/discover` → `/spec` → `/build` in orde
 - `/discover` — Requirement space exploration (direction → MVP → requirement lock)
 - `/spec` — Constrained design expansion (modules, interfaces, data models)
 - `/build` — Autonomous TDD implementation (tracer bullet, per-module TDD, auto-acceptance)
+- `/visualize` — Generate HTML dashboards for runtime artifacts in `specs/views/`
 
 Artifacts live in `specs/`. Refer to `workflow.json` for state machines and guardrails.
 
@@ -56,9 +58,10 @@ No dependencies. No build step. No config beyond the above.
 
 | Command | Reads | Writes |
 |---------|-------|--------|
-| `/discover` | (user input only) | `specs/discover.json`, `specs/discover_history.json`, `specs/discover_review.json` |
-| `/spec` | `specs/discover.json` | `specs/spec.json`, `specs/spec_review.json` |
-| `/build` | `specs/spec.json`, `specs/discover.json` | `specs/tests.json`, `specs/build_report.json`, `specs/build_review.json` |
+| `/discover` | (user input only) | `specs/discover.json` or `specs/discover/index.json`, `specs/discover_history.json` or `specs/discover/history.json`, `specs/discover_review.json` |
+| `/spec` | `specs/discover.json` or `specs/discover/index.json` | `specs/spec.json` or `specs/spec/index.json`, `specs/spec_review.json` |
+| `/build` | `specs/spec.json` or `specs/spec/index.json`, `specs/discover.json` or `specs/discover/index.json` | `specs/tests.json` or `specs/tests/index.json`, `specs/tests_review.json`, `specs/build_report.json` or `specs/build/index.json`, `specs/build_review.json` |
+| `/visualize` | Runtime artifacts in `specs/` | `specs/views/dashboard.html` plus phase pages |
 
 Each command is defined in `.claude/commands/<name>.md`. Read the command file for full behavior.
 
@@ -69,6 +72,7 @@ Each command is defined in `.claude/commands/<name>.md`. Read the command file f
 - Backtrack triggers and safety limits (`max_backtrack_count: 3`, cycle detection)
 - Enhancement guardrail toggles (`tracer_bullet`, `mutation_testing`, `multi_sample_6cs`)
 - Mode (`full` or `lite`) is determined during /discover Step 0 and stored in `discover.json.mode`
+- Large artifacts may use `index.json` + child files instead of a single JSON file
 
 ### Agents
 
@@ -79,12 +83,13 @@ Two sub-agents spawned by commands. Both **core guardrails** (cannot be disabled
 | Supervisor | `.claude/commands/supervisor.md` | Global coherence (forest) | /discover, /spec, /build |
 | Critic | `.claude/commands/critic.md` | Independent quality verification (trees) | /discover, /spec, /build |
 
-**Supervisor input:** `discover.json` anchor (`constraints` + `selected_direction` + `tech_direction`) + current stage output.
+**Supervisor input:** discover artifact anchor (`constraints` + `selected_direction` + `tech_direction`) + current stage output.
 
 **Critic input per phase:**
-- `/discover`: `discover.json` only → 6Cs quality audit, invariant verification, acceptance criteria testability, coverage check → writes `discover_review.json`
-- `/spec`: `discover.json` + `spec.json` → backward verification, undeclared behavior check → writes `spec_review.json`
-- `/build`: `build_report.json` (acceptance_result) + `discover.json` (core_scenarios) + actual code → independent scenario walkthrough vs AI acceptance → writes `build_review.json`
+- `/discover`: discover artifact only → 6Cs quality audit, invariant verification, acceptance criteria testability, coverage check → writes `discover_review.json`
+- `/spec`: discover artifact + spec artifact → backward verification, undeclared behavior check → writes `spec_review.json`
+- `/build` test review: tests artifact + spec artifact + discover artifact → independent test quality review → writes `tests_review.json`
+- `/build` acceptance review: discover artifact + actual code → independent scenario walkthrough → writes `build_review.json`
 
 ### ID Naming
 
@@ -120,7 +125,7 @@ Coverage guards in `tests.json` enforce that every REQ and INV is covered.
 
 **spec:** `COMPLETE`, `CONTRADICTION`, `GAP_HIGH_IMPACT`, `USER_DECISION`, `L0_ISSUE`, `REVIEW_CLEAN`, `REVIEW_HAS_ISSUES`, `REVIEW_FIXABLE`, `APPROVED`, `CHANGES_REQUESTED`
 
-**build:** `PLAN_READY`, `TESTS_GENERATED_AUTO`, `TESTS_GENERATED_REVIEW`, `TRACER_PASS`, `TRACER_L0L1_FAIL`, `TRACER_L2L3_FAIL`, `SKIP`, `ALL_MODULES_DONE`, `L0_ISSUE`, `L1_RESOLVED`, `L2_ISSUE`, `L3_ISSUE`, `ENV_RESOLVED`, `ENV_EXHAUSTED_WITH_ALT`, `ENV_EXHAUSTED_NO_ALT`, `ACCEPT_DEGRADATION`, `CUT_FEATURE`, `MODIFY_SPEC`, `RETRY_DIFFERENT_APPROACH`, `BACKTRACK_DISCOVER`, `BACKTRACK_SPEC`, `AMENDMENT_RECORDED`, `REPLAN_READY`, `REPLAN_INCOMPLETE`, `ALL_PASS`, `FAILURES`, `ACCEPTANCE_PASS`, `ACCEPTANCE_FAIL_L2`, `ACCEPTANCE_FAIL_L3`
+**build:** `PLAN_READY`, `TESTS_GENERATED_REVIEW`, `TESTS_GENERATED_AUTO`, `TEST_REVIEW_PASSED`, `TEST_REVIEW_FAILED`, `TRACER_PASS`, `TRACER_L0L1_FAIL`, `TRACER_L2L3_FAIL`, `SKIP`, `ALL_MODULES_DONE`, `L0_ISSUE`, `L1_RESOLVED`, `L2_ISSUE`, `L3_ISSUE`, `ENV_RESOLVED`, `ENV_EXHAUSTED_WITH_ALT`, `ENV_EXHAUSTED_NO_ALT`, `ACCEPT_DEGRADATION`, `CUT_FEATURE`, `MODIFY_SPEC`, `RETRY_DIFFERENT_APPROACH`, `BACKTRACK_DISCOVER`, `BACKTRACK_SPEC`, `AMENDMENT_RECORDED`, `REPLAN_READY`, `REPLAN_INCOMPLETE`, `ALL_PASS`, `FAILURES`, `ACCEPTANCE_PASS`, `ACCEPTANCE_FAIL_L2`, `ACCEPTANCE_FAIL_L3`
 
 ### Exception Tiers (build)
 

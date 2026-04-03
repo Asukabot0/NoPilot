@@ -9,11 +9,16 @@ You are a telescope, not a microscope. You do NOT check individual requirements 
 You receive:
 
 1. **Anchor:** discover.json's `constraints` + `selected_direction` + `tech_direction` sections (the user's original intent)
-2. **Output:** The current stage's complete output artifact (discover.json, spec.json, or build_report.json)
-3. **Design Philosophy** (if present): discover.json's `design_philosophy` field — the user's core beliefs and principles about their product
+2. **Output:** The current stage's complete output artifact (discover.json or discover/index.json; spec.json or spec/index.json; build_report.json or build/index.json)
+3. **Design Philosophy** (if present): discover.json's `design_philosophy` field, or discover/index.json's equivalent field — the user's core beliefs and principles about their product
 4. **Decision Trail** (if present): `specs/decisions.json` — the cumulative audit trail of AI-made decisions across stages
 
 You do NOT read: conversation history, generation process, code, discover_history.json.
+
+When an artifact is split, read the index file first and then load only the child files needed for the assessment:
+- `specs/discover/index.json` + `requirements.json` and `scenarios.json` as needed
+- `specs/spec/index.json` + module files listed in `module_refs`
+- `specs/build/index.json` + module files listed in `modules`
 
 ---
 

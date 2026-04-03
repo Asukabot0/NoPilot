@@ -21,9 +21,10 @@ All phases follow the same evaluation methodology. Phase-specific checks plug in
 ### Step 1: Read Upstream Contract
 
 Identify the authoritative upstream artifact(s) for the current phase:
-- `/discover` review: `specs/discover.json` only
-- `/spec` review: `specs/discover.json` + `specs/spec.json`
-- `/build` review: `specs/build_report.json` + `specs/discover.json` + actual code
+- `/discover` review: `specs/discover.json` or `specs/discover/index.json`
+- `/spec` review: `specs/discover.json` or `specs/discover/index.json` + `specs/spec.json` or `specs/spec/index.json`
+- `/build` test review: `specs/tests.json` or `specs/tests/index.json` + `specs/spec.json` or `specs/spec/index.json` + `specs/discover.json` or `specs/discover/index.json`
+- `/build` acceptance review: `specs/build_report.json` or `specs/build/index.json` when already available, otherwise `specs/discover.json` or `specs/discover/index.json` + actual code
 
 ### Step 2: Execute Check Items
 
@@ -82,6 +83,17 @@ Write the phase-specific output file (see below) containing:
 - Trend evaluation (if cap was reached)
 - `global_coherence_check: {}` (filled by Supervisor, not by you)
 
+### Artifact Loading Rules
+
+When a stage uses split artifacts, prefer the single-file artifact if it exists; otherwise load the index file plus only the child files needed for the current review:
+
+- **Discover:** `specs/discover/index.json`, then `requirements.json`, `scenarios.json`, and `history.json` as needed
+- **Spec:** `specs/spec/index.json`, then each file listed in `module_refs`
+- **Tests:** `specs/tests/index.json`, then each file listed in `modules`
+- **Build:** `specs/build/index.json`, then each file listed in `modules`
+
+When you modify a split artifact during self-fix, update both the affected child files and any summary fields in the index file that depend on them.
+
 ---
 
 ## Severity Classification
@@ -129,13 +141,13 @@ When evaluating any artifact, actively scan for these systematic LLM generation 
 
 ### Input
 
-- `specs/discover.json` only
+- `specs/discover.json` or `specs/discover/index.json`
 
 ### What to Check
 
 #### 1. 6Cs Quality Audit (with Tiered Enforcement)
 
-For EACH requirement in discover.json, independently re-evaluate the 6Cs assessment.
+For EACH requirement in the discover artifact, independently re-evaluate the 6Cs assessment.
 
 **Mandatory dimensions (block on failure):**
 
@@ -266,8 +278,8 @@ Note: `global_coherence_check` is filled by the Supervisor agent, not by you. Le
 
 ### On Issue
 
-1. Attempt to fix `specs/discover.json` — adjust unclear requirements, add missing invariants, tighten vague acceptance criteria.
-2. **You may ONLY modify discover.json. You must NEVER invent new requirements or change the user's intent — only sharpen existing ones.**
+1. Attempt to fix the discover artifact — adjust unclear requirements, add missing invariants, tighten vague acceptance criteria.
+2. **You may ONLY modify the discover artifact (`specs/discover.json` or files under `specs/discover/`). You must NEVER invent new requirements or change the user's intent — only sharpen existing ones.**
 3. After fix, a fresh Critic instance re-runs verification from the top (no prior-cycle context).
 4. If fix succeeds: record what was fixed in `self_fix_log`, mark all checks as passed.
 5. If still failing after reaching the self-fix cap:
@@ -281,27 +293,28 @@ Note: `global_coherence_check` is filled by the Supervisor agent, not by you. Le
 
 ### Input
 
-- `specs/discover.json` + `specs/spec.json`
+- `specs/discover.json` or `specs/discover/index.json`
+- `specs/spec.json` or `specs/spec/index.json`
 
 ### What to Check
 
 #### Backward Verification
 
-For EACH acceptance criterion in discover.json:
-1. Find the module(s) in spec.json that should implement it
+For EACH acceptance criterion in the discover artifact:
+1. Find the module(s) in the spec artifact that should implement it
 2. Trace through the module's interfaces and data models
 3. Answer: "If implemented exactly per this spec, would this criterion be satisfied?"
 4. If NO: record as uncovered criterion with severity `block`
 
 #### Invariant Verification
 
-For EACH invariant in discover.json:
+For EACH invariant in the discover artifact:
 1. Check that no module design violates it
 2. Check that the invariant is referenced in at least one module's `invariant_refs`
 
 #### Undeclared Core Behavior Check
 
-Scan spec.json for any user-facing behavior (not technical behavior like pagination/error codes) that cannot be traced back to a requirement in discover.json.
+Scan the spec artifact for any user-facing behavior (not technical behavior like pagination/error codes) that cannot be traced back to a requirement in the discover artifact.
 
 ### Output
 
@@ -379,8 +392,8 @@ Note: `global_coherence_check` is filled by the Supervisor agent, not by you. Le
 
 ### On Issue
 
-1. Attempt to fix `specs/spec.json` to align with discover.json.
-2. **You may ONLY modify spec.json. You must NEVER modify upstream artifacts (discover.json).**
+1. Attempt to fix the spec artifact to align with the discover artifact.
+2. **You may ONLY modify the spec artifact (`specs/spec.json` or files under `specs/spec/`). You must NEVER modify upstream artifacts.**
 3. After fix, a fresh Critic instance re-runs verification from the top (no prior-cycle context).
 4. If fix succeeds: record what was fixed in `self_fix_log`, mark passed.
 5. If still failing after reaching the self-fix cap:
@@ -390,29 +403,175 @@ Note: `global_coherence_check` is filled by the Supervisor agent, not by you. Le
 
 ---
 
-## /build Review Process
+## /build Test Review Process
 
 ### Input
 
-- `specs/build_report.json` — specifically the `acceptance_result` section
-- `specs/discover.json` — specifically the `core_scenarios` and `requirements` (with acceptance criteria)
+- `specs/tests.json` or `specs/tests/index.json`
+- `specs/spec.json` or `specs/spec/index.json`
+- `specs/discover.json` or `specs/discover/index.json`
+
+### What to Check
+
+#### Coverage Truthfulness
+
+For EACH requirement listed in `coverage_summary.requirements_covered`:
+1. Inspect the referenced test cases
+2. Confirm the tests verify the requirement's actual acceptance criteria, not just a loosely related behavior
+3. Record any requirement marked as covered without real verification as a `block`
+
+#### Boundary Condition Sufficiency
+
+For EACH requirement:
+1. Check whether the generated tests include only happy paths
+2. Look for missing boundary, error, and regression cases where the requirement implies them
+3. Record meaningful missing coverage as `block` or `warn` based on downstream impact
+
+#### Test Executability
+
+Review each generated test case and property case for internal consistency:
+- Are `input`, `setup`, and `expected_output` realistic and executable together?
+- Do referenced modules, invariants, and requirements exist?
+- Would the test fail for the right reason if the implementation were wrong?
+
+#### Requirement Mapping Accuracy
+
+Check that each `ears_ref`, `requirement_refs`, and `invariant_ref` points to the intended upstream artifact element.
+
+#### Property Test Quality
+
+Review each property test for tautologies or weak properties that would pass even if the invariant were violated.
+
+### Output
+
+Write to `specs/tests_review.json`:
+
+```json
+{
+  "phase": "tests_review",
+  "session": "independent",
+  "review_complexity": "<simple|medium|complex>",
+  "self_fix_cap": "<number>",
+  "coverage_truthfulness": {
+    "passed": true,
+    "false_coverage_claims": [
+      {
+        "requirement_id": "REQ-xxx",
+        "finding": "<why the claimed coverage is not real>",
+        "severity": "<block|warn>",
+        "confidence": "<high|medium|low>",
+        "ai_bias_flags": []
+      }
+    ]
+  },
+  "boundary_condition_sufficiency": {
+    "passed": true,
+    "missing_cases": [
+      {
+        "target_id": "<REQ-xxx or TEST-xxx>",
+        "finding": "<missing boundary/error/regression coverage>",
+        "severity": "<block|warn>",
+        "confidence": "<high|medium|low>",
+        "ai_bias_flags": []
+      }
+    ]
+  },
+  "executability_verification": {
+    "passed": true,
+    "issues": [
+      {
+        "test_id": "<TEST-xxx or PROP-xxx>",
+        "finding": "<what makes the test inconsistent or non-executable>",
+        "severity": "<block|warn>",
+        "confidence": "<high|medium|low>",
+        "ai_bias_flags": []
+      }
+    ]
+  },
+  "requirement_mapping_verification": {
+    "passed": true,
+    "issues": [
+      {
+        "test_id": "<TEST-xxx or PROP-xxx>",
+        "finding": "<incorrect requirement or invariant mapping>",
+        "severity": "<block|warn>",
+        "confidence": "<high|medium|low>",
+        "ai_bias_flags": []
+      }
+    ]
+  },
+  "property_test_verification": {
+    "passed": true,
+    "issues": [
+      {
+        "property_id": "PROP-xxx",
+        "finding": "<why the property is too weak or tautological>",
+        "severity": "<block|warn>",
+        "confidence": "<high|medium|low>",
+        "ai_bias_flags": []
+      }
+    ]
+  },
+  "ai_bias_detection": {
+    "patterns_found": [
+      {
+        "bias_type": "<over_engineering|optimistic_assessment|missing_negative_paths|concept_conflation|self_approval_bias|anchoring|symmetric_completion>",
+        "target_id": "<TEST-xxx or PROP-xxx or general>",
+        "evidence": "<specific observation>",
+        "confidence": "<high|medium|low>"
+      }
+    ]
+  },
+  "self_fix_log": [
+    {
+      "iteration": 1,
+      "fixes_applied": ["<what was fixed>"],
+      "reverify_result": "<passed|still_failing>",
+      "remaining_blocks": 0,
+      "remaining_warns": 0
+    }
+  ],
+  "trend_evaluation": {
+    "assessed": false,
+    "trend": "<converging|diverging|oscillating|null>",
+    "action": "<extended|stop_stronger_model|stop_human_decision|null>",
+    "detail": "<explanation or null>"
+  },
+  "recommendation": "<pass|fail>",
+  "detail": "<explanation if recommendation is not pass>"
+}
+```
+
+### On Issue
+
+1. Attempt to fix the tests artifact to align with the discover and spec artifacts.
+2. **You may ONLY modify the tests artifact (`specs/tests.json` or files under `specs/tests/`). You must NEVER modify upstream artifacts.**
+3. After fix, a fresh Critic instance re-runs verification from the top (no prior-cycle context).
+4. If fix succeeds: record what was fixed in `self_fix_log`, mark passed, and set `recommendation: "pass"`.
+5. If still failing after reaching the self-fix cap:
+   - Evaluate trend (see Step 5 in Universal Evaluation Framework).
+   - If converging: extend by 2 iterations.
+   - If diverging or oscillating: stop and report with `recommendation: "fail"`.
+
+---
+
+## /build Acceptance Review Process
+
+### Input
+
+- `specs/discover.json` or `specs/discover/index.json`
 - The actual implemented code in the project
+- `specs/build_report.json` or `specs/build/index.json` only if already available from a prior run; treat it as supplemental context, not as the source of truth
 
 ### What to Check
 
 #### Independent Scenario Walkthrough
 
-For EACH core scenario (`SCENARIO-xxx`) in discover.json:
+For EACH core scenario (`SCENARIO-xxx`) in the discover artifact:
 1. Read the scenario's step-by-step user journey
 2. Trace the journey through the **actual implemented code** (not spec.json — real code)
 3. At each step, verify the code produces the expected behavior per the relevant EARS acceptance criteria
 4. Record your independent pass/fail result for this scenario
-
-#### Acceptance Alignment
-
-Compare YOUR walkthrough results against the AI's `acceptance_result.scenarios_verified` in build_report.json:
-- If results match (both pass or both fail): alignment confirmed
-- If results **diverge** (you fail where AI passed, or vice versa): the AI's auto-acceptance has bias — record the mismatch with specific details of where the divergence occurs
 
 The purpose of this check is to answer: **"Does 'all tests pass' actually mean 'the product meets user intent'?"** Tests can pass while missing the point.
 
@@ -430,21 +589,19 @@ Write to `specs/build_review.json`:
     {
       "scenario_id": "SCENARIO-xxx",
       "critic_result": "<pass|fail>",
-      "ai_acceptance_result": "<pass|fail>",
-      "aligned": true,
-      "divergence_detail": "<null if aligned, specific description if not>",
+      "evidence": "<what the code did and why that passed or failed>",
       "confidence": "<high|medium|low>",
       "ai_bias_flags": []
     }
   ],
-  "acceptance_alignment": {
-    "aligned": true,
-    "mismatches": [
+  "acceptance_summary": {
+    "status": "<all_passed|partial|failed>",
+    "passed_scenarios": ["SCENARIO-xxx"],
+    "failed_scenarios": [
       {
         "scenario_id": "SCENARIO-xxx",
         "expected_behavior": "<what should happen per acceptance criteria>",
         "actual_behavior": "<what the code actually does>",
-        "ai_claimed": "<what the AI's acceptance said>",
         "severity": "block",
         "confidence": "<high|medium|low>",
         "ai_bias_flags": []
@@ -479,4 +636,4 @@ Critic does NOT self-fix code. Instead:
 
 1. **If mismatches are minor** (behavior partially correct, edge case missed): set `recommendation: "L2"` — the calling command (`/build`) routes to L2 product-level decision.
 2. **If mismatches are fundamental** (core scenario fails, primary user journey broken): set `recommendation: "L3"` — the calling command routes to L3 diagnostic + backtrack.
-3. Include enough detail in `divergence_detail` and `mismatches` for the user or calling command to understand exactly where the AI's acceptance diverged from reality.
+3. Include enough detail in `scenario_walkthroughs` and `acceptance_summary.failed_scenarios` for the user or calling command to understand exactly where implementation diverged from intended behavior.

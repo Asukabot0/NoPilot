@@ -91,17 +91,21 @@ claude   # 打开 Claude Code
 **Critic — 独立质疑者（放大镜）**
 - 在隔离会话中做对抗性质量审查（不共享生成上下文）
 - 防止"同一个 AI 自己出题自己改卷"
-- 在检查点激活：需求锁定、spec 反向验证、build 场景验证
+- 在检查点激活：需求锁定、spec 反向验证、build 测试审查、build 验收审查
 
 ### 核心概念
 
 **制品（运行时在 `specs/` 中生成）：**
-- `discover.json` — 锁定的需求、验收标准、不变量
-- `discover_history.json` — 探索日志：考虑过的方向、决策记录
-- `spec.json` — 模块拆分、接口定义、数据模型、依赖图
+- `discover.json` 或 `discover/index.json` — 锁定的需求、验收标准、不变量
+- `discover_history.json` 或 `discover/history.json` — 探索日志：考虑过的方向、决策记录
+- `spec.json` 或 `spec/index.json` — 模块拆分、接口定义、数据模型、依赖图
 - `spec_review.json` — 反向验证和全局一致性检查结果
-- `tests.json` — 从需求和不变量推导的测试用例
-- `build_report.json` — 执行计划、TDD 结果、自动验收
+- `tests.json` 或 `tests/index.json` — 从需求和不变量推导的测试用例
+- `tests_review.json` — 实现前对生成测试的独立审查
+- `build_report.json` 或 `build/index.json` — 执行计划、TDD 结果、自动验收
+- `build_review.json` — 对最终实现的独立验收审查
+
+对于大型项目，NoPilot 可以把制品拆成 `index.json` + 子文件，避免下游 agent 每次都加载整个大 JSON。
 
 **分级异常处理：**
 - L0/L1：环境问题或低影响问题 → AI 自行解决
@@ -122,14 +126,17 @@ your-project/
 │   ├── spec.md          # /spec slash command
 │   ├── build.md         # /build slash command
 │   ├── supervisor.md    # Supervisor agent（被命令调用）
-│   └── critic.md        # Critic agent（被命令调用）
+│   ├── critic.md        # Critic agent（被命令调用）
+│   └── visualize.md     # /visualize slash command
 ├── specs/               # 运行时制品（由命令生成）
-│   ├── discover.json
+│   ├── discover.json     # 或 discover/index.json + 子文件
 │   ├── discover_history.json
-│   ├── spec.json
+│   ├── spec.json         # 或 spec/index.json + 子文件
 │   ├── spec_review.json
-│   ├── tests.json
-│   └── build_report.json
+│   ├── tests.json        # 或 tests/index.json + 子文件
+│   ├── tests_review.json
+│   ├── build_report.json # 或 build/index.json + 子文件
+│   └── build_review.json
 ├── workflow.json         # 主工作流定义
 └── CLAUDE.md            # 你的项目上下文（添加 NoPilot 部分）
 ```
