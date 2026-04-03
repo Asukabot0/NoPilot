@@ -316,7 +316,19 @@ APPROVE is only valid when:
 
 ## Artifact Generation (after Layer 3 approval)
 
-Write two JSON files to the `specs/` directory.
+Write the discover artifacts to the `specs/` directory.
+
+For small projects, use the single-file format:
+- `specs/discover.json`
+- `specs/discover_history.json`
+
+For larger projects with many requirements or scenarios, use the split format:
+- `specs/discover/index.json` — global fields (`constraints`, `selected_direction`, `design_philosophy`, `tech_direction`, `domain_model`, `non_functional_requirements`, `mvp_features`, `context_dependencies`)
+- `specs/discover/requirements.json` — `requirements[]`, `invariants[]`
+- `specs/discover/scenarios.json` — `core_scenarios[]`
+- `specs/discover/history.json` — the history artifact previously stored in `specs/discover_history.json`
+
+The JSON schemas below are shown in single-file form; in split mode, move the corresponding sections into the child files above and keep the index file as the entry point.
 
 ### specs/discover.json
 
@@ -473,9 +485,9 @@ Write two JSON files to the `specs/` directory.
 }
 ```
 
-After writing both files, output:
+After writing the discover artifacts, output:
 
-> "discover artifacts written to specs/. Generate visualization by running: open specs/views/discover.html (or run /visualize for full dashboard). Run /spec to continue, or review specs/discover.json first."
+> "discover artifacts written to specs/. Generate visualization by running: open specs/views/discover.html (or run /visualize for full dashboard). Run /spec to continue, or review the discover artifact entry point (`specs/discover.json` or `specs/discover/index.json`) first."
 
 ---
 
@@ -485,7 +497,7 @@ When user wants to go back to a previous layer:
 
 1. **Parse intent** into one of: BACKTRACK_MVP (return to Layer 2) or BACKTRACK_DIR (return to Layer 1)
 2. **Confirm** with user: "Going back to [Layer X]. Your previous choices are preserved in history."
-3. **Read** `specs/discover_history.json` and reference prior decisions explicitly
+3. **Read** the history artifact (`specs/discover_history.json` or `specs/discover/history.json`) and reference prior decisions explicitly
 4. **Regenerate** the layer — incorporate lessons learned from the abandoned path
 5. Add a decision_log entry with action BACKTRACK_MVP or BACKTRACK_DIR
 
@@ -496,14 +508,14 @@ When user wants to go back to a previous layer:
 After both artifact files are written, spawn the Critic agent for independent requirement quality verification:
 
 1. Spawn Critic agent using the Agent tool targeting `.claude/commands/critic.md`
-2. Critic reads only `specs/discover.json` (no conversation history — independent session)
+2. Critic reads only the discover artifact (`specs/discover.json` or `specs/discover/index.json`) (no conversation history — independent session)
 3. Critic performs four checks:
    - **6Cs quality audit** — independently evaluate each requirement's 6Cs dimensions (see grading below)
    - **Invariant verification** — completeness, non-contradiction, scope accuracy
    - **Acceptance criteria testability** — can concrete tests be derived directly?
    - **Requirement coverage** — are all core scenarios covered? Any orphan requirements?
 4. Critic writes results to `specs/discover_review.json`
-5. **If issues found:** Critic attempts self-fix on discover.json, then re-verifies (**max 2 iterations**). If still failing, pause and present findings to user.
+5. **If issues found:** Critic attempts self-fix on the discover artifact, then re-verifies with a fresh Critic instance using the floating complexity-based cap from `critic.md`. If still failing after the cap and trend evaluation, pause and present findings to user.
 6. **If passed:** Proceed to Supervisor check.
 
 ### 6Cs Grading: Mandatory vs Advisory
@@ -541,12 +553,12 @@ If all four pass → proceed to Supervisor. If any failed and Critic's self-fix 
 After Critic passes (or user resolves Critic findings):
 
 1. Spawn Supervisor agent using the Agent tool targeting `.claude/commands/supervisor.md`
-2. Pass the following from `specs/discover.json` as the **anchor**:
+2. Pass the following from the discover artifact as the **anchor**:
    - `constraints`
    - `selected_direction`
    - `tech_direction`
    - `design_philosophy`
-3. Pass the complete `specs/discover.json` as the **current stage output**
+3. Pass the complete discover artifact (`specs/discover.json` or `specs/discover/index.json`) as the **current stage output**
 4. Supervisor checks global coherence: does the requirement set match the stated intent?
 5. Write the Supervisor's assessment into `specs/discover_review.json`'s `global_coherence_check` field
 6. **If drift detected:** Pause, present the drift diagnosis to the user, and wait for resolution before proceeding
