@@ -12,6 +12,9 @@ specs/discover/
 specs/spec/
 specs/views/
 
+# Superpowers generated plans/specs
+docs/superpowers/
+
 # Lash-generated runtime directives (created by nopilot init)
 AGENTS.md
 opencode.md
