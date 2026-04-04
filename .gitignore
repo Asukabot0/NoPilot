@@ -20,7 +20,10 @@ AGENTS.md
 opencode.md
 
 # Local workspace files (not part of npm package)
-.claude/commands/lash-*.md
+.claude/commands/
+
+# Issues tracked on GitHub only
+issues/
 
 # OS files
 .DS_Store
