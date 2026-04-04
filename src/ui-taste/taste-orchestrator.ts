@@ -730,7 +730,7 @@ ${links}
 
       const constraint: UITasteConstraint = {
         designDNA: dna,
-        tokensPath: 'specs/mockups/tokens.json',
+        tokensPath: tier === 2 ? 'specs/mockups/tokens.css' : 'specs/mockups/tokens.json',
         mockupsDir: 'specs/mockups/',
         stitchProjectId,
         tier: tier ?? 1,
