@@ -388,3 +388,4 @@ export interface CancelResult {
 export interface ResumeOutput {
   sent: boolean;
 }
+

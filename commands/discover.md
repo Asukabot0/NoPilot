@@ -84,11 +84,11 @@ Evaluate the following dimensions on a 0-100% scale:
 
 ```
 Completeness Assessment (Layer N):
-├── Core Feature Definition  ████████░░  80%  ✓ Mostly clear
-├── User Scenario Coverage   ██████░░░░  60%  ⚠ Missing error/edge flows
-├── Technical Constraints    ████░░░░░░  40%  ✗ Data storage undecided
-├── Boundary Conditions      ██░░░░░░░░  20%  ✗ Concurrency/perf undefined
-└── Non-functional Reqs      ░░░░░░░░░░   0%  ✗ Not yet discussed
+├── Core Feature Definition  [########--]  80%  ok  Mostly clear
+├── User Scenario Coverage   [######----]  60%  !!  Missing error/edge flows
+├── Technical Constraints    [####------]  40%  --  Data storage undecided
+├── Boundary Conditions      [##--------]  20%  --  Concurrency/perf undefined
+└── Non-functional Reqs      [----------]   0%  --  Not yet discussed
 ```
 
 ### Thresholds
