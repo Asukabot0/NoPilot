@@ -79,13 +79,12 @@ program
       for (const issue of result.issues) {
         if (issue.auto_fixable && issue.id === 'deps_not_installed') {
           const installResult = await installDeps(projectRoot);
-          if (installResult.success) {
-            issue.message += ' [FIXED]';
-            issue.severity = 'warning';
+          if (!installResult.success) {
+            err(`auto-fix failed for ${issue.id}: ${installResult.stderr}`);
           }
         }
       }
-      // Re-check after fixes
+      // Re-check after fixes to reflect actual state
       const recheck = await checkEnv(projectRoot);
       out(recheck);
       return;

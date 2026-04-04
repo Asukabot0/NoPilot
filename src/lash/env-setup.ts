@@ -123,7 +123,7 @@ const FIX_SUGGESTIONS: Record<string, string> = {
   'git_not_found': 'Install git: https://git-scm.com/downloads',
   'no_package_json': 'Run `npm init -y` to create a package.json',
   'deps_not_installed': 'Run `{pm} install` to install dependencies',
-  'claude_not_found': 'Install Claude Code: `npm install -g @anthropic-ai/claude-code`',
+  'claude_code_not_found': 'Install Claude Code: `npm install -g @anthropic-ai/claude-code`',
   'codex_not_found': 'Install Codex CLI: `npm install -g @openai/codex`',
   'opencode_not_found': 'Install OpenCode: see https://opencode.ai',
 };
