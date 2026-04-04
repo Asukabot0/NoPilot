@@ -214,10 +214,7 @@ program
     worktreePath: string,
     opts: { pid: number; platform?: string; startedAt?: string; timeout?: number },
   ) => {
-    const { checkCompletion, readDoneSignal } = await import('./platform-launcher.js');
-    const { execFile } = await import('node:child_process');
-    const { promisify } = await import('node:util');
-    const execFileAsync = promisify(execFile);
+    const { checkCompletion } = await import('./platform-launcher.js');
 
     const handle = {
       platform: (opts.platform ?? 'claude-code') as 'claude-code' | 'codex' | 'opencode',
@@ -228,45 +225,19 @@ program
       started_at: opts.startedAt ?? '',
     };
 
+    const completionOpts = opts.startedAt
+      ? { startedAt: opts.startedAt, timeoutSeconds: opts.timeout }
+      : undefined;
+
     try {
-      // Priority 1: done.json signal file
-      const signal = readDoneSignal(worktreePath);
-      if (signal !== null) {
-        if (signal.status === 'failed') {
-          return out({ status: 'failed', exit_code: 1, has_diff: null });
-        }
-        return out({ status: 'completed', exit_code: 0, has_diff: true });
-      }
-
-      // Priority 2: timeout detection
-      if (opts.startedAt) {
-        const startedMs = new Date(opts.startedAt).getTime();
-        const timeoutMs = (opts.timeout ?? 300) * 1000;
-        if (Date.now() - startedMs > timeoutMs) {
-          return out({ status: 'timeout', exit_code: null, has_diff: null });
-        }
-      }
-
-      // Priority 3: PID-based detection
       let result;
       try {
         process.kill(opts.pid, 0);
-        // Process exists — returns running status
-        result = await checkCompletion(handle, undefined);
+        // Process alive — checkCompletion handles done.json + timeout + running
+        result = await checkCompletion(handle, undefined, completionOpts);
       } catch {
-        // Process is gone — check git diff
-        let hasDiff = false;
-        try {
-          const { stdout } = await execFileAsync('git', ['diff', '--stat', 'HEAD'], { cwd: worktreePath });
-          hasDiff = Boolean(stdout.trim());
-        } catch {
-          hasDiff = false;
-        }
-        result = {
-          status: hasDiff ? 'completed' : 'completed_empty',
-          exit_code: 0,
-          has_diff: hasDiff,
-        };
+        // Process gone — simulate exit 0, checkCompletion handles done.json + git diff
+        result = await checkCompletion(handle, { exitCode: 0 }, completionOpts);
       }
       out(result);
     } catch (exc) {

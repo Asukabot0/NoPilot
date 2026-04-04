@@ -345,7 +345,7 @@ export interface PreflightResult {
 /** JSON output of `lash preflight` — map of platform name → PreflightResult. */
 export type PreflightOutput = Record<string, PreflightResult>;
 
-/** Worker completion status — mirrors @dataclass CompletionStatus. */
+/** Worker completion status (extended from Python @dataclass with timeout + done signal). */
 export interface CompletionStatus {
   status: 'running' | 'completed' | 'completed_empty' | 'failed' | 'timeout';
   exit_code: number | null;

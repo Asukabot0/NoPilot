@@ -699,13 +699,16 @@ describe('readDoneSignal', () => {
 // checkCompletion — done.json signal priority
 // ---------------------------------------------------------------------------
 describe('checkCompletion with done signal', () => {
-  it('done.json completed takes priority over process still running', async () => {
+  it('done.json completed + has diff → completed', async () => {
     const signal = {
       status: 'completed',
-      timestamp: '2026-04-04T12:00:00',
+      timestamp: '2026-04-04T12:00:00Z',
       module_id: 'MOD-001',
     };
     mockReadFileSync.mockReturnValue(JSON.stringify(signal));
+    mockExecFile.mockImplementation(
+      makeExecFileMock(0, ' 3 files changed, 42 insertions(+)'),
+    );
 
     const handle = makeHandle();
     const proc = { exitCode: null }; // still running
@@ -716,10 +719,25 @@ describe('checkCompletion with done signal', () => {
     expect(status.has_diff).toBe(true);
   });
 
+  it('done.json completed + no diff → completed_empty', async () => {
+    const signal = {
+      status: 'completed',
+      timestamp: '2026-04-04T12:00:00Z',
+      module_id: 'MOD-001',
+    };
+    mockReadFileSync.mockReturnValue(JSON.stringify(signal));
+    mockExecFile.mockImplementation(makeExecFileMock(0, ''));
+
+    const handle = makeHandle();
+    const status = await checkCompletion(handle);
+    expect(status.status).toBe('completed_empty');
+    expect(status.has_diff).toBe(false);
+  });
+
   it('done.json failed takes priority over process exit 0', async () => {
     const signal = {
       status: 'failed',
-      timestamp: '2026-04-04T12:00:00',
+      timestamp: '2026-04-04T12:00:00Z',
       module_id: 'MOD-001',
     };
     mockReadFileSync.mockReturnValue(JSON.stringify(signal));
@@ -738,8 +756,35 @@ describe('checkCompletion with done signal', () => {
     });
 
     const handle = makeHandle();
-    // no proc → running
     const status = await checkCompletion(handle);
+    expect(status.status).toBe('running');
+  });
+
+  it('timeout fires when startedAt exceeds threshold', async () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    const handle = makeHandle();
+    const pastTime = new Date(Date.now() - 400_000).toISOString();
+    const status = await checkCompletion(handle, undefined, {
+      startedAt: pastTime,
+      timeoutSeconds: 300,
+    });
+    expect(status.status).toBe('timeout');
+  });
+
+  it('no timeout when within threshold', async () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    const handle = makeHandle();
+    const recentTime = new Date().toISOString();
+    const status = await checkCompletion(handle, undefined, {
+      startedAt: recentTime,
+      timeoutSeconds: 300,
+    });
     expect(status.status).toBe('running');
   });
 });
