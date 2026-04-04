@@ -207,12 +207,14 @@ program
   .description('Check worker completion status')
   .requiredOption('--pid <pid>', 'Worker process ID', parseInt)
   .option('--platform <name>', 'Platform name')
+  .option('--started-at <iso>', 'Worker start timestamp (ISO) for timeout detection')
+  .option('--timeout <seconds>', 'Timeout in seconds (default: 300)', parseInt)
   .action(async (
     moduleId: string,
     worktreePath: string,
-    opts: { pid: number; platform?: string },
+    opts: { pid: number; platform?: string; startedAt?: string; timeout?: number },
   ) => {
-    const { checkCompletion } = await import('./platform-launcher.js');
+    const { checkCompletion, readDoneSignal } = await import('./platform-launcher.js');
     const { execFile } = await import('node:child_process');
     const { promisify } = await import('node:util');
     const execFileAsync = promisify(execFile);
@@ -223,10 +225,29 @@ program
       session_id: '',
       worktree_path: worktreePath,
       module_id: moduleId,
-      started_at: '',
+      started_at: opts.startedAt ?? '',
     };
 
     try {
+      // Priority 1: done.json signal file
+      const signal = readDoneSignal(worktreePath);
+      if (signal !== null) {
+        if (signal.status === 'failed') {
+          return out({ status: 'failed', exit_code: 1, has_diff: null });
+        }
+        return out({ status: 'completed', exit_code: 0, has_diff: true });
+      }
+
+      // Priority 2: timeout detection
+      if (opts.startedAt) {
+        const startedMs = new Date(opts.startedAt).getTime();
+        const timeoutMs = (opts.timeout ?? 300) * 1000;
+        if (Date.now() - startedMs > timeoutMs) {
+          return out({ status: 'timeout', exit_code: null, has_diff: null });
+        }
+      }
+
+      // Priority 3: PID-based detection
       let result;
       try {
         process.kill(opts.pid, 0);

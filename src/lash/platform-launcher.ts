@@ -17,7 +17,11 @@ import type {
   CompletionStatus,
   HeartbeatResult,
   CancelResult,
+  DoneSignal,
 } from './types.js';
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Platform CLI command templates
@@ -100,6 +104,30 @@ function isProcessAlive(pid: number): boolean {
 /** Sleep for N milliseconds. */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
+// done signal
+// ---------------------------------------------------------------------------
+
+/**
+ * Read .lash/done.json from a worktree. Returns null if missing or malformed.
+ */
+export function readDoneSignal(worktreePath: string): DoneSignal | null {
+  try {
+    const raw = readFileSync(join(worktreePath, '.lash', 'done.json'), 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (
+      (parsed.status === 'completed' || parsed.status === 'failed') &&
+      typeof parsed.timestamp === 'string' &&
+      typeof parsed.module_id === 'string'
+    ) {
+      return parsed as unknown as DoneSignal;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -394,12 +422,22 @@ export interface CheckableProcess {
 
 /**
  * Check completion status of a worker process.
- * Mirrors Python check_completion().
+ * Priority: done.json signal > process exit code > git diff fallback.
  */
 export async function checkCompletion(
   handle: WorkerHandle,
   proc?: CheckableProcess,
 ): Promise<CompletionStatus> {
+  // Priority 1: explicit done signal file
+  const signal = readDoneSignal(handle.worktree_path);
+  if (signal !== null) {
+    if (signal.status === 'failed') {
+      return { status: 'failed', exit_code: 1, has_diff: null };
+    }
+    return { status: 'completed', exit_code: 0, has_diff: true };
+  }
+
+  // Priority 2: process exit code (only available when called with proc handle)
   if (proc === undefined) {
     return { status: 'running', exit_code: null, has_diff: null };
   }
@@ -414,7 +452,7 @@ export async function checkCompletion(
     return { status: 'failed', exit_code: exitCode, has_diff: null };
   }
 
-  // exit_code === 0: check for git diff
+  // Priority 3: git diff fallback (exit_code === 0 but no done.json)
   let hasDiff = false;
   try {
     const diffResult = await runCommand(

@@ -347,9 +347,18 @@ export type PreflightOutput = Record<string, PreflightResult>;
 
 /** Worker completion status — mirrors @dataclass CompletionStatus. */
 export interface CompletionStatus {
-  status: 'running' | 'completed' | 'completed_empty' | 'failed';
+  status: 'running' | 'completed' | 'completed_empty' | 'failed' | 'timeout';
   exit_code: number | null;
   has_diff: boolean | null;
+}
+
+/** Structured completion signal written by Worker to .lash/done.json. */
+export interface DoneSignal {
+  status: 'completed' | 'failed';
+  timestamp: string;
+  module_id: string;
+  summary?: string;
+  test_summary?: { passed: number; failed: number };
 }
 
 /** Heartbeat probe result — mirrors @dataclass HeartbeatResult. */

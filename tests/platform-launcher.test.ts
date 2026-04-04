@@ -18,8 +18,16 @@ vi.mock('node:child_process', () => {
   };
 });
 
+vi.mock('node:fs', () => {
+  const mockReadFileSync = vi.fn();
+  return {
+    readFileSync: mockReadFileSync,
+  };
+});
+
 // Import after mocks are set up
 import { spawn, execFile } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import {
   preflight,
   spawnWorker,
@@ -27,11 +35,13 @@ import {
   cancelWorker,
   checkCompletion,
   monitorHeartbeat,
+  readDoneSignal,
 } from '../src/lash/platform-launcher.js';
 
 // Typed mock references
 const mockSpawn = spawn as unknown as ReturnType<typeof vi.fn>;
 const mockExecFile = execFile as unknown as ReturnType<typeof vi.fn>;
+const mockReadFileSync = readFileSync as unknown as ReturnType<typeof vi.fn>;
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -617,5 +627,119 @@ describe('cancelWorker', () => {
 
     expect(result.killed).toBe(false);
     killSpy.mockRestore();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// readDoneSignal
+// ---------------------------------------------------------------------------
+describe('readDoneSignal', () => {
+  it('returns valid completed signal', () => {
+    const signal = {
+      status: 'completed',
+      timestamp: '2026-04-04T12:00:00',
+      module_id: 'MOD-001',
+      summary: 'Implemented feature',
+    };
+    mockReadFileSync.mockReturnValue(JSON.stringify(signal));
+
+    const result = readDoneSignal('/tmp/wt');
+    expect(result).toEqual(signal);
+  });
+
+  it('returns valid failed signal', () => {
+    const signal = {
+      status: 'failed',
+      timestamp: '2026-04-04T12:00:00',
+      module_id: 'MOD-001',
+      summary: 'Tests did not pass',
+    };
+    mockReadFileSync.mockReturnValue(JSON.stringify(signal));
+
+    const result = readDoneSignal('/tmp/wt');
+    expect(result).toEqual(signal);
+  });
+
+  it('returns null when file missing', () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    const result = readDoneSignal('/tmp/wt');
+    expect(result).toBeNull();
+  });
+
+  it('returns null on malformed JSON', () => {
+    mockReadFileSync.mockReturnValue('not json');
+
+    const result = readDoneSignal('/tmp/wt');
+    expect(result).toBeNull();
+  });
+
+  it('returns null when required fields missing', () => {
+    mockReadFileSync.mockReturnValue(JSON.stringify({ status: 'completed' }));
+
+    const result = readDoneSignal('/tmp/wt');
+    expect(result).toBeNull();
+  });
+
+  it('returns null on invalid status value', () => {
+    mockReadFileSync.mockReturnValue(JSON.stringify({
+      status: 'running',
+      timestamp: '2026-04-04T12:00:00',
+      module_id: 'MOD-001',
+    }));
+
+    const result = readDoneSignal('/tmp/wt');
+    expect(result).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// checkCompletion — done.json signal priority
+// ---------------------------------------------------------------------------
+describe('checkCompletion with done signal', () => {
+  it('done.json completed takes priority over process still running', async () => {
+    const signal = {
+      status: 'completed',
+      timestamp: '2026-04-04T12:00:00',
+      module_id: 'MOD-001',
+    };
+    mockReadFileSync.mockReturnValue(JSON.stringify(signal));
+
+    const handle = makeHandle();
+    const proc = { exitCode: null }; // still running
+
+    const status = await checkCompletion(handle, proc);
+    expect(status.status).toBe('completed');
+    expect(status.exit_code).toBe(0);
+    expect(status.has_diff).toBe(true);
+  });
+
+  it('done.json failed takes priority over process exit 0', async () => {
+    const signal = {
+      status: 'failed',
+      timestamp: '2026-04-04T12:00:00',
+      module_id: 'MOD-001',
+    };
+    mockReadFileSync.mockReturnValue(JSON.stringify(signal));
+
+    const handle = makeHandle();
+    const proc = { exitCode: 0 };
+
+    const status = await checkCompletion(handle, proc);
+    expect(status.status).toBe('failed');
+    expect(status.exit_code).toBe(1);
+  });
+
+  it('no done.json falls back to PID-based detection', async () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT');
+    });
+
+    const handle = makeHandle();
+    // no proc → running
+    const status = await checkCompletion(handle);
+    expect(status.status).toBe('running');
   });
 });
