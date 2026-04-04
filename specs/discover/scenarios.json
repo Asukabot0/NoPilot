@@ -1,0 +1,45 @@
+{
+  "core_scenarios": [
+    {
+      "id": "SCENARIO-001",
+      "description": "Greenfield project full UI taste exploration. User describes a weather app idea. Step 0c detects frontend involvement, asks platform preference (iOS). System identifies 3 key pages (home, detail, settings). For each page: generates 5 variants via Stitch MCP (Gemini 3.1 Pro), downloads HTML, post-processes (font patch to PingFang SC, asset inlining), starts local preview server. User switches between iPhone/iPad device sizes, uses side-by-side comparison, selects variant for home page. System extracts Design DNA, creates design system, subsequent pages auto-inherit style. User provides text feedback on home page variant ('make the header more compact'), system regenerates with constraint applied. User selects 2 variants for hybrid DNA analysis, annotates preferred dimensions, system synthesizes composite constraint. Iteration history preserved — user can rollback to any previous round. After finalizing home page, system auto-generates dark/light counterpart; user toggles between modes in preview, accepts or requests re-generation. All pages selected: Design tokens exported to specs/mockups/tokens.json (DTCG format), selected mockups saved to specs/mockups/, constraints written to discover.json, temp files cleaned up. Discover flow continues to Layer 1.",
+      "requirement_refs": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-003",
+        "REQ-004",
+        "REQ-007",
+        "REQ-008",
+        "REQ-009",
+        "REQ-005",
+        "REQ-011"
+      ],
+      "priority": "highest"
+    },
+    {
+      "id": "SCENARIO-002",
+      "description": "Existing project new page addition. User runs /discover in an existing React project with tailwind.config.js and established component library. Step 0c detects existing frontend. System reads tailwind.config.js and existing CSS, extracts style profile (color palette, spacing, border-radius, font stack). Synthesizes designMd constraint. Generates 5 variants in REFINE mode (subtle variations within established style). User selects variant consistent with existing app. New page mockup saved alongside design tokens compatible with existing system.",
+      "requirement_refs": [
+        "REQ-006",
+        "REQ-002",
+        "REQ-007",
+        "REQ-003",
+        "REQ-004",
+        "REQ-008"
+      ],
+      "priority": "highest"
+    },
+    {
+      "id": "SCENARIO-003",
+      "description": "Stitch unavailable degradation. User has not configured Stitch API key. System detects Stitch MCP unavailable, switches to Tier 2 (AgentHTMLProvider) within 5 seconds. Agent generates 3-5 HTML mockups using designMd constraints for quality (correct layout, coordinated colors, basic animation). Same preview engine serves the variants. User selects. Tokens exported as CSS custom properties (simplified format). Mid-session quota variant: Stitch available initially, quota exhausted on page 3 of 5. System notifies user, switches to Tier 2 for remaining pages.",
+      "requirement_refs": [
+        "REQ-010",
+        "REQ-001",
+        "REQ-003",
+        "REQ-004",
+        "REQ-008"
+      ],
+      "priority": "highest"
+    }
+  ]
+}

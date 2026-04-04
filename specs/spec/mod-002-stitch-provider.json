@@ -1,0 +1,115 @@
+{
+  "id": "MOD-002",
+  "name": "stitch-provider",
+  "responsibility": "Implement DesignProvider interface using Google Stitch MCP. Translates domain requests into Stitch MCP tool calls (generate_screen_from_text, generate_variants, extract_design_context, create_design_system, apply_design_system). Handles Stitch-specific concerns: project management, API quota tracking, model selection.",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "StitchProvider.generateScreen",
+      "input_schema": {"request": "GenerateScreenRequest"},
+      "output_schema": {"variant": "DesignVariant", "stitchProjectId": "string"},
+      "errors": ["GENERATION_FAILED", "QUOTA_EXHAUSTED", "PROVIDER_UNAVAILABLE"],
+      "api_detail": {"mcp_tool": "mcp__stitch__generate_screen_from_text", "model": "GEMINI_3_1_PRO"},
+      "requirement_refs": ["REQ-002"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1", "REQ-002-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.generateVariants",
+      "input_schema": {"request": "GenerateVariantsRequest"},
+      "output_schema": {"variants": "DesignVariant[]"},
+      "errors": ["GENERATION_FAILED", "QUOTA_EXHAUSTED"],
+      "api_detail": {"mcp_tool": "mcp__stitch__generate_variants", "variantOptions": {"variantCount": 5, "aspects": ["LAYOUT", "COLOR_SCHEME", "IMAGES"]}},
+      "requirement_refs": ["REQ-002"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1", "REQ-002-AC-2", "REQ-002-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.extractDesignContext",
+      "input_schema": {"variant": "DesignVariant"},
+      "output_schema": {"dna": "DesignDNA"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {"mcp_tool": "mcp__stitch__get_screen", "extracts": "designTheme + designMd"},
+      "requirement_refs": ["REQ-007", "REQ-005"],
+      "acceptance_criteria_refs": ["REQ-007-AC-1", "REQ-005-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.createDesignSystem",
+      "input_schema": {"dna": "DesignDNA"},
+      "output_schema": {"ref": "DesignSystemRef"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {"mcp_tool": "mcp__stitch__create_design_system"},
+      "requirement_refs": ["REQ-007"],
+      "acceptance_criteria_refs": ["REQ-007-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.isAvailable",
+      "input_schema": {},
+      "output_schema": {"available": "boolean"},
+      "errors": [],
+      "api_detail": {"checks": ["Stitch MCP tools discoverable via ToolSearch", "list_projects call succeeds"]},
+      "requirement_refs": ["REQ-010"],
+      "acceptance_criteria_refs": ["REQ-010-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.applyDesignSystem",
+      "input_schema": {"projectId": "string", "designSystemRef": "DesignSystemRef"},
+      "output_schema": {"void": true},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {"mcp_tool": "mcp__stitch__apply_design_system"},
+      "requirement_refs": ["REQ-007"],
+      "acceptance_criteria_refs": ["REQ-007-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.getQuotaStatus",
+      "input_schema": {},
+      "output_schema": {"callsMade": "number", "estimatedLimit": "number | null", "exhausted": "boolean"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-010"],
+      "acceptance_criteria_refs": ["REQ-010-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "StitchProvider.downloadScreenHtml",
+      "input_schema": {"variant": "DesignVariant"},
+      "output_schema": {"html": "string"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {"uses": "htmlCode.downloadUrl from get_screen response"},
+      "requirement_refs": ["REQ-009"],
+      "acceptance_criteria_refs": ["REQ-009-AC-1"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "StitchConfig",
+      "fields": [
+        {"name": "apiKey", "type": "string", "constraints": "read from STITCH_API_KEY env or MCP config, never persisted"},
+        {"name": "defaultModel", "type": "string", "constraints": "GEMINI_3_1_PRO"},
+        {"name": "projectId", "type": "string | null", "constraints": "created on first generateScreen, reused for session"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "QuotaTracker",
+      "fields": [
+        {"name": "callCount", "type": "number", "constraints": "incremented on each API call"},
+        {"name": "estimatedLimit", "type": "number | null", "constraints": "null if unknown, set from API response headers if available"},
+        {"name": "warningThreshold", "type": "number", "constraints": "0.8 (80%)"}
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": "generateScreen < 60s, generateVariants < 90s for 5 variants",
+    "security": "API key never logged, never written to any project file (INV-001)",
+    "other": "Track API calls for quota warning at 80% threshold"
+  },
+  "requirement_refs": ["REQ-001", "REQ-002", "REQ-007", "REQ-010"],
+  "invariant_refs": ["INV-001"]
+}

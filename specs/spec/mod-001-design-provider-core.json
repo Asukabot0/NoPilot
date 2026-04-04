@@ -1,0 +1,154 @@
+{
+  "id": "MOD-001",
+  "name": "design-provider-core",
+  "responsibility": "Define the DesignProvider interface, manage provider registry, detect provider availability, and route requests to the active provider. This is the architectural foundation for the adapter pattern.",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "DesignProvider",
+      "input_schema": {
+        "description": "TypeScript interface that all design providers must implement",
+        "methods": {
+          "generateScreen": {"input": "GenerateScreenRequest", "output": "Promise<DesignVariant>"},
+          "generateVariants": {"input": "GenerateVariantsRequest", "output": "Promise<DesignVariant[]>"},
+          "extractDesignContext": {"input": "DesignVariant", "output": "Promise<DesignDNA>"},
+          "createDesignSystem": {"input": "DesignDNA", "output": "Promise<DesignSystemRef>"},
+          "applyDesignSystem": {"input": "{projectId: string, designSystemRef: DesignSystemRef}", "output": "Promise<void>"},
+          "isAvailable": {"input": "void", "output": "Promise<boolean>"},
+          "name": {"input": "void", "output": "string"}
+        }
+      },
+      "output_schema": {},
+      "errors": ["PROVIDER_UNAVAILABLE"],
+      "api_detail": null,
+      "requirement_refs": ["REQ-001"],
+      "acceptance_criteria_refs": ["REQ-001-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "ProviderRegistry.register",
+      "input_schema": {"provider": "DesignProvider"},
+      "output_schema": {"void": true},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-001"],
+      "acceptance_criteria_refs": ["REQ-001-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "ProviderRegistry.getActive",
+      "input_schema": {},
+      "output_schema": {"provider": "DesignProvider"},
+      "errors": ["PROVIDER_UNAVAILABLE"],
+      "api_detail": null,
+      "requirement_refs": ["REQ-001"],
+      "acceptance_criteria_refs": ["REQ-001-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "ProviderRegistry.detectAndSelect",
+      "input_schema": {},
+      "output_schema": {"provider": "DesignProvider", "tier": "1 | 2 | 3"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-010"],
+      "acceptance_criteria_refs": ["REQ-010-AC-1", "REQ-010-AC-2", "REQ-010-AC-3"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "DesignVariant",
+      "fields": [
+        {"name": "id", "type": "string", "constraints": "unique per session"},
+        {"name": "screenId", "type": "string", "constraints": "provider-specific screen identifier"},
+        {"name": "htmlCode", "type": "string", "constraints": "complete self-contained HTML"},
+        {"name": "screenshotUrl", "type": "string | null", "constraints": "URL or null if unavailable"},
+        {"name": "metadata", "type": "VariantMetadata", "constraints": ""},
+        {"name": "provider", "type": "string", "constraints": "provider name that generated this variant"},
+        {"name": "deviceType", "type": "'MOBILE' | 'TABLET' | 'DESKTOP'", "constraints": ""}
+      ],
+      "relationships": [
+        {"target": "PageSpec", "type": "belongs_to"}
+      ]
+    },
+    {
+      "name": "VariantMetadata",
+      "fields": [
+        {"name": "title", "type": "string", "constraints": ""},
+        {"name": "prompt", "type": "string", "constraints": "generation prompt used"},
+        {"name": "creativeRange", "type": "'REFINE' | 'REIMAGINE'", "constraints": ""},
+        {"name": "modelId", "type": "string | null", "constraints": "e.g. GEMINI_3_1_PRO"},
+        {"name": "generatedAt", "type": "string", "constraints": "ISO 8601 timestamp"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "DesignDNA",
+      "fields": [
+        {"name": "colorPalette", "type": "Record<string, string>", "constraints": "named colors, hex values"},
+        {"name": "typography", "type": "TypographyScale", "constraints": "display/headline/body/label sizes"},
+        {"name": "spacing", "type": "number[]", "constraints": "spacing scale values in px"},
+        {"name": "borderRadius", "type": "Record<string, string>", "constraints": "sm/md/lg/xl/full"},
+        {"name": "shadows", "type": "string[]", "constraints": "CSS shadow values"},
+        {"name": "animationLevel", "type": "'none' | 'subtle' | 'moderate' | 'expressive'", "constraints": ""},
+        {"name": "designMd", "type": "string", "constraints": "full design system markdown (Stitch format)"},
+        {"name": "rawProviderData", "type": "unknown", "constraints": "provider-specific raw data for round-tripping"}
+      ],
+      "relationships": [
+        {"target": "DesignToken", "type": "has_one"}
+      ]
+    },
+    {
+      "name": "DesignSystemRef",
+      "fields": [
+        {"name": "id", "type": "string", "constraints": "provider-specific design system ID"},
+        {"name": "provider", "type": "string", "constraints": ""},
+        {"name": "projectId", "type": "string | null", "constraints": "Stitch project ID if applicable"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "PageSpec",
+      "fields": [
+        {"name": "name", "type": "string", "constraints": "e.g. 'home', 'settings', 'detail'"},
+        {"name": "description", "type": "string", "constraints": "what this page does"},
+        {"name": "platform", "type": "'ios' | 'android' | 'web' | 'desktop'", "constraints": ""},
+        {"name": "deviceType", "type": "'MOBILE' | 'TABLET' | 'DESKTOP'", "constraints": ""},
+        {"name": "existingStyleConstraint", "type": "string | null", "constraints": "designMd from style detection"}
+      ],
+      "relationships": [
+        {"target": "DesignVariant", "type": "has_many"}
+      ]
+    },
+    {
+      "name": "GenerateScreenRequest",
+      "fields": [
+        {"name": "pageSpec", "type": "PageSpec", "constraints": ""},
+        {"name": "prompt", "type": "string", "constraints": "detailed generation prompt"},
+        {"name": "designSystemRef", "type": "DesignSystemRef | null", "constraints": "if cross-page consistency needed"},
+        {"name": "language", "type": "string", "constraints": "e.g. 'zh-CN', 'en'"},
+        {"name": "fontStack", "type": "string", "constraints": "e.g. 'PingFang SC, -apple-system, sans-serif'"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "GenerateVariantsRequest",
+      "fields": [
+        {"name": "baseVariant", "type": "DesignVariant", "constraints": "variant to generate variations from"},
+        {"name": "count", "type": "number", "constraints": "min 5"},
+        {"name": "creativeRange", "type": "'REFINE' | 'REIMAGINE'", "constraints": ""},
+        {"name": "prompt", "type": "string", "constraints": "direction prompt for variants"},
+        {"name": "designConstraint", "type": "string | null", "constraints": "designMd constraint from DNA or style detection"}
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": "Provider availability check (isAvailable) must complete within 5 seconds",
+    "security": "Never log or persist API keys. Keys read from environment/MCP config only.",
+    "other": null
+  },
+  "requirement_refs": ["REQ-001", "REQ-010"],
+  "invariant_refs": ["INV-001", "INV-005"]
+}

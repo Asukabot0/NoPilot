@@ -1,0 +1,88 @@
+{
+  "id": "MOD-005",
+  "name": "iteration-engine",
+  "responsibility": "Manage design iteration lifecycle: text feedback refinement, hybrid DNA synthesis from multiple variants, iteration history storage, round rollback. Bridges user feedback from PreviewEngine to DesignProvider for constrained re-generation.",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "IterationEngine.processSelection",
+      "input_schema": {"result": "SelectionResult", "provider": "DesignProvider", "pageSpec": "PageSpec"},
+      "output_schema": {"outcome": "IterationOutcome"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {"method": "Routes to handleSelect, handleIterate, or handleRollback based on result.action"},
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-1", "REQ-005-AC-2", "REQ-005-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "IterationEngine.handleIterate",
+      "input_schema": {"feedback": "string | null", "hybridSelections": "HybridSelection[] | null", "provider": "DesignProvider", "pageSpec": "PageSpec"},
+      "output_schema": {"newVariants": "DesignVariant[]", "round": "number"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {
+        "method": "1. If hybridSelections: call provider.extractDesignContext on each, merge dimensions into composite designMd. 2. If feedback: append as prompt constraint. 3. Call provider.generateVariants with synthesized constraint. 4. Store new round in history."
+      },
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-1", "REQ-005-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "IterationEngine.handleRollback",
+      "input_schema": {"targetRound": "number"},
+      "output_schema": {"variants": "DesignVariant[]"},
+      "errors": [],
+      "api_detail": {"method": "Retrieve variants from history map for target round"},
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-3", "REQ-005-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "IterationEngine.synthesizeDNA",
+      "input_schema": {"selections": "Array<{dna: DesignDNA, dimensions: string[]}>"},
+      "output_schema": {"compositeDesignMd": "string"},
+      "errors": [],
+      "api_detail": {"method": "LLM merges specified dimensions from each DNA into a single coherent designMd. E.g., take colors from DNA-A, layout from DNA-B, animation from DNA-C."},
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "IterationEngine.getHistory",
+      "input_schema": {},
+      "output_schema": {"rounds": "Map<number, DesignVariant[]>"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-3"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "IterationOutcome",
+      "fields": [
+        {"name": "type", "type": "'selected' | 'new_round' | 'rollback'", "constraints": ""},
+        {"name": "selectedVariant", "type": "DesignVariant | null", "constraints": "set when type is 'selected'"},
+        {"name": "newVariants", "type": "DesignVariant[] | null", "constraints": "set when type is 'new_round'"},
+        {"name": "round", "type": "number", "constraints": "current round number after operation"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "IterationHistory",
+      "fields": [
+        {"name": "rounds", "type": "Map<number, DesignVariant[]>", "constraints": "in-memory, session-scoped"},
+        {"name": "feedbackLog", "type": "Array<{round: number, feedback: string}>", "constraints": "for prompt context accumulation"},
+        {"name": "currentRound", "type": "number", "constraints": "starts at 1, increments on each iteration"}
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": "DNA synthesis (LLM call) < 30 seconds. History retrieval O(1).",
+    "security": null,
+    "other": "Memory bounded: max ~10 rounds x 5 variants x 25KB = ~1.25MB"
+  },
+  "requirement_refs": ["REQ-005"],
+  "invariant_refs": []
+}

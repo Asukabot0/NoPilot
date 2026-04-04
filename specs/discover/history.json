@@ -1,0 +1,91 @@
+{
+  "explored_directions": [
+    {
+      "description": "Stitch Deep Integration — Stitch MCP as core design engine, NoPilot as thin orchestration layer. All UI generation, variants, Design DNA extraction through Stitch API. Tier 2 uses Stitch designMd philosophy to constrain agent HTML quality.",
+      "differentiator": "Standing on Gemini 3.1 Pro design quality, NoPilot focuses on workflow orchestration only.",
+      "risk": "Strong dependency on Stitch API — if Google changes API, limits quota, or MCP server maintenance lags, core feature breaks.",
+      "status": "abandoned",
+      "abandonment_reason": "Vendor lock-in risk. User requires open adapter architecture (Direction 2)."
+    },
+    {
+      "description": "Platform-Agnostic Preview Engine — Standalone design preview/selection engine consuming designs from any source (Stitch, Figma MCP, agent-generated, user uploads) through adapters. Preview, device simulation, selection callback, Design Token export are core infra.",
+      "differentiator": "Not locked to any single design tool. Future-proof for Figma AI, v0, etc.",
+      "risk": "Engineering cost doubled — each adapter needs individual development/maintenance. Only 2 providers initially, adapter abstraction may be premature.",
+      "status": "merged",
+      "abandonment_reason": null
+    },
+    {
+      "description": "Prompt-First Lightweight — Minimal infra: enhance discover prompt with UI taste questions, use Stitch when available but user reviews on Stitch website directly. NoPilot only calls Stitch API + extracts Design DNA + writes to discover.json. Reuse existing /visualize infra.",
+      "differentiator": "Fastest to deliver, minimal invasiveness.",
+      "risk": "UX discontinuity — user must switch between CLI and Stitch website. Selection callback is manual. Device preview depends on Stitch's own capabilities. Tier 2 degradation experience is poor.",
+      "status": "abandoned",
+      "abandonment_reason": "User explicitly prioritized experience completeness over delivery speed. Context-switching violates 'zero-friction closed loop' philosophy."
+    },
+    {
+      "description": "Interactive Design Workshop (Design Co-pilot) — Full interactive design session in discover phase. Stitch generates initial variants, user iterates via text feedback, screenshot annotation, hybrid selection. Local preview with side-by-side comparison, device simulation, dark/light toggle. Auto-learning user preferences across iterations.",
+      "differentiator": "Most complete experience — no competitor offers interactive design co-creation in requirements discovery phase.",
+      "risk": "Largest engineering scope (9 phases, local HTTP server, selection callback, iteration history, font patching, asset inlining, three-tier degradation). May need 2-3 iterations to stabilize.",
+      "status": "merged",
+      "abandonment_reason": null
+    }
+  ],
+  "pruned_features": [],
+  "decision_log": [
+    {
+      "layer": "direction",
+      "action": "MERGE",
+      "detail": "Merged Direction 2 (open adapters) + Direction 4 (design co-pilot) into 'Open Design Co-pilot'. User explicitly chose maximum experience completeness + vendor independence.",
+      "timestamp": "2026-04-04T03:00:00Z"
+    },
+    {
+      "layer": "mvp",
+      "action": "APPROVE",
+      "detail": "All 12 features kept in MVP. Zero cuts, zero deferrals. User confirmed 'all keep'.",
+      "timestamp": "2026-04-04T03:15:00Z"
+    },
+    {
+      "layer": "lock",
+      "action": "APPROVE",
+      "detail": "12 requirements locked with EARS criteria. 3 high-risk items (REQ-005 DNA synthesis, REQ-006 source code parsing coverage, REQ-010-AC-5 Tier 2 quality) all resolved as ACCEPT_COST. 6 system invariants extracted. All 3 core scenarios covered.",
+      "timestamp": "2026-04-04T03:30:00Z"
+    }
+  ],
+  "completeness_snapshots": [
+    {
+      "layer": "1",
+      "dimensions": {
+        "core_feature_definition": 75,
+        "user_scenario_coverage": 55,
+        "technical_constraints": 60,
+        "boundary_conditions": 25,
+        "non_functional_requirements": 15
+      },
+      "gaps_noted": ["Boundary conditions undefined", "NFRs not yet discussed"],
+      "timestamp": "2026-04-04T02:50:00Z"
+    },
+    {
+      "layer": "2",
+      "dimensions": {
+        "core_feature_definition": 90,
+        "user_scenario_coverage": 80,
+        "technical_constraints": 80,
+        "boundary_conditions": 55,
+        "non_functional_requirements": 70
+      },
+      "gaps_noted": ["API rate limiting strategy needed", "Concurrent session port handling needed"],
+      "timestamp": "2026-04-04T03:10:00Z"
+    },
+    {
+      "layer": "3",
+      "dimensions": {
+        "core_feature_definition": 95,
+        "user_scenario_coverage": 90,
+        "technical_constraints": 85,
+        "boundary_conditions": 75,
+        "non_functional_requirements": 80
+      },
+      "gaps_noted": [],
+      "timestamp": "2026-04-04T03:30:00Z"
+    }
+  ]
+}

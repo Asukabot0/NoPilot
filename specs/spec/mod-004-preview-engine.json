@@ -1,0 +1,174 @@
+{
+  "id": "MOD-004",
+  "name": "preview-engine",
+  "responsibility": "Serve interactive design preview in the browser. Manages local HTTP server lifecycle, generates selector page HTML (tabs, device simulation, side-by-side comparison, dark/light toggle), handles selection POST callback, manages timeout and cleanup.",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "PreviewEngine.start",
+      "input_schema": {
+        "variants": "DesignVariant[]",
+        "pageSpec": "PageSpec",
+        "options": "{darkVariants?: DesignVariant[], timeout?: number}"
+      },
+      "output_schema": {"session": "PreviewSession"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-003"],
+      "acceptance_criteria_refs": ["REQ-003-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "PreviewEngine.awaitSelection",
+      "input_schema": {"session": "PreviewSession"},
+      "output_schema": {"result": "Promise<SelectionResult>"},
+      "errors": ["TIMEOUT"],
+      "api_detail": {"method": "Returns Promise that resolves on POST /api/select or rejects on timeout (default 30min)"},
+      "requirement_refs": ["REQ-004"],
+      "acceptance_criteria_refs": ["REQ-004-AC-1", "REQ-004-AC-2", "REQ-004-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "PreviewEngine.updateVariants",
+      "input_schema": {"session": "PreviewSession", "variants": "DesignVariant[]", "round": "number"},
+      "output_schema": {"void": true},
+      "errors": [],
+      "api_detail": {"method": "Hot-reload preview page with new iteration round variants"},
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "PreviewEngine.stop",
+      "input_schema": {"session": "PreviewSession"},
+      "output_schema": {"void": true},
+      "errors": [],
+      "api_detail": {"method": "Kill HTTP server, delete temp HTML files from /tmp"},
+      "requirement_refs": ["REQ-003"],
+      "acceptance_criteria_refs": []
+    },
+    {
+      "type": "internal",
+      "name": "PreviewEngine.openOrDisplay",
+      "input_schema": {"url": "string"},
+      "output_schema": {"method": "'browser' | 'url_display'"},
+      "errors": [],
+      "api_detail": {"method": "Check environment variables SSH_CLIENT, SSH_TTY, SSH_CONNECTION. If any is set → print URL to stderr and return 'url_display'. Otherwise → exec 'xdg-open' (Linux) or 'open' (macOS) with the URL and return 'browser'."},
+      "requirement_refs": ["REQ-003"],
+      "acceptance_criteria_refs": ["REQ-003-AC-6"]
+    },
+    {
+      "type": "api",
+      "name": "POST /api/select",
+      "input_schema": {
+        "body": {
+          "variantId": "string",
+          "round": "number",
+          "feedback": "string | null",
+          "action": "'select' | 'iterate' | 'rollback' | 'regenerate_pair'",
+          "hybridSelections": "Array<{variantId: string, dimensions: string[]}> | null",
+          "rollbackToRound": "number | null",
+          "overrideDesignSystem": "boolean"
+        }
+      },
+      "output_schema": {"status": "'ok'", "message": "string"},
+      "errors": [],
+      "api_detail": {"method": "HTTP POST from browser to localhost. Resolves the awaitSelection Promise."},
+      "requirement_refs": ["REQ-004", "REQ-005"],
+      "acceptance_criteria_refs": ["REQ-004-AC-1", "REQ-005-AC-1", "REQ-005-AC-2", "REQ-005-AC-4"]
+    },
+    {
+      "type": "api",
+      "name": "GET /api/variants/:round",
+      "input_schema": {"round": "number"},
+      "output_schema": {"variants": "Array<{id: string, title: string, htmlPath: string}>"},
+      "errors": [],
+      "api_detail": {"method": "Browser fetches variant list for a given round (for rollback navigation)"},
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-3", "REQ-005-AC-4"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "PreviewSession",
+      "fields": [
+        {"name": "id", "type": "string", "constraints": "UUID"},
+        {"name": "port", "type": "number", "constraints": "auto-detected available port"},
+        {"name": "url", "type": "string", "constraints": "http://localhost:{port}"},
+        {"name": "server", "type": "http.Server", "constraints": "Node.js HTTP server instance"},
+        {"name": "tmpDir", "type": "string", "constraints": "/tmp/nopilot-preview-{id}/"},
+        {"name": "currentRound", "type": "number", "constraints": "starts at 1"},
+        {"name": "selectionPromise", "type": "Promise<SelectionResult>", "constraints": "resolves on user action"},
+        {"name": "timeoutMs", "type": "number", "constraints": "default 1800000 (30 min)"}
+      ],
+      "relationships": [
+        {"target": "DesignVariant", "type": "has_many"}
+      ]
+    },
+    {
+      "name": "SelectionResult",
+      "fields": [
+        {"name": "action", "type": "'select' | 'iterate' | 'rollback'", "constraints": ""},
+        {"name": "selectedVariantId", "type": "string | null", "constraints": "set when action is 'select'"},
+        {"name": "feedback", "type": "string | null", "constraints": "text micro-feedback for iteration"},
+        {"name": "hybridSelections", "type": "HybridSelection[] | null", "constraints": "for hybrid DNA mode"},
+        {"name": "rollbackToRound", "type": "number | null", "constraints": "for rollback action"},
+        {"name": "round", "type": "number", "constraints": "which round this selection was made in"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "HybridSelection",
+      "fields": [
+        {"name": "variantId", "type": "string", "constraints": ""},
+        {"name": "dimensions", "type": "string[]", "constraints": "e.g. ['colors', 'layout', 'typography', 'animation']"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "DevicePreset",
+      "fields": [
+        {"name": "name", "type": "string", "constraints": "display name"},
+        {"name": "width", "type": "number", "constraints": "px"},
+        {"name": "height", "type": "number", "constraints": "px"},
+        {"name": "hasBezel", "type": "boolean", "constraints": "show device frame border"},
+        {"name": "category", "type": "'phone' | 'tablet' | 'desktop' | 'special'", "constraints": ""}
+      ],
+      "constants": {
+        "DEVICE_PRESETS": [
+          {"name": "iPhone SE", "width": 375, "height": 667, "hasBezel": true, "category": "phone"},
+          {"name": "iPhone 16 Pro", "width": 393, "height": 852, "hasBezel": true, "category": "phone"},
+          {"name": "iPhone 16 Pro Max", "width": 430, "height": 932, "hasBezel": true, "category": "phone"},
+          {"name": "iPad mini", "width": 744, "height": 1133, "hasBezel": true, "category": "tablet"},
+          {"name": "iPad Pro 11\"", "width": 834, "height": 1194, "hasBezel": true, "category": "tablet"},
+          {"name": "iPad Pro 13\"", "width": 1024, "height": 1366, "hasBezel": true, "category": "tablet"},
+          {"name": "iPad Split View", "width": 507, "height": 1194, "hasBezel": true, "category": "special"},
+          {"name": "Slide Over", "width": 320, "height": 1194, "hasBezel": true, "category": "special"},
+          {"name": "Desktop", "width": 1440, "height": 900, "hasBezel": true, "category": "desktop"},
+          {"name": "Full Screen", "width": 0, "height": 0, "hasBezel": false, "category": "special"}
+        ]
+      },
+      "relationships": []
+    }
+  ],
+  "state_machine": {
+    "states": ["idle", "serving", "awaiting_selection", "updating", "closing"],
+    "transitions": [
+      {"from": "idle", "event": "start", "to": "serving"},
+      {"from": "serving", "event": "variants_loaded", "to": "awaiting_selection"},
+      {"from": "awaiting_selection", "event": "selection_received", "to": "serving"},
+      {"from": "awaiting_selection", "event": "update_variants", "to": "updating"},
+      {"from": "updating", "event": "update_complete", "to": "awaiting_selection"},
+      {"from": "awaiting_selection", "event": "timeout", "to": "closing"},
+      {"from": "serving", "event": "stop", "to": "closing"},
+      {"from": "closing", "event": "cleanup_done", "to": "idle"}
+    ]
+  },
+  "nfr_constraints": {
+    "performance": "Page load < 3 seconds. Device switch < 200ms (CSS only, no reload).",
+    "security": "Server binds to 0.0.0.0 for SSH access. No sensitive data served.",
+    "other": "Each session uses unique port (INV-006). Temp files in /tmp only (INV-002)."
+  },
+  "requirement_refs": ["REQ-003", "REQ-004", "REQ-005", "REQ-011"],
+  "invariant_refs": ["INV-002", "INV-006"]
+}

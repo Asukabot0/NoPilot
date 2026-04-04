@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoPilot — Spec v4.0</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --card-hover: #1c2128;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-dim: #6e7681;
+    --green: #3fb950;
+    --red: #f85149;
+    --amber: #d29922;
+    --blue: #58a6ff;
+    --purple: #bc8cff;
+    --orange: #f0883e;
+    --teal: #39d353;
+    --green-dim: rgba(63,185,80,0.12);
+    --red-dim: rgba(248,81,73,0.12);
+    --amber-dim: rgba(210,153,34,0.12);
+    --blue-dim: rgba(88,166,255,0.12);
+    --purple-dim: rgba(188,140,255,0.12);
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13,17,23,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 24px;
+    height: 52px;
+  }
+
+  .nav-brand {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    margin-right: 32px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-brand-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 6px var(--green);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 2px;
+    flex: 1;
+  }
+
+  .nav-link {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: color 0.15s, background 0.15s;
+  }
+
+  .nav-link:hover { color: var(--text); background: var(--card); }
+  .nav-link.active { color: var(--green); background: var(--green-dim); }
+  .nav-link.disabled { color: var(--text-dim); cursor: default; pointer-events: none; }
+
+  .nav-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* LAYOUT */
+  .page-wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  /* PAGE HEADER */
+  .page-header {
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .page-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .page-title {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .page-subtitle {
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-size: 14px;
+  }
+
+  .status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+
+  .status-approved { background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .status-warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(210,153,34,0.3); }
+  .status-fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+
+  /* SECTION */
+  .section {
+    margin-bottom: 48px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .section-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  .section-count {
+    margin-left: auto;
+    padding: 2px 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* ARCHITECTURE DIAGRAM */
+  .arch-diagram {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+
+  .arch-svg-wrap {
+    min-width: 900px;
+  }
+
+  /* MODULE GRID */
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 12px;
+  }
+
+  /* MODULE COLLAPSIBLE */
+  .module-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+
+  .module-block:hover { border-color: #484f58; }
+
+  .module-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .module-id-badge {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .module-name {
+    font-weight: 600;
+    font-size: 14px;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .module-chevron {
+    color: var(--text-muted);
+    font-size: 12px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+
+  .module-chevron.open { transform: rotate(90deg); }
+
+  .module-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 16px;
+  }
+
+  .module-body.open { display: block; }
+
+  .module-responsibility {
+    color: var(--text-muted);
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+
+  /* INTERFACE LIST */
+  .iface-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .iface-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .iface-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+  }
+
+  .iface-name {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    flex: 1;
+  }
+
+  .type-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .type-api { background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,0.25); }
+  .type-internal { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(88,166,255,0.25); }
+  .type-event { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(188,140,255,0.25); }
+
+  .iface-body {
+    display: none;
+    border-top: 1px solid var(--border);
+    padding: 12px;
+  }
+
+  .iface-body.open { display: block; }
+
+  .schema-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .schema-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    overflow-x: auto;
+    white-space: pre;
+    margin-bottom: 10px;
+    line-height: 1.55;
+  }
+
+  .req-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .req-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    background: var(--blue-dim);
+    color: var(--blue);
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+  }
+
+  .error-badge {
+    font-size: 10px;
+    padding: 2px 7px;
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(248,81,73,0.2);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+  }
+
+  /* DATA MODELS */
+  .dm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 12px;
+  }
+
+  .dm-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .dm-header {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dm-name {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .dm-module-tag {
+    margin-left: auto;
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-family: var(--font-mono);
+  }
+
+  .dm-fields {
+    padding: 0;
+    list-style: none;
+  }
+
+  .dm-field {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    padding: 7px 14px;
+    border-bottom: 1px solid rgba(48,54,61,0.5);
+    align-items: start;
+    font-size: 12.5px;
+  }
+
+  .dm-field:last-child { border-bottom: none; }
+
+  .dm-field-name {
+    font-family: var(--font-mono);
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  .dm-field-type {
+    font-family: var(--font-mono);
+    color: var(--blue);
+    font-size: 11.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .dm-field-constraint {
+    color: var(--text-dim);
+    font-size: 11px;
+    text-align: right;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* STATE MACHINE */
+  .sm-diagram {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin-top: 12px;
+  }
+
+  /* DEPENDENCY GRAPH SVG */
+  .dep-svg-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+
+  /* AUTO DECISIONS */
+  .decisions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 14px;
+  }
+
+  .decision-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px;
+  }
+
+  .decision-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  .decision-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .decision-text {
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.5;
+    flex: 1;
+  }
+
+  .impact-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+
+  .impact-high { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,81,73,0.25); }
+  .impact-medium { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(210,153,34,0.25); }
+  .impact-low { background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,0.25); }
+
+  .decision-section-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    margin-top: 10px;
+  }
+
+  .decision-rationale {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  .decision-alt-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .decision-alt-list li {
+    font-size: 12px;
+    color: var(--text-dim);
+    padding-left: 12px;
+    position: relative;
+  }
+
+  .decision-alt-list li::before {
+    content: '–';
+    position: absolute;
+    left: 0;
+    color: var(--text-dim);
+  }
+
+  /* REVIEW STATUS */
+  .review-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(560px, 1fr));
+    gap: 14px;
+  }
+
+  .finding-card {
+    background: var(--card);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .finding-card.block { border: 1px solid rgba(248,81,73,0.35); }
+  .finding-card.warn { border: 1px solid rgba(210,153,34,0.35); }
+  .finding-card.pass { border: 1px solid rgba(63,185,80,0.35); }
+
+  .finding-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .finding-header.block { background: var(--red-dim); }
+  .finding-header.warn { background: var(--amber-dim); }
+
+  .sev-badge {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .sev-block { background: rgba(248,81,73,0.2); color: var(--red); }
+  .sev-warn { background: rgba(210,153,34,0.2); color: var(--amber); }
+
+  .finding-criteria {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .finding-target {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-left: auto;
+    font-family: var(--font-mono);
+  }
+
+  .finding-body {
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .bias-flags {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  .bias-flag {
+    font-size: 10px;
+    padding: 2px 7px;
+    background: var(--purple-dim);
+    color: var(--purple);
+    border: 1px solid rgba(188,140,255,0.2);
+    border-radius: 10px;
+    font-family: var(--font-mono);
+  }
+
+  /* REVIEW SUMMARY */
+  .review-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .review-stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .review-stat-num {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .review-stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  /* NFR */
+  .nfr-grid {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .nfr-chip {
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  .nfr-chip.perf { border-color: rgba(88,166,255,0.3); color: var(--blue); }
+  .nfr-chip.sec { border-color: rgba(248,81,73,0.3); color: var(--red); }
+  .nfr-chip.other { border-color: var(--border); }
+
+  /* DIVIDERS */
+  .sub-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-dim);
+    margin-bottom: 10px;
+    margin-top: 16px;
+  }
+
+  /* SCROLL ANCHOR OFFSET */
+  .anchor-target { scroll-margin-top: 68px; }
+
+  /* MODULE COLOR CODING */
+  .mod-001 { --mod-color: #58a6ff; }
+  .mod-002 { --mod-color: #3fb950; }
+  .mod-003 { --mod-color: #39d353; }
+  .mod-004 { --mod-color: #bc8cff; }
+  .mod-005 { --mod-color: #f0883e; }
+  .mod-006 { --mod-color: #d29922; }
+  .mod-007 { --mod-color: #f85149; }
+  .mod-008 { --mod-color: #58a6ff; }
+  .mod-009 { --mod-color: #3fb950; }
+
+  .module-block { border-left: 3px solid var(--mod-color, var(--border)); }
+
+  /* UTILS */
+  .flex { display: flex; }
+  .gap-8 { gap: 8px; }
+  .items-center { align-items: center; }
+  .flex-wrap { flex-wrap: wrap; }
+  .mt-8 { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .mb-12 { margin-bottom: 12px; }
+
+  @media (max-width: 768px) {
+    .review-summary { grid-template-columns: repeat(2, 1fr); }
+    .module-grid, .dm-grid, .decisions-grid, .review-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Smooth state machine nodes */
+  .sm-node {
+    rx: 8;
+    ry: 8;
+  }
+
+  /* Highlight current nav section */
+  html { scroll-behavior: smooth; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-brand-dot"></div>
+    NoPilot
+  </div>
+  <div class="nav-links">
+    <a href="dashboard.html" class="nav-link">Dashboard</a>
+    <a href="discover.html" class="nav-link">Discover</a>
+    <a href="spec.html" class="nav-link active">Spec <span class="nav-badge">v4.0</span></a>
+    <a class="nav-link disabled">Build <span class="nav-badge">—</span></a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- PAGE HEADER -->
+  <div class="page-header">
+    <div class="page-header-top">
+      <div>
+        <div class="page-title">Specification — ui-taste</div>
+        <div class="page-subtitle">Schema 4.0 &middot; 9 modules &middot; Design provider adapter system with preview, iteration, and token export</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+        <span class="status-chip status-approved">&#10003; Spec Approved</span>
+        <span class="status-chip status-fail">&#9888; Review: 6 Blocks</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 1: ARCHITECTURE DIAGRAM -->
+  <div class="section anchor-target" id="architecture">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(88,166,255,0.12);color:var(--blue)">&#9645;</div>
+      <div class="section-title">Module Architecture</div>
+      <div class="section-count">9 modules</div>
+    </div>
+    <div class="arch-diagram">
+      <div class="arch-svg-wrap">
+        <svg id="arch-svg" width="1060" height="560" viewBox="0 0 1060 560" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow-calls" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#58a6ff" opacity="0.8"/>
+            </marker>
+            <marker id="arrow-depends" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#bc8cff" opacity="0.8"/>
+            </marker>
+            <marker id="arrow-subscribes" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L8,3 z" fill="#d29922" opacity="0.8"/>
+            </marker>
+            <filter id="glow-green">
+              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+              <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- Layer labels -->
+          <text x="14" y="60" fill="#6e7681" font-size="10" font-family="-apple-system,sans-serif" font-weight="600" letter-spacing="1">ORCHESTRATOR</text>
+          <text x="14" y="190" fill="#6e7681" font-size="10" font-family="-apple-system,sans-serif" font-weight="600" letter-spacing="1">CORE</text>
+          <text x="14" y="330" fill="#6e7681" font-size="10" font-family="-apple-system,sans-serif" font-weight="600" letter-spacing="1">PROVIDERS</text>
+          <text x="14" y="460" fill="#6e7681" font-size="10" font-family="-apple-system,sans-serif" font-weight="600" letter-spacing="1">UTILITIES</text>
+
+          <!-- Layer separators -->
+          <line x1="14" y1="70" x2="1050" y2="70" stroke="#30363d" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="14" y1="210" x2="1050" y2="210" stroke="#30363d" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="14" y1="360" x2="1050" y2="360" stroke="#30363d" stroke-width="1" stroke-dasharray="4,4"/>
+
+          <!-- MOD-009 (orchestrator, top center) -->
+          <g id="node-009" transform="translate(400,80)">
+            <rect width="200" height="64" rx="10" fill="#1c2d1e" stroke="#3fb950" stroke-width="1.5" filter="url(#glow-green)"/>
+            <text x="12" y="19" fill="#3fb950" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-009</text>
+            <text x="12" y="37" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">taste-orchestrator</text>
+            <text x="12" y="53" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Main entry &amp; flow coordinator</text>
+          </g>
+
+          <!-- MOD-001 (core interface, row 2 center) -->
+          <g id="node-001" transform="translate(400,220)">
+            <rect width="200" height="64" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#58a6ff" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-001</text>
+            <text x="12" y="37" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">design-provider-core</text>
+            <text x="12" y="53" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Interface &amp; provider registry</text>
+          </g>
+
+          <!-- MOD-004 (preview, row 2 right) -->
+          <g id="node-004" transform="translate(650,220)">
+            <rect width="180" height="64" rx="10" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#bc8cff" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-004</text>
+            <text x="12" y="37" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">preview-engine</text>
+            <text x="12" y="53" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Browser preview &amp; selection</text>
+          </g>
+
+          <!-- MOD-005 (iteration, row 2 left) -->
+          <g id="node-005" transform="translate(160,220)">
+            <rect width="180" height="64" rx="10" fill="#161b22" stroke="#f0883e" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#f0883e" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-005</text>
+            <text x="12" y="37" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">iteration-engine</text>
+            <text x="12" y="53" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Feedback &amp; round management</text>
+          </g>
+
+          <!-- MOD-002 (stitch, row 3 left) -->
+          <g id="node-002" transform="translate(80,375)">
+            <rect width="170" height="64" rx="10" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#3fb950" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-002</text>
+            <text x="12" y="37" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">stitch-provider</text>
+            <text x="12" y="53" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Tier 1: Gemini 3.1 Pro</text>
+          </g>
+
+          <!-- MOD-003 (agent html, row 3 center-left) -->
+          <g id="node-003" transform="translate(300,375)">
+            <rect width="170" height="64" rx="10" fill="#161b22" stroke="#39d353" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#39d353" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-003</text>
+            <text x="12" y="37" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">agent-html-provider</text>
+            <text x="12" y="53" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Tier 2: Claude designer</text>
+          </g>
+
+          <!-- MOD-006 (style detector, row 4 left) -->
+          <g id="node-006" transform="translate(80,478)">
+            <rect width="160" height="60" rx="10" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#d29922" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-006</text>
+            <text x="12" y="36" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">style-detector</text>
+            <text x="12" y="52" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">CSS/Tailwind/screenshot</text>
+          </g>
+
+          <!-- MOD-007 (post processor, row 4 center) -->
+          <g id="node-007" transform="translate(295,478)">
+            <rect width="155" height="60" rx="10" fill="#161b22" stroke="#f85149" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#f85149" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-007</text>
+            <text x="12" y="36" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">post-processor</text>
+            <text x="12" y="52" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">Font, asset, responsive</text>
+          </g>
+
+          <!-- MOD-008 (token exporter, row 4 right) -->
+          <g id="node-008" transform="translate(510,478)">
+            <rect width="155" height="60" rx="10" fill="#161b22" stroke="#58a6ff" stroke-width="1.5"/>
+            <text x="12" y="19" fill="#58a6ff" font-size="10" font-family="SF Mono,monospace" font-weight="700">MOD-008</text>
+            <text x="12" y="36" fill="#e6edf3" font-size="12.5" font-family="-apple-system,sans-serif" font-weight="600">token-exporter</text>
+            <text x="12" y="52" fill="#8b949e" font-size="10.5" font-family="-apple-system,sans-serif">DTCG / CSS variables</text>
+          </g>
+
+          <!-- EDGES: MOD-009 → MOD-001 (calls) -->
+          <path d="M 500 144 L 500 220" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.7"/>
+          <text x="505" y="185" fill="#58a6ff" font-size="9.5" font-family="-apple-system,sans-serif" opacity="0.85">calls</text>
+
+          <!-- MOD-009 → MOD-004 (calls) -->
+          <path d="M 600 112 C 680 112 740 180 740 220" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.7"/>
+          <text x="672" y="162" fill="#58a6ff" font-size="9.5" font-family="-apple-system,sans-serif" opacity="0.85">calls</text>
+
+          <!-- MOD-009 → MOD-005 (calls) -->
+          <path d="M 400 112 C 330 112 270 180 270 220" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.7"/>
+          <text x="318" y="162" fill="#58a6ff" font-size="9.5" font-family="-apple-system,sans-serif" opacity="0.85">calls</text>
+
+          <!-- MOD-009 → MOD-006 (calls) -->
+          <path d="M 400 144 C 240 180 180 390 160 478" stroke="#58a6ff" stroke-width="1.3" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.5"/>
+          <text x="230" y="340" fill="#58a6ff" font-size="9" font-family="-apple-system,sans-serif" opacity="0.7">calls</text>
+
+          <!-- MOD-009 → MOD-007 (calls) -->
+          <path d="M 500 144 C 450 300 400 420 372 478" stroke="#58a6ff" stroke-width="1.3" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.5"/>
+
+          <!-- MOD-009 → MOD-008 (calls) -->
+          <path d="M 560 144 C 590 300 570 420 587 478" stroke="#58a6ff" stroke-width="1.3" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.5"/>
+
+          <!-- MOD-002 → MOD-001 (depends) -->
+          <path d="M 165 375 L 450 284" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="3,4" fill="none" marker-end="url(#arrow-depends)" opacity="0.65"/>
+          <text x="265" y="326" fill="#bc8cff" font-size="9.5" font-family="-apple-system,sans-serif" opacity="0.85">depends</text>
+
+          <!-- MOD-003 → MOD-001 (depends) -->
+          <path d="M 385 375 L 460 284" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="3,4" fill="none" marker-end="url(#arrow-depends)" opacity="0.65"/>
+          <text x="398" y="326" fill="#bc8cff" font-size="9.5" font-family="-apple-system,sans-serif" opacity="0.85">depends</text>
+
+          <!-- MOD-005 → MOD-001 (calls) -->
+          <path d="M 340 252 L 400 252" stroke="#58a6ff" stroke-width="1.2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.55"/>
+
+          <!-- MOD-005 → MOD-004 (calls) -->
+          <path d="M 340 262 C 440 270 580 264 650 258" stroke="#58a6ff" stroke-width="1.2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.45"/>
+
+          <!-- MOD-008 → MOD-001 (calls) -->
+          <path d="M 590 478 C 620 400 580 310 560 284" stroke="#58a6ff" stroke-width="1.2" stroke-dasharray="5,3" fill="none" marker-end="url(#arrow-calls)" opacity="0.45"/>
+
+          <!-- Legend -->
+          <g transform="translate(720,380)">
+            <rect width="250" height="110" rx="8" fill="#1c2128" stroke="#30363d" stroke-width="1"/>
+            <text x="12" y="22" fill="#6e7681" font-size="10" font-family="-apple-system,sans-serif" font-weight="700" letter-spacing="0.8">LEGEND</text>
+            <line x1="12" y1="38" x2="52" y2="38" stroke="#58a6ff" stroke-width="1.5" stroke-dasharray="5,3"/>
+            <circle cx="52" cy="38" r="3" fill="#58a6ff"/>
+            <text x="60" y="42" fill="#8b949e" font-size="11" font-family="-apple-system,sans-serif">calls</text>
+            <line x1="12" y1="60" x2="52" y2="60" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="3,4"/>
+            <circle cx="52" cy="60" r="3" fill="#bc8cff"/>
+            <text x="60" y="64" fill="#8b949e" font-size="11" font-family="-apple-system,sans-serif">depends (implements)</text>
+            <rect x="12" y="80" width="40" height="14" rx="4" fill="#1c2d1e" stroke="#3fb950" stroke-width="1.2"/>
+            <text x="58" y="91" fill="#8b949e" font-size="11" font-family="-apple-system,sans-serif">orchestrator</text>
+            <rect x="12" y="98" width="40" height="14" rx="4" fill="#161b22" stroke="#58a6ff" stroke-width="1.2"/>
+            <text x="58" y="109" fill="#8b949e" font-size="11" font-family="-apple-system,sans-serif">core / provider / utility</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: INTERFACE DOCUMENTATION -->
+  <div class="section anchor-target" id="interfaces">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(63,185,80,0.12);color:var(--green)">&#9670;</div>
+      <div class="section-title">Interface Documentation</div>
+    </div>
+    <div class="module-grid" id="iface-modules"></div>
+  </div>
+
+  <!-- SECTION 3: DATA MODEL ER DIAGRAM -->
+  <div class="section anchor-target" id="datamodels">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(188,140,255,0.12);color:var(--purple)">&#9632;</div>
+      <div class="section-title">Data Models</div>
+    </div>
+    <div class="dm-grid" id="dm-grid"></div>
+  </div>
+
+  <!-- SECTION 4: DEPENDENCY GRAPH -->
+  <div class="section anchor-target" id="depgraph">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(210,153,34,0.12);color:var(--amber)">&#8594;</div>
+      <div class="section-title">Dependency Graph</div>
+      <div class="section-count" id="dep-edge-count"></div>
+    </div>
+    <div class="dep-svg-wrap">
+      <svg id="dep-svg" width="1060" height="260" viewBox="0 0 1060 260" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="dep-arrow-calls" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/>
+          </marker>
+          <marker id="dep-arrow-depends" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L8,3 z" fill="#bc8cff"/>
+          </marker>
+        </defs>
+        <!-- This is rendered by JS -->
+      </svg>
+    </div>
+  </div>
+
+  <!-- SECTION 5: STATE MACHINES -->
+  <div class="section anchor-target" id="statemachines">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(240,136,62,0.12);color:var(--orange)">&#9654;</div>
+      <div class="section-title">State Machines</div>
+      <div class="section-count">2 modules with state machines</div>
+    </div>
+    <div id="sm-container"></div>
+  </div>
+
+  <!-- SECTION 6: AUTO DECISIONS -->
+  <div class="section anchor-target" id="decisions">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(248,81,73,0.12);color:var(--red)">&#9650;</div>
+      <div class="section-title">Auto Decisions</div>
+      <div class="section-count" id="decisions-count"></div>
+    </div>
+    <div class="decisions-grid" id="decisions-grid"></div>
+  </div>
+
+  <!-- SECTION 7: REVIEW STATUS -->
+  <div class="section anchor-target" id="review">
+    <div class="section-header">
+      <div class="section-icon" style="background:rgba(248,81,73,0.12);color:var(--red)">&#9679;</div>
+      <div class="section-title">Spec Review Status</div>
+    </div>
+    <div class="review-summary" id="review-summary"></div>
+    <div class="review-grid" id="review-grid"></div>
+  </div>
+
+</div>
+
+<script>
+// ─── EMBEDDED DATA ───────────────────────────────────────────────────────────
+
+const INDEX = {"phase":"spec","version":"4.0","status":"approved","module_refs":["mod-001-design-provider-core.json","mod-002-stitch-provider.json","mod-003-agent-html-provider.json","mod-004-preview-engine.json","mod-005-iteration-engine.json","mod-006-style-detector.json","mod-007-post-processor.json","mod-008-token-exporter.json","mod-009-taste-orchestrator.json"],"dependency_graph":{"edges":[{"from":"MOD-009","to":"MOD-001","type":"calls","description":"Orchestrator selects and calls active DesignProvider"},{"from":"MOD-009","to":"MOD-004","type":"calls","description":"Orchestrator starts preview and awaits selection"},{"from":"MOD-009","to":"MOD-005","type":"calls","description":"Orchestrator delegates iteration logic"},{"from":"MOD-009","to":"MOD-006","type":"calls","description":"Orchestrator triggers style detection for existing projects"},{"from":"MOD-009","to":"MOD-007","type":"calls","description":"Orchestrator runs post-processing on downloaded HTML"},{"from":"MOD-009","to":"MOD-008","type":"calls","description":"Orchestrator exports tokens after final selection"},{"from":"MOD-002","to":"MOD-001","type":"depends","description":"StitchProvider implements DesignProvider interface"},{"from":"MOD-003","to":"MOD-001","type":"depends","description":"AgentHTMLProvider implements DesignProvider interface"},{"from":"MOD-005","to":"MOD-001","type":"calls","description":"IterationEngine calls extractDesignContext on providers"},{"from":"MOD-005","to":"MOD-004","type":"calls","description":"IterationEngine updates preview with new variants"},{"from":"MOD-008","to":"MOD-001","type":"calls","description":"TokenExporter calls extractDesignContext for DNA"}]},"external_dependencies":[{"name":"Stitch MCP (@_davideast/stitch-mcp)","purpose":"Primary design generation engine via Gemini 3.1 Pro.","module_refs":["MOD-002"],"alternatives":["AgentHTMLProvider (MOD-003) as Tier 2 fallback"],"test_strategy":"mock"},{"name":"Node.js http module","purpose":"Local HTTP server for interactive preview.","module_refs":["MOD-004"],"alternatives":[],"test_strategy":"real"}],"auto_decisions":[{"decision":"Place new TypeScript modules in src/ui-taste/ directory, parallel to src/lash/","alternatives":["Pure prompt + MCP (no new TypeScript)","Merge into src/lash/ as shared utilities"],"rationale":"User chose option A. Consistent with Lash architecture: TypeScript provides testable infrastructure, prompt handles orchestration. Separate directory avoids coupling with Lash build-specific code.","impact":"All 9 modules live under src/ui-taste/. CLI exposes subcommands via nopilot CLI.","impact_level":"high"},{"decision":"Use Promise-based async wait for browser selection callback instead of polling","alternatives":["File-based polling (CLI watches /tmp for selection file)","WebSocket bidirectional channel"],"rationale":"Promise + HTTP POST is simplest reliable approach. No file system race conditions. No WebSocket complexity. CLI starts server, returns Promise, Promise resolves on POST.","impact":"Preview server must handle POST /api/select endpoint. CLI blocks on Promise until selection or timeout.","impact_level":"medium"},{"decision":"Store iteration history in-memory (Map<round, DesignVariant[]>) not on disk","alternatives":["Write each round to /tmp/nopilot-rounds/","Store in specs/mockups/.rounds/"],"rationale":"History is session-scoped and ephemeral. In-memory avoids disk I/O and cleanup concerns. Memory is bounded (max ~10 rounds x 5 variants x ~25KB HTML = ~1.25MB).","impact":"History lost on CLI crash. Acceptable for discover-phase ephemeral data.","impact_level":"low"},{"decision":"Use regex-based CSS parsing for style detection instead of a full CSS AST parser","alternatives":["PostCSS AST parser","css-tree parser","Tailwind config JS eval"],"rationale":"We need to extract a small set of tokens (colors, fonts, spacing, border-radius) not transform CSS. Regex covers the 80% case for CSS/SCSS/Tailwind config. PostCSS adds a dependency for marginal benefit.","impact":"Won't parse complex CSS-in-JS (styled-components, emotion). Accepted risk per REQ-006 ACCEPT_COST.","impact_level":"medium"},{"decision":"Use LLM to convert Stitch designMd to DTCG tokens.json instead of building a deterministic parser","alternatives":["Deterministic regex parser for designMd","Hybrid: regex extract + LLM fill gaps"],"rationale":"Stitch designMd is free-form Markdown with no stable schema. Deterministic parsing is fragile. LLM extraction handles format variation.","impact":"Token accuracy depends on LLM quality. First-batch human audit at 80% threshold triggers redesign if fails.","impact_level":"medium"}]};
+
+const MODULES = [
+  {"id":"MOD-001","name":"design-provider-core","responsibility":"Define the DesignProvider interface, manage provider registry, detect provider availability, and route requests to the active provider. This is the architectural foundation for the adapter pattern.","interfaces":[{"type":"internal","name":"DesignProvider","input_schema":{"description":"TypeScript interface that all design providers must implement","methods":{"generateScreen":{"input":"GenerateScreenRequest","output":"Promise<DesignVariant>"},"generateVariants":{"input":"GenerateVariantsRequest","output":"Promise<DesignVariant[]>"},"extractDesignContext":{"input":"DesignVariant","output":"Promise<DesignDNA>"},"createDesignSystem":{"input":"DesignDNA","output":"Promise<DesignSystemRef>"},"applyDesignSystem":{"input":"{projectId: string, designSystemRef: DesignSystemRef}","output":"Promise<void>"},"isAvailable":{"input":"void","output":"Promise<boolean>"},"name":{"input":"void","output":"string"}}},"output_schema":{},"errors":["PROVIDER_UNAVAILABLE"],"requirement_refs":["REQ-001"],"acceptance_criteria_refs":["REQ-001-AC-1"]},{"type":"internal","name":"ProviderRegistry.register","input_schema":{"provider":"DesignProvider"},"output_schema":{"void":true},"errors":[],"requirement_refs":["REQ-001"],"acceptance_criteria_refs":["REQ-001-AC-4"]},{"type":"internal","name":"ProviderRegistry.getActive","input_schema":{},"output_schema":{"provider":"DesignProvider"},"errors":["PROVIDER_UNAVAILABLE"],"requirement_refs":["REQ-001"],"acceptance_criteria_refs":["REQ-001-AC-3"]},{"type":"internal","name":"ProviderRegistry.detectAndSelect","input_schema":{},"output_schema":{"provider":"DesignProvider","tier":"1 | 2 | 3"},"errors":[],"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-1","REQ-010-AC-2","REQ-010-AC-3"]}],"data_models":[{"name":"DesignVariant","fields":[{"name":"id","type":"string","constraints":"unique per session"},{"name":"screenId","type":"string","constraints":"provider-specific screen identifier"},{"name":"htmlCode","type":"string","constraints":"complete self-contained HTML"},{"name":"screenshotUrl","type":"string | null","constraints":"URL or null if unavailable"},{"name":"metadata","type":"VariantMetadata","constraints":""},{"name":"provider","type":"string","constraints":"provider name that generated this variant"},{"name":"deviceType","type":"'MOBILE' | 'TABLET' | 'DESKTOP'","constraints":""}],"relationships":[{"target":"PageSpec","type":"belongs_to"}]},{"name":"VariantMetadata","fields":[{"name":"title","type":"string","constraints":""},{"name":"prompt","type":"string","constraints":"generation prompt used"},{"name":"creativeRange","type":"'REFINE' | 'REIMAGINE'","constraints":""},{"name":"modelId","type":"string | null","constraints":"e.g. GEMINI_3_1_PRO"},{"name":"generatedAt","type":"string","constraints":"ISO 8601 timestamp"}],"relationships":[]},{"name":"DesignDNA","fields":[{"name":"colorPalette","type":"Record<string, string>","constraints":"named colors, hex values"},{"name":"typography","type":"TypographyScale","constraints":"display/headline/body/label sizes"},{"name":"spacing","type":"number[]","constraints":"spacing scale values in px"},{"name":"borderRadius","type":"Record<string, string>","constraints":"sm/md/lg/xl/full"},{"name":"shadows","type":"string[]","constraints":"CSS shadow values"},{"name":"animationLevel","type":"'none'|'subtle'|'moderate'|'expressive'","constraints":""},{"name":"designMd","type":"string","constraints":"full design system markdown (Stitch format)"},{"name":"rawProviderData","type":"unknown","constraints":"provider-specific raw data for round-tripping"}],"relationships":[{"target":"DesignToken","type":"has_one"}]},{"name":"DesignSystemRef","fields":[{"name":"id","type":"string","constraints":"provider-specific design system ID"},{"name":"provider","type":"string","constraints":""},{"name":"projectId","type":"string | null","constraints":"Stitch project ID if applicable"}],"relationships":[]},{"name":"PageSpec","fields":[{"name":"name","type":"string","constraints":"e.g. 'home', 'settings', 'detail'"},{"name":"description","type":"string","constraints":"what this page does"},{"name":"platform","type":"'ios'|'android'|'web'|'desktop'","constraints":""},{"name":"deviceType","type":"'MOBILE'|'TABLET'|'DESKTOP'","constraints":""},{"name":"existingStyleConstraint","type":"string | null","constraints":"designMd from style detection"}],"relationships":[{"target":"DesignVariant","type":"has_many"}]},{"name":"GenerateScreenRequest","fields":[{"name":"pageSpec","type":"PageSpec","constraints":""},{"name":"prompt","type":"string","constraints":"detailed generation prompt"},{"name":"designSystemRef","type":"DesignSystemRef | null","constraints":"if cross-page consistency needed"},{"name":"language","type":"string","constraints":"e.g. 'zh-CN', 'en'"},{"name":"fontStack","type":"string","constraints":"e.g. 'PingFang SC, -apple-system, sans-serif'"}],"relationships":[]},{"name":"GenerateVariantsRequest","fields":[{"name":"baseVariant","type":"DesignVariant","constraints":"variant to generate variations from"},{"name":"count","type":"number","constraints":"min 5"},{"name":"creativeRange","type":"'REFINE'|'REIMAGINE'","constraints":""},{"name":"prompt","type":"string","constraints":"direction prompt for variants"},{"name":"designConstraint","type":"string | null","constraints":"designMd constraint from DNA or style detection"}],"relationships":[]}],"nfr_constraints":{"performance":"Provider availability check (isAvailable) must complete within 5 seconds","security":"Never log or persist API keys. Keys read from environment/MCP config only.","other":null},"requirement_refs":["REQ-001","REQ-010"],"state_machine":null},
+  {"id":"MOD-002","name":"stitch-provider","responsibility":"Implement DesignProvider interface using Google Stitch MCP. Translates domain requests into Stitch MCP tool calls. Handles Stitch-specific concerns: project management, API quota tracking, model selection.","interfaces":[{"type":"internal","name":"StitchProvider.generateScreen","input_schema":{"request":"GenerateScreenRequest"},"output_schema":{"variant":"DesignVariant","stitchProjectId":"string"},"errors":["GENERATION_FAILED","QUOTA_EXHAUSTED","PROVIDER_UNAVAILABLE"],"api_detail":{"mcp_tool":"mcp__stitch__generate_screen_from_text","model":"GEMINI_3_1_PRO"},"requirement_refs":["REQ-002"],"acceptance_criteria_refs":["REQ-002-AC-1","REQ-002-AC-4"]},{"type":"internal","name":"StitchProvider.generateVariants","input_schema":{"request":"GenerateVariantsRequest"},"output_schema":{"variants":"DesignVariant[]"},"errors":["GENERATION_FAILED","QUOTA_EXHAUSTED"],"api_detail":{"mcp_tool":"mcp__stitch__generate_variants"},"requirement_refs":["REQ-002"],"acceptance_criteria_refs":["REQ-002-AC-1","REQ-002-AC-2","REQ-002-AC-3"]},{"type":"internal","name":"StitchProvider.extractDesignContext","input_schema":{"variant":"DesignVariant"},"output_schema":{"dna":"DesignDNA"},"errors":["GENERATION_FAILED"],"api_detail":{"mcp_tool":"mcp__stitch__get_screen"},"requirement_refs":["REQ-007","REQ-005"],"acceptance_criteria_refs":["REQ-007-AC-1","REQ-005-AC-2"]},{"type":"internal","name":"StitchProvider.createDesignSystem","input_schema":{"dna":"DesignDNA"},"output_schema":{"ref":"DesignSystemRef"},"errors":["GENERATION_FAILED"],"api_detail":{"mcp_tool":"mcp__stitch__create_design_system"},"requirement_refs":["REQ-007"],"acceptance_criteria_refs":["REQ-007-AC-1"]},{"type":"internal","name":"StitchProvider.isAvailable","input_schema":{},"output_schema":{"available":"boolean"},"errors":[],"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-1"]},{"type":"internal","name":"StitchProvider.applyDesignSystem","input_schema":{"projectId":"string","designSystemRef":"DesignSystemRef"},"output_schema":{"void":true},"errors":["GENERATION_FAILED"],"api_detail":{"mcp_tool":"mcp__stitch__apply_design_system"},"requirement_refs":["REQ-007"],"acceptance_criteria_refs":["REQ-007-AC-2"]},{"type":"internal","name":"StitchProvider.getQuotaStatus","input_schema":{},"output_schema":{"callsMade":"number","estimatedLimit":"number | null","exhausted":"boolean"},"errors":[],"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-4"]},{"type":"internal","name":"StitchProvider.downloadScreenHtml","input_schema":{"variant":"DesignVariant"},"output_schema":{"html":"string"},"errors":["GENERATION_FAILED"],"requirement_refs":["REQ-009"],"acceptance_criteria_refs":["REQ-009-AC-1"]}],"data_models":[{"name":"StitchConfig","fields":[{"name":"apiKey","type":"string","constraints":"read from STITCH_API_KEY env or MCP config, never persisted"},{"name":"defaultModel","type":"string","constraints":"GEMINI_3_1_PRO"},{"name":"projectId","type":"string | null","constraints":"created on first generateScreen, reused for session"}],"relationships":[]},{"name":"QuotaTracker","fields":[{"name":"callCount","type":"number","constraints":"incremented on each API call"},{"name":"estimatedLimit","type":"number | null","constraints":"null if unknown"},{"name":"warningThreshold","type":"number","constraints":"0.8 (80%)"}],"relationships":[]}],"nfr_constraints":{"performance":"generateScreen < 60s, generateVariants < 90s for 5 variants","security":"API key never logged, never written to any project file (INV-001)","other":"Track API calls for quota warning at 80% threshold"},"requirement_refs":["REQ-001","REQ-002","REQ-007","REQ-010"],"state_machine":null},
+  {"id":"MOD-003","name":"agent-html-provider","responsibility":"Tier 2 fallback DesignProvider. Generates HTML mockups by instructing Claude agent with designMd constraints. Quality target: correct base layout, coordinated color scheme, basic animation effects.","interfaces":[{"type":"internal","name":"AgentHTMLProvider.generateScreen","input_schema":{"request":"GenerateScreenRequest"},"output_schema":{"variant":"DesignVariant"},"errors":["GENERATION_FAILED"],"api_detail":{"method":"Spawn designer subagent with detailed designMd prompt. Agent writes HTML to /tmp, module reads it back."},"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-2","REQ-010-AC-5"]},{"type":"internal","name":"AgentHTMLProvider.generateVariants","input_schema":{"request":"GenerateVariantsRequest"},"output_schema":{"variants":"DesignVariant[]"},"errors":["GENERATION_FAILED"],"api_detail":{"method":"Spawn N parallel designer subagents, each with different style direction prompt + shared designMd constraint"},"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-5"]},{"type":"internal","name":"AgentHTMLProvider.extractDesignContext","input_schema":{"variant":"DesignVariant"},"output_schema":{"dna":"DesignDNA"},"errors":["GENERATION_FAILED"],"requirement_refs":["REQ-005","REQ-007"],"acceptance_criteria_refs":["REQ-005-AC-2","REQ-007-AC-1"]},{"type":"internal","name":"AgentHTMLProvider.isAvailable","input_schema":{},"output_schema":{"available":"boolean"},"errors":[],"api_detail":{"method":"Always returns true — agent is always available as long as Claude Code is running"},"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-2"]}],"data_models":[{"name":"AgentHTMLConfig","fields":[{"name":"designMdTemplate","type":"string","constraints":"base design system markdown template for quality floor"},{"name":"qualityChecklist","type":"string[]","constraints":"['correct base layout', 'coordinated color scheme', 'basic animation effects', 'responsive breakpoints', 'proper typography hierarchy']"},{"name":"maxParallelAgents","type":"number","constraints":"default 3, to avoid overwhelming system"},{"name":"subagentType","type":"string","constraints":"'oh-my-claudecode:designer' or 'oh-my-claudecode:executor'"}],"relationships":[]}],"nfr_constraints":{"performance":"generateScreen < 120s (agent generation slower than Stitch). generateVariants < 300s for 5 variants (parallelized).","security":null,"other":"Quality floor: layout correct + colors coordinated + basic animation. Verified against qualityChecklist."},"requirement_refs":["REQ-001","REQ-010"],"state_machine":null},
+  {"id":"MOD-004","name":"preview-engine","responsibility":"Serve interactive design preview in the browser. Manages local HTTP server lifecycle, generates selector page HTML, handles selection POST callback, manages timeout and cleanup.","interfaces":[{"type":"internal","name":"PreviewEngine.start","input_schema":{"variants":"DesignVariant[]","pageSpec":"PageSpec","options":"{darkVariants?: DesignVariant[], timeout?: number}"},"output_schema":{"session":"PreviewSession"},"errors":[],"requirement_refs":["REQ-003"],"acceptance_criteria_refs":["REQ-003-AC-1"]},{"type":"internal","name":"PreviewEngine.awaitSelection","input_schema":{"session":"PreviewSession"},"output_schema":{"result":"Promise<SelectionResult>"},"errors":["TIMEOUT"],"api_detail":{"method":"Returns Promise that resolves on POST /api/select or rejects on timeout (default 30min)"},"requirement_refs":["REQ-004"],"acceptance_criteria_refs":["REQ-004-AC-1","REQ-004-AC-2","REQ-004-AC-3"]},{"type":"internal","name":"PreviewEngine.updateVariants","input_schema":{"session":"PreviewSession","variants":"DesignVariant[]","round":"number"},"output_schema":{"void":true},"errors":[],"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-4"]},{"type":"internal","name":"PreviewEngine.stop","input_schema":{"session":"PreviewSession"},"output_schema":{"void":true},"errors":[],"requirement_refs":["REQ-003"],"acceptance_criteria_refs":[]},{"type":"internal","name":"PreviewEngine.openOrDisplay","input_schema":{"url":"string"},"output_schema":{"method":"'browser' | 'url_display'"},"errors":[],"api_detail":{"method":"Check SSH_CLIENT, SSH_TTY, SSH_CONNECTION env vars. If any set → print URL to stderr. Otherwise → exec xdg-open/open."},"requirement_refs":["REQ-003"],"acceptance_criteria_refs":["REQ-003-AC-6"]},{"type":"api","name":"POST /api/select","input_schema":{"body":{"variantId":"string","round":"number","feedback":"string | null","action":"'select' | 'iterate' | 'rollback' | 'regenerate_pair'","hybridSelections":"Array<{variantId: string, dimensions: string[]}> | null","rollbackToRound":"number | null","overrideDesignSystem":"boolean"}},"output_schema":{"status":"'ok'","message":"string"},"errors":[],"requirement_refs":["REQ-004","REQ-005"],"acceptance_criteria_refs":["REQ-004-AC-1","REQ-005-AC-1","REQ-005-AC-2","REQ-005-AC-4"]},{"type":"api","name":"GET /api/variants/:round","input_schema":{"round":"number"},"output_schema":{"variants":"Array<{id: string, title: string, htmlPath: string}>"},"errors":[],"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-3","REQ-005-AC-4"]}],"data_models":[{"name":"PreviewSession","fields":[{"name":"id","type":"string","constraints":"UUID"},{"name":"port","type":"number","constraints":"auto-detected available port"},{"name":"url","type":"string","constraints":"http://localhost:{port}"},{"name":"server","type":"http.Server","constraints":"Node.js HTTP server instance"},{"name":"tmpDir","type":"string","constraints":"/tmp/nopilot-preview-{id}/"},{"name":"currentRound","type":"number","constraints":"starts at 1"},{"name":"selectionPromise","type":"Promise<SelectionResult>","constraints":"resolves on user action"},{"name":"timeoutMs","type":"number","constraints":"default 1800000 (30 min)"}],"relationships":[{"target":"DesignVariant","type":"has_many"}]},{"name":"SelectionResult","fields":[{"name":"action","type":"'select'|'iterate'|'rollback'","constraints":""},{"name":"selectedVariantId","type":"string | null","constraints":"set when action is 'select'"},{"name":"feedback","type":"string | null","constraints":"text micro-feedback for iteration"},{"name":"hybridSelections","type":"HybridSelection[] | null","constraints":"for hybrid DNA mode"},{"name":"rollbackToRound","type":"number | null","constraints":"for rollback action"},{"name":"round","type":"number","constraints":"which round this selection was made in"}],"relationships":[]},{"name":"HybridSelection","fields":[{"name":"variantId","type":"string","constraints":""},{"name":"dimensions","type":"string[]","constraints":"e.g. ['colors', 'layout', 'typography', 'animation']"}],"relationships":[]},{"name":"DevicePreset","fields":[{"name":"name","type":"string","constraints":"display name"},{"name":"width","type":"number","constraints":"px"},{"name":"height","type":"number","constraints":"px"},{"name":"hasBezel","type":"boolean","constraints":"show device frame border"},{"name":"category","type":"'phone'|'tablet'|'desktop'|'special'","constraints":""}],"relationships":[]}],"nfr_constraints":{"performance":"Page load < 3 seconds. Device switch < 200ms (CSS only, no reload).","security":"Server binds to 0.0.0.0 for SSH access. No sensitive data served.","other":"Each session uses unique port (INV-006). Temp files in /tmp only (INV-002)."},"requirement_refs":["REQ-003","REQ-004","REQ-005","REQ-011"],"state_machine":{"states":["idle","serving","awaiting_selection","updating","closing"],"transitions":[{"from":"idle","event":"start","to":"serving"},{"from":"serving","event":"variants_loaded","to":"awaiting_selection"},{"from":"awaiting_selection","event":"selection_received","to":"serving"},{"from":"awaiting_selection","event":"update_variants","to":"updating"},{"from":"updating","event":"update_complete","to":"awaiting_selection"},{"from":"awaiting_selection","event":"timeout","to":"closing"},{"from":"serving","event":"stop","to":"closing"},{"from":"closing","event":"cleanup_done","to":"idle"}]}},
+  {"id":"MOD-005","name":"iteration-engine","responsibility":"Manage design iteration lifecycle: text feedback refinement, hybrid DNA synthesis from multiple variants, iteration history storage, round rollback. Bridges user feedback from PreviewEngine to DesignProvider.","interfaces":[{"type":"internal","name":"IterationEngine.processSelection","input_schema":{"result":"SelectionResult","provider":"DesignProvider","pageSpec":"PageSpec"},"output_schema":{"outcome":"IterationOutcome"},"errors":["GENERATION_FAILED"],"api_detail":{"method":"Routes to handleSelect, handleIterate, or handleRollback based on result.action"},"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-1","REQ-005-AC-2","REQ-005-AC-4"]},{"type":"internal","name":"IterationEngine.handleIterate","input_schema":{"feedback":"string | null","hybridSelections":"HybridSelection[] | null","provider":"DesignProvider","pageSpec":"PageSpec"},"output_schema":{"newVariants":"DesignVariant[]","round":"number"},"errors":["GENERATION_FAILED"],"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-1","REQ-005-AC-2"]},{"type":"internal","name":"IterationEngine.handleRollback","input_schema":{"targetRound":"number"},"output_schema":{"variants":"DesignVariant[]"},"errors":[],"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-3","REQ-005-AC-4"]},{"type":"internal","name":"IterationEngine.synthesizeDNA","input_schema":{"selections":"Array<{dna: DesignDNA, dimensions: string[]}>"},"output_schema":{"compositeDesignMd":"string"},"errors":[],"api_detail":{"method":"LLM merges specified dimensions from each DNA into a single coherent designMd."},"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-2"]},{"type":"internal","name":"IterationEngine.getHistory","input_schema":{},"output_schema":{"rounds":"Map<number, DesignVariant[]>"},"errors":[],"requirement_refs":["REQ-005"],"acceptance_criteria_refs":["REQ-005-AC-3"]}],"data_models":[{"name":"IterationOutcome","fields":[{"name":"type","type":"'selected'|'new_round'|'rollback'","constraints":""},{"name":"selectedVariant","type":"DesignVariant | null","constraints":"set when type is 'selected'"},{"name":"newVariants","type":"DesignVariant[] | null","constraints":"set when type is 'new_round'"},{"name":"round","type":"number","constraints":"current round number after operation"}],"relationships":[]},{"name":"IterationHistory","fields":[{"name":"rounds","type":"Map<number, DesignVariant[]>","constraints":"in-memory, session-scoped"},{"name":"feedbackLog","type":"Array<{round: number, feedback: string}>","constraints":"for prompt context accumulation"},{"name":"currentRound","type":"number","constraints":"starts at 1, increments on each iteration"}],"relationships":[]}],"nfr_constraints":{"performance":"DNA synthesis (LLM call) < 30 seconds. History retrieval O(1).","security":null,"other":"Memory bounded: max ~10 rounds x 5 variants x 25KB = ~1.25MB"},"requirement_refs":["REQ-005"],"state_machine":null},
+  {"id":"MOD-006","name":"style-detector","responsibility":"Detect and analyze existing frontend design language in a project. Parses CSS/SCSS/Tailwind config to extract style tokens. Accepts user-provided screenshots for visual style analysis.","interfaces":[{"type":"internal","name":"StyleDetector.detect","input_schema":{"projectRoot":"string"},"output_schema":{"detected":"boolean","profile":"StyleProfile | null"},"errors":["STYLE_DETECTION_FAILED"],"api_detail":{"method":"Scan projectRoot for tailwind.config.{js,ts,mjs}, *.css, *.scss, design-tokens.json, theme.{js,ts}."},"requirement_refs":["REQ-006"],"acceptance_criteria_refs":["REQ-006-AC-1","REQ-006-AC-4"]},{"type":"internal","name":"StyleDetector.analyzeScreenshots","input_schema":{"screenshots":"string[]"},"output_schema":{"profile":"StyleProfile"},"errors":["STYLE_DETECTION_FAILED"],"api_detail":{"method":"Use LLM vision to analyze screenshots. Extract dominant colors, typography style, spacing density, border-radius, animation impression."},"requirement_refs":["REQ-006"],"acceptance_criteria_refs":["REQ-006-AC-2"]},{"type":"internal","name":"StyleDetector.synthesizeConstraint","input_schema":{"profile":"StyleProfile"},"output_schema":{"designMd":"string"},"errors":[],"api_detail":{"method":"Convert StyleProfile into a Stitch-compatible designMd markdown document."},"requirement_refs":["REQ-006"],"acceptance_criteria_refs":["REQ-006-AC-3"]}],"data_models":[{"name":"StyleProfile","fields":[{"name":"source","type":"'css'|'scss'|'tailwind'|'screenshot'|'design-tokens'","constraints":""},{"name":"colors","type":"Record<string, string>","constraints":"named color → hex"},{"name":"fonts","type":"string[]","constraints":"font family names in order of preference"},{"name":"spacingScale","type":"number[]","constraints":"spacing values in px"},{"name":"borderRadius","type":"Record<string, string>","constraints":"size name → value"},{"name":"shadows","type":"string[]","constraints":"CSS box-shadow values"},{"name":"breakpoints","type":"Record<string, string> | null","constraints":"e.g. {sm: '640px', md: '768px'}"},{"name":"darkMode","type":"boolean | null","constraints":"true if dark mode detected as primary or supported"},{"name":"componentLibrary","type":"string | null","constraints":"e.g. 'shadcn', 'antd', 'material-ui' if detected from imports"},{"name":"confidence","type":"number","constraints":"0-1, how confident the detection is"}],"relationships":[]},{"name":"StyleFileMatch","fields":[{"name":"path","type":"string","constraints":"relative to project root"},{"name":"type","type":"'css'|'scss'|'tailwind-config'|'design-tokens'|'theme-file'","constraints":""},{"name":"priority","type":"number","constraints":"higher = more authoritative. tailwind-config > theme-file > design-tokens > css > scss"}],"relationships":[]}],"nfr_constraints":{"performance":"File scanning < 5 seconds. CSS parsing < 10 seconds. Screenshot analysis < 30 seconds.","security":"Only read files within project root. Never execute config files (read as text).","other":"Coverage: CSS + Tailwind + SCSS as primary targets. styled-components/CSS-in-JS not covered initially (ACCEPT_COST)."},"requirement_refs":["REQ-006"],"state_machine":null},
+  {"id":"MOD-007","name":"post-processor","responsibility":"Post-process downloaded HTML mockups to ensure self-containment and correctness. Three operations: font family patching, external asset inlining (images to base64), and responsive CSS verification/injection.","interfaces":[{"type":"internal","name":"PostProcessor.process","input_schema":{"html":"string","options":"PostProcessOptions"},"output_schema":{"html":"string","report":"PostProcessReport"},"errors":["POST_PROCESS_FAILED"],"api_detail":{"method":"Runs all three operations in sequence: patchFonts → inlineAssets → verifyResponsive"},"requirement_refs":["REQ-009"],"acceptance_criteria_refs":["REQ-009-AC-1","REQ-009-AC-2","REQ-009-AC-3"]},{"type":"internal","name":"PostProcessor.patchFonts","input_schema":{"html":"string","targetFontStack":"string"},"output_schema":{"html":"string","patchCount":"number"},"errors":[],"requirement_refs":["REQ-009"],"acceptance_criteria_refs":["REQ-009-AC-1"]},{"type":"internal","name":"PostProcessor.inlineAssets","input_schema":{"html":"string"},"output_schema":{"html":"string","inlinedCount":"number","failedUrls":"string[]"},"errors":["POST_PROCESS_FAILED"],"requirement_refs":["REQ-009"],"acceptance_criteria_refs":["REQ-009-AC-2"]},{"type":"internal","name":"PostProcessor.verifyResponsive","input_schema":{"html":"string"},"output_schema":{"html":"string","injected":"boolean"},"errors":[],"requirement_refs":["REQ-009"],"acceptance_criteria_refs":["REQ-009-AC-3"]}],"data_models":[{"name":"PostProcessOptions","fields":[{"name":"targetFontStack","type":"string","constraints":"e.g. '\"PingFang SC\", -apple-system, \"SF Pro Display\", sans-serif'"},{"name":"inlineAssets","type":"boolean","constraints":"default true"},{"name":"verifyResponsive","type":"boolean","constraints":"default true"},{"name":"assetDownloadTimeout","type":"number","constraints":"ms, default 10000"}],"relationships":[]},{"name":"PostProcessReport","fields":[{"name":"fontPatchCount","type":"number","constraints":"number of font-family declarations replaced"},{"name":"assetsInlined","type":"number","constraints":"number of external assets converted to base64"},{"name":"assetsFailed","type":"string[]","constraints":"URLs that failed to download"},{"name":"responsiveInjected","type":"boolean","constraints":"true if responsive CSS was injected"}],"relationships":[]}],"nfr_constraints":{"performance":"Font patching < 100ms. Asset inlining < 30s (network-bound, parallel downloads). Responsive check < 100ms.","security":"Only download from HTTPS URLs. No execution of downloaded content.","other":null},"requirement_refs":["REQ-009"],"state_machine":null},
+  {"id":"MOD-008","name":"token-exporter","responsibility":"Export design tokens from DesignDNA into standardized formats. Primary output: W3C DTCG .tokens.json (2025.10). Simplified output for Tier 2: CSS custom properties. Writes to specs/mockups/tokens.json.","interfaces":[{"type":"internal","name":"TokenExporter.exportDTCG","input_schema":{"dna":"DesignDNA"},"output_schema":{"tokens":"DTCGTokenFile","json":"string"},"errors":["TOKEN_EXPORT_FAILED"],"api_detail":{"method":"LLM converts DesignDNA (including designMd) into DTCG-compliant JSON. Validates output against DTCG schema."},"requirement_refs":["REQ-008"],"acceptance_criteria_refs":["REQ-008-AC-1","REQ-008-AC-2"]},{"type":"internal","name":"TokenExporter.exportCSS","input_schema":{"dna":"DesignDNA"},"output_schema":{"css":"string"},"errors":["TOKEN_EXPORT_FAILED"],"api_detail":{"method":"Generate CSS custom properties (:root { --color-primary: ...; }) from DesignDNA."},"requirement_refs":["REQ-008"],"acceptance_criteria_refs":["REQ-008-AC-3"]},{"type":"internal","name":"TokenExporter.writeToSpecs","input_schema":{"tokens":"DTCGTokenFile | string","format":"'dtcg' | 'css'","outputDir":"string"},"output_schema":{"path":"string"},"errors":["TOKEN_EXPORT_FAILED"],"requirement_refs":["REQ-008"],"acceptance_criteria_refs":["REQ-008-AC-1"]}],"data_models":[{"name":"DTCGTokenFile","fields":[{"name":"color","type":"Record<string, DTCGToken>","constraints":"W3C DTCG 2025.10 format"},{"name":"typography","type":"Record<string, DTCGToken>","constraints":"$type: 'typography' with fontFamily, fontSize etc"},{"name":"spacing","type":"Record<string, DTCGToken>","constraints":"$type: 'dimension' with value and unit"},{"name":"borderRadius","type":"Record<string, DTCGToken>","constraints":"$type: 'dimension'"},{"name":"shadow","type":"Record<string, DTCGToken>","constraints":"$type: 'shadow' with color, offsetX, offsetY, blur, spread"}],"relationships":[]},{"name":"DTCGToken","fields":[{"name":"$type","type":"string","constraints":"'color'|'dimension'|'typography'|'shadow'"},{"name":"$value","type":"object","constraints":"format depends on $type, per DTCG 2025.10 spec"},{"name":"$description","type":"string | undefined","constraints":"optional human-readable description"}],"relationships":[]}],"nfr_constraints":{"performance":"DTCG export < 15 seconds (LLM conversion). CSS export < 5 seconds.","security":null,"other":"DTCG output must validate against W3C DTCG 2025.10 JSON schema. First-batch audit pass rate >= 80%."},"requirement_refs":["REQ-008"],"state_machine":null},
+  {"id":"MOD-009","name":"taste-orchestrator","responsibility":"Main entry point and flow coordinator for UI taste exploration. Orchestrates the full Phase 0-8 lifecycle: detects frontend involvement, triggers style detection, coordinates provider selection, manages page-by-page variant generation, delegates to preview/iteration engines, handles cross-page consistency, triggers post-processing and token export, manages final save and cleanup.","interfaces":[{"type":"internal","name":"TasteOrchestrator.run","input_schema":{"pages":"PageSpec[]","options":"TasteOrchestratorOptions"},"output_schema":{"result":"TasteExplorationResult"},"errors":["PROVIDER_UNAVAILABLE","GENERATION_FAILED","TIMEOUT"],"requirement_refs":["REQ-001","REQ-002","REQ-003","REQ-004","REQ-007"],"acceptance_criteria_refs":["REQ-001-AC-3","REQ-002-AC-1","REQ-003-AC-1","REQ-004-AC-2"]},{"type":"internal","name":"TasteOrchestrator.detectExistingStyle","input_schema":{"projectRoot":"string","screenshots":"string[]"},"output_schema":{"constraint":"string | null"},"errors":["STYLE_DETECTION_FAILED"],"requirement_refs":["REQ-006"],"acceptance_criteria_refs":["REQ-006-AC-1","REQ-006-AC-2","REQ-006-AC-3","REQ-006-AC-4"]},{"type":"internal","name":"TasteOrchestrator.processPage","input_schema":{"page":"PageSpec","designSystemRef":"DesignSystemRef | null","provider":"DesignProvider"},"output_schema":{"selectedVariant":"DesignVariant","dna":"DesignDNA"},"errors":["GENERATION_FAILED","TIMEOUT","QUOTA_EXHAUSTED"],"requirement_refs":["REQ-002","REQ-003","REQ-004","REQ-005","REQ-010"],"acceptance_criteria_refs":["REQ-002-AC-1","REQ-010-AC-4"]},{"type":"internal","name":"TasteOrchestrator.generateDarkLightPair","input_schema":{"variant":"DesignVariant","provider":"DesignProvider"},"output_schema":{"darkVariant":"DesignVariant | null","lightVariant":"DesignVariant | null"},"errors":["GENERATION_FAILED"],"requirement_refs":["REQ-011"],"acceptance_criteria_refs":["REQ-011-AC-1","REQ-011-AC-3"]},{"type":"internal","name":"TasteOrchestrator.saveResults","input_schema":{"results":"PageResult[]","dna":"DesignDNA","stitchProjectId":"string | null"},"output_schema":{"savedPaths":"string[]"},"errors":[],"requirement_refs":["REQ-008","REQ-009"],"acceptance_criteria_refs":["REQ-008-AC-1","REQ-008-AC-2"]},{"type":"internal","name":"TasteOrchestrator.runTier3","input_schema":{"pages":"PageSpec[]"},"output_schema":{"result":"TasteExplorationResult"},"errors":[],"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-3"]},{"type":"internal","name":"TasteOrchestrator.handleOverrideStyle","input_schema":{"page":"PageSpec","provider":"DesignProvider"},"output_schema":{"selectedVariant":"DesignVariant","dna":"DesignDNA"},"errors":["GENERATION_FAILED"],"requirement_refs":["REQ-007"],"acceptance_criteria_refs":["REQ-007-AC-3"]},{"type":"internal","name":"TasteOrchestrator.notifyUser","input_schema":{"type":"'progress'|'quota_warning'|'tier_switch'|'error'","message":"string"},"output_schema":{"void":true},"errors":[],"requirement_refs":["REQ-010"],"acceptance_criteria_refs":["REQ-010-AC-4"]}],"data_models":[{"name":"TasteOrchestratorOptions","fields":[{"name":"projectRoot","type":"string","constraints":"path to project root for style detection"},{"name":"screenshots","type":"string[]","constraints":"user-provided screenshot paths, can be empty"},{"name":"language","type":"string","constraints":"target language for UI text, e.g. 'zh-CN'"},{"name":"fontStack","type":"string","constraints":"target font family stack"},{"name":"liteMode","type":"boolean","constraints":"if true, only process the single most important page"}],"relationships":[]},{"name":"PageResult","fields":[{"name":"page","type":"PageSpec","constraints":""},{"name":"selectedVariant","type":"DesignVariant","constraints":""},{"name":"darkVariant","type":"DesignVariant | null","constraints":""},{"name":"dna","type":"DesignDNA","constraints":""},{"name":"iterationRounds","type":"number","constraints":"how many rounds it took"}],"relationships":[]},{"name":"TasteExplorationResult","fields":[{"name":"pages","type":"PageResult[]","constraints":""},{"name":"tokensPath","type":"string","constraints":"specs/mockups/tokens.json"},{"name":"mockupsDir","type":"string","constraints":"specs/mockups/"},{"name":"designSystemRef","type":"DesignSystemRef | null","constraints":""},{"name":"stitchProjectId","type":"string | null","constraints":"persisted for future reference"},{"name":"tier","type":"1 | 2 | 3","constraints":"which tier was actually used"},{"name":"totalApiCalls","type":"number","constraints":"Stitch API calls made"}],"relationships":[]},{"name":"UITasteConstraint","fields":[{"name":"designDNA","type":"DesignDNA","constraints":"extracted from selected variant"},{"name":"tokensPath","type":"string","constraints":"relative path to tokens.json"},{"name":"mockupsDir","type":"string","constraints":"relative path to mockups directory"},{"name":"stitchProjectId","type":"string | null","constraints":"for future Stitch reference"},{"name":"tier","type":"1 | 2 | 3","constraints":"which tier was used"},{"name":"selectedPages","type":"Array<{name: string, mockupFile: string, darkMockupFile: string | null}>","constraints":""}],"relationships":[]}],"nfr_constraints":{"performance":"Full flow for 1 page (5 variants + selection): < 3 minutes end-to-end including user think time excluded.","security":"Never write API keys to specs/ directory (INV-001). All temp files in /tmp only (INV-002).","other":"discover.json backward compatibility: ui_taste field is optional, absence means no UI (INV-004)."},"requirement_refs":["REQ-001","REQ-002","REQ-003","REQ-004","REQ-005","REQ-006","REQ-007","REQ-008","REQ-009","REQ-010","REQ-011","REQ-012"],"state_machine":{"states":["idle","detecting_style","selecting_provider","processing_page","tier3_text","saving_results","complete","failed"],"transitions":[{"from":"idle","event":"run","to":"detecting_style"},{"from":"detecting_style","event":"style_detected","to":"selecting_provider"},{"from":"detecting_style","event":"no_style","to":"selecting_provider"},{"from":"selecting_provider","event":"provider_selected","to":"processing_page"},{"from":"selecting_provider","event":"all_unavailable","to":"tier3_text"},{"from":"tier3_text","event":"tier3_complete","to":"saving_results"},{"from":"processing_page","event":"page_complete","to":"processing_page"},{"from":"processing_page","event":"page_complete","to":"saving_results"},{"from":"processing_page","event":"quota_exhausted","to":"selecting_provider"},{"from":"processing_page","event":"timeout","to":"failed"},{"from":"saving_results","event":"saved","to":"complete"},{"from":"complete","event":"cleanup","to":"idle"}]}}
+];
+
+const REVIEW = {"phase":"spec_review","backward_verification":{"passed":false,"uncovered_criteria":[{"criteria_id":"REQ-010-AC-3","finding":"Tier 3 text-based taste questions have no module, no interface, and no data model. ProviderRegistry.detectAndSelect returns tier=3 but no module defines what happens next.","severity":"block","confidence":"high","ai_bias_flags":["missing_negative_paths"]},{"criteria_id":"REQ-007-AC-3","finding":"User override of inherited style for a specific page is completely absent from the spec. Zero modules reference this AC. No UI control in POST /api/select body, no flag in SelectionResult, no orchestrator interface supports it.","severity":"block","confidence":"high","ai_bias_flags":[]},{"criteria_id":"REQ-003-AC-6","finding":"SSH environment detection and adaptive behavior (display URL vs auto-open browser) is not specified in any module interface. MOD-004 NFR mentions binding to 0.0.0.0 for SSH access but the behavioral branching logic has no interface, no data model, and no acceptance_criteria_ref.","severity":"block","confidence":"high","ai_bias_flags":[]},{"criteria_id":"REQ-003-AC-4","finding":"The 10 specific device presets with exact pixel dimensions are not enumerated anywhere in the spec. MOD-004 defines a generic DevicePreset data model but the concrete preset list is absent.","severity":"block","confidence":"high","ai_bias_flags":[]},{"criteria_id":"REQ-011-AC-3","finding":"User mechanism to signal dissatisfaction with auto-generated dark/light counterpart and request re-generation is unspecified. POST /api/select body has actions 'select', 'iterate', 'rollback' — none represent 'regenerate dark/light counterpart'.","severity":"block","confidence":"medium","ai_bias_flags":["missing_negative_paths"]}],"invariant_violations":[{"invariant_id":"INV-004","module_id":"MOD-001","finding":"INV-004 (backward compatibility with discover.json v4.0) references REQ-001 in its requirement_refs, meaning MOD-001 should enforce this invariant. MOD-001 invariant_refs lists only INV-001 and INV-005, omitting INV-004.","severity":"warn","confidence":"high","ai_bias_flags":[]}]},"undeclared_core_behaviors":[{"module_id":"MOD-009","behavior":"liteMode option ('if true, only process the single most important page') has no requirement, scenario, or NFR justification. This is an undeclared user-facing behavior.","severity":"warn","confidence":"medium","ai_bias_flags":["symmetric_completion"]}],"interface_consistency":{"passed":false,"findings":[{"target_id":"MOD-001/DesignProvider.applyDesignSystem","finding":"applyDesignSystem is declared in the DesignProvider interface (MOD-001) but neither MOD-002 (StitchProvider) nor MOD-003 (AgentHTMLProvider) specifies an interface entry for it. MOD-002 mentions 'apply_design_system' in responsibility text only. Both providers are contractually required to implement the full interface.","severity":"block","confidence":"high","ai_bias_flags":["optimistic_assessment"]},{"target_id":"acceptance_criteria_refs traceability","finding":"12 of 45 acceptance criteria (27%) are not referenced in any module interface's acceptance_criteria_refs. Full list: REQ-001-AC-2, REQ-003-AC-2, REQ-003-AC-3, REQ-003-AC-4, REQ-003-AC-5, REQ-003-AC-6, REQ-007-AC-2, REQ-007-AC-3, REQ-011-AC-2, REQ-012-AC-1, REQ-012-AC-2, REQ-012-AC-3.","severity":"warn","confidence":"high","ai_bias_flags":["optimistic_assessment"]}]},"ai_bias_detection":{"patterns_found":[{"bias_type":"missing_negative_paths","target_id":"REQ-010-AC-3","evidence":"Tier 3 degradation (worst-case fallback) is entirely unspecified while happy paths (Tier 1) and partial degradation (Tier 2) are thoroughly covered.","confidence":"high"},{"bias_type":"optimistic_assessment","target_id":"MOD-002","evidence":"StitchProvider declares 7 interfaces but applyDesignSystem is in the DesignProvider contract without a corresponding MOD-002 interface entry.","confidence":"high"},{"bias_type":"symmetric_completion","target_id":"MOD-009","evidence":"liteMode option added without requirement justification. Appears to exist for completeness rather than being driven by a user need.","confidence":"medium"}]}};
+
+// ─── MODULE COLOR MAP ────────────────────────────────────────────────────────
+
+const MOD_COLORS = {
+  'MOD-001': '#58a6ff',
+  'MOD-002': '#3fb950',
+  'MOD-003': '#39d353',
+  'MOD-004': '#bc8cff',
+  'MOD-005': '#f0883e',
+  'MOD-006': '#d29922',
+  'MOD-007': '#f85149',
+  'MOD-008': '#58a6ff',
+  'MOD-009': '#3fb950',
+};
+
+function modColor(id) { return MOD_COLORS[id] || '#8b949e'; }
+
+// ─── RENDER INTERFACES ────────────────────────────────────────────────────────
+
+function schemaToText(schema) {
+  if (!schema || Object.keys(schema).length === 0) return '{}';
+  if (schema.description) {
+    const s = schema;
+    if (s.methods) {
+      return Object.entries(s.methods).map(([k,v]) => `  ${k}(${v.input}): ${v.output}`).join('\n');
+    }
+    return s.description;
+  }
+  return Object.entries(schema).map(([k,v]) => {
+    if (typeof v === 'object' && v !== null) return `  ${k}: ${JSON.stringify(v)}`;
+    return `  ${k}: ${v}`;
+  }).join('\n');
+}
+
+function buildIfaceHTML(iface) {
+  const typeClass = `type-${iface.type}`;
+  const typeLabel = iface.type.toUpperCase();
+  const inputText = schemaToText(iface.input_schema);
+  const outputText = schemaToText(iface.output_schema);
+
+  const errorBadges = (iface.errors || []).map(e =>
+    `<span class="error-badge">${e}</span>`
+  ).join('');
+
+  const reqBadges = (iface.requirement_refs || []).map(r =>
+    `<span class="req-badge">${r}</span>`
+  ).join('');
+
+  const apiDetail = iface.api_detail ? (() => {
+    const lines = Object.entries(iface.api_detail).map(([k,v]) =>
+      typeof v === 'object' ? `${k}: ${JSON.stringify(v)}` : `${k}: ${v}`
+    ).join('\n');
+    return `<div class="schema-label">API Detail</div><div class="schema-block">${escHtml(lines)}</div>`;
+  })() : '';
+
+  return `
+  <div class="iface-item">
+    <div class="iface-header" onclick="toggleEl(this.nextElementSibling)">
+      <span class="type-badge ${typeClass}">${typeLabel}</span>
+      <span class="iface-name">${escHtml(iface.name)}</span>
+      <span style="color:var(--text-dim);font-size:11px">&#9660;</span>
+    </div>
+    <div class="iface-body">
+      <div class="schema-label">Input</div>
+      <div class="schema-block">${escHtml(inputText)}</div>
+      <div class="schema-label">Output</div>
+      <div class="schema-block">${escHtml(outputText)}</div>
+      ${apiDetail}
+      ${iface.errors && iface.errors.length ? `<div class="schema-label">Errors</div><div class="req-badges">${errorBadges}</div>` : ''}
+      ${iface.requirement_refs && iface.requirement_refs.length ? `<div class="req-badges" style="margin-top:8px">${reqBadges}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function buildModuleCard(mod, idx) {
+  const color = modColor(mod.id);
+  const slugClass = 'mod-' + mod.id.toLowerCase().replace('mod-', '0').replace('-','');
+  const isFirst = idx === 0;
+
+  const ifacesHTML = (mod.interfaces || []).map(iface => buildIfaceHTML(iface)).join('');
+
+  const nfrChips = [];
+  if (mod.nfr_constraints) {
+    const n = mod.nfr_constraints;
+    if (n.performance) nfrChips.push(`<span class="nfr-chip perf">&#9201; ${escHtml(n.performance)}</span>`);
+    if (n.security) nfrChips.push(`<span class="nfr-chip sec">&#128274; ${escHtml(n.security)}</span>`);
+    if (n.other) nfrChips.push(`<span class="nfr-chip other">${escHtml(n.other)}</span>`);
+  }
+
+  const reqRefs = (mod.requirement_refs || []).map(r =>
+    `<span class="req-badge">${r}</span>`
+  ).join('');
+
+  return `
+  <div class="module-block" style="--mod-color:${color}">
+    <div class="module-header" onclick="toggleModule(this)">
+      <span class="module-id-badge" style="background:${color}22;color:${color}">${mod.id}</span>
+      <span class="module-name">${escHtml(mod.name)}</span>
+      <span class="module-chevron ${isFirst ? 'open' : ''}">&#9654;</span>
+    </div>
+    <div class="module-body ${isFirst ? 'open' : ''}">
+      <div class="module-responsibility">${escHtml(mod.responsibility)}</div>
+      ${ifacesHTML ? `<div class="sub-label">Interfaces (${mod.interfaces.length})</div><div class="iface-list">${ifacesHTML}</div>` : ''}
+      ${nfrChips.length ? `<div class="sub-label">NFR Constraints</div><div class="nfr-grid">${nfrChips.join('')}</div>` : ''}
+      ${reqRefs ? `<div class="req-badges" style="margin-top:12px">${reqRefs}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+// ─── RENDER DATA MODELS ───────────────────────────────────────────────────────
+
+function buildDMCard(model, modId) {
+  const color = modColor(modId);
+  const fields = (model.fields || []).map(f => `
+    <li class="dm-field">
+      <span class="dm-field-name">${escHtml(f.name)}</span>
+      <span class="dm-field-type">${escHtml(f.type)}</span>
+      <span class="dm-field-constraint" title="${escHtml(f.constraints || '')}">${escHtml((f.constraints || '').substring(0, 40))}${(f.constraints||'').length > 40 ? '…' : ''}</span>
+    </li>`).join('');
+
+  const relBadges = (model.relationships || []).map(r =>
+    `<span class="nfr-chip" style="color:${color};border-color:${color}44;font-size:10px">${r.type} → ${r.target}</span>`
+  ).join('');
+
+  return `
+  <div class="dm-card" style="border-color:${color}44">
+    <div class="dm-header" style="border-bottom-color:${color}22">
+      <span class="dm-name" style="color:${color}">${escHtml(model.name)}</span>
+      <span class="dm-module-tag" style="background:${color}18;color:${color};border:1px solid ${color}33">${modId}</span>
+    </div>
+    <ul class="dm-fields">${fields}</ul>
+    ${relBadges ? `<div style="padding:8px 14px;border-top:1px solid var(--border)">${relBadges}</div>` : ''}
+  </div>`;
+}
+
+// ─── RENDER STATE MACHINE ─────────────────────────────────────────────────────
+
+function buildStateMachineSVG(sm, modId, modName) {
+  const color = modColor(modId);
+  const states = sm.states;
+  const transitions = sm.transitions;
+
+  // Layout states in a grid
+  const cols = Math.min(4, states.length);
+  const rows = Math.ceil(states.length / cols);
+  const nodeW = 140, nodeH = 40, colGap = 170, rowGap = 90;
+  const svgW = cols * colGap + 40;
+  const svgH = rows * rowGap + 80;
+
+  const statePos = {};
+  states.forEach((s, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    statePos[s] = { x: 30 + col * colGap + nodeW/2, y: 40 + row * rowGap + nodeH/2 };
+  });
+
+  // Special colors for terminal states
+  const terminalColors = { idle: '#6e7681', complete: '#3fb950', failed: '#f85149' };
+
+  const nodesSVG = states.map(s => {
+    const p = statePos[s];
+    const c = terminalColors[s] || color;
+    return `
+    <rect x="${p.x - nodeW/2}" y="${p.y - nodeH/2}" width="${nodeW}" height="${nodeH}" rx="8" fill="${c}18" stroke="${c}" stroke-width="1.2"/>
+    <text x="${p.x}" y="${p.y + 5}" text-anchor="middle" fill="${c}" font-size="12" font-family="-apple-system,sans-serif" font-weight="600">${escHtml(s)}</text>`;
+  }).join('');
+
+  // Draw transition lines
+  const transitionsSVG = transitions.map(t => {
+    const from = statePos[t.from];
+    const to = statePos[t.to];
+    if (!from || !to) return '';
+    const selfLoop = t.from === t.to;
+    if (selfLoop) {
+      const r = 28;
+      return `
+      <path d="M ${from.x} ${from.y - nodeH/2} C ${from.x} ${from.y - nodeH/2 - r*2} ${from.x + r} ${from.y - nodeH/2 - r*2} ${from.x + r} ${from.y - nodeH/2}" stroke="${color}" stroke-width="1" fill="none" stroke-dasharray="3,3" marker-end="url(#sm-arrow-${modId.replace('-','')})" opacity="0.6"/>
+      <text x="${from.x + r + 4}" y="${from.y - nodeH/2 - 12}" fill="${color}" font-size="9" font-family="-apple-system,sans-serif" opacity="0.8">${escHtml(t.event)}</text>`;
+    }
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    const ux = dx/len, uy = dy/len;
+    const sx = from.x + ux * nodeW/2;
+    const sy = from.y + uy * nodeH/2;
+    const ex = to.x - ux * nodeW/2;
+    const ey = to.y - uy * nodeH/2;
+    const mx = (sx + ex) / 2;
+    const my = (sy + ey) / 2;
+    const perp = { x: -uy * 20, y: ux * 20 };
+    const cx1 = mx + perp.x;
+    const cy1 = my + perp.y;
+    const midX = (sx + cx1 + ex) / 3;
+    const midY = (sy + cy1 + ey) / 3;
+    return `
+    <path d="M ${sx} ${sy} Q ${cx1} ${cy1} ${ex} ${ey}" stroke="${color}" stroke-width="1.1" fill="none" stroke-dasharray="4,3" marker-end="url(#sm-arrow-${modId.replace('-','')})" opacity="0.65"/>
+    <text x="${midX + perp.x*0.3}" y="${midY + perp.y*0.3}" text-anchor="middle" fill="${color}" font-size="9" font-family="-apple-system,sans-serif" opacity="0.9">${escHtml(t.event)}</text>`;
+  }).join('');
+
+  const markerId = `sm-arrow-${modId.replace('-','')}`;
+  return `
+  <div class="card" style="border-color:${color}44;margin-bottom:14px;overflow:hidden">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+      <span style="font-family:var(--font-mono);font-size:11px;font-weight:700;background:${color}18;color:${color};padding:2px 8px;border-radius:4px">${modId}</span>
+      <span style="font-weight:600;font-size:13px">${escHtml(modName)}</span>
+      <span style="margin-left:auto;font-size:11px;color:var(--text-muted)">${states.length} states · ${transitions.length} transitions</span>
+    </div>
+    <div class="sm-diagram" style="overflow-x:auto">
+      <svg width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="${markerId}" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="${color}" opacity="0.8"/>
+          </marker>
+        </defs>
+        ${transitionsSVG}
+        ${nodesSVG}
+      </svg>
+    </div>
+  </div>`;
+}
+
+// ─── RENDER DEPENDENCY GRAPH ──────────────────────────────────────────────────
+
+function renderDepGraph() {
+  const edges = INDEX.dependency_graph.edges;
+  document.getElementById('dep-edge-count').textContent = `${edges.length} edges`;
+
+  // Node positions in dep graph (compact linear layout)
+  const pos = {
+    'MOD-009': { x: 530, y: 40 },
+    'MOD-001': { x: 340, y: 130 },
+    'MOD-004': { x: 720, y: 130 },
+    'MOD-005': { x: 150, y: 130 },
+    'MOD-002': { x: 90, y: 210 },
+    'MOD-003': { x: 270, y: 210 },
+    'MOD-006': { x: 450, y: 210 },
+    'MOD-007': { x: 630, y: 210 },
+    'MOD-008': { x: 810, y: 210 },
+  };
+
+  const W = 950, H = 260, NW = 130, NH = 38;
+
+  let nodesSVG = '';
+  Object.entries(pos).forEach(([id, p]) => {
+    const c = modColor(id);
+    const name = MODULES.find(m => m.id === id)?.name || id;
+    const shortName = name.replace(/-/g, '-\u200B');
+    nodesSVG += `
+    <rect x="${p.x - NW/2}" y="${p.y - NH/2}" width="${NW}" height="${NH}" rx="7" fill="${c}12" stroke="${c}" stroke-width="1.3"/>
+    <text x="${p.x}" y="${p.y - 5}" text-anchor="middle" fill="${c}" font-size="9" font-family="SF Mono,monospace" font-weight="700">${id}</text>
+    <text x="${p.x}" y="${p.y + 10}" text-anchor="middle" fill="#8b949e" font-size="9.5" font-family="-apple-system,sans-serif">${escHtml(name.substring(0,16))}${name.length>16?'…':''}</text>`;
+  });
+
+  let edgesSVG = '';
+  edges.forEach(e => {
+    const from = pos[e.from];
+    const to = pos[e.to];
+    if (!from || !to) return;
+    const color = e.type === 'depends' ? '#bc8cff' : '#58a6ff';
+    const dash = e.type === 'depends' ? '3,4' : '5,3';
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    if (len === 0) return;
+    const ux = dx/len, uy = dy/len;
+    const sx = from.x + ux * NW/2;
+    const sy = from.y + uy * NH/2;
+    const ex = to.x - ux * NW/2;
+    const ey = to.y - uy * NH/2;
+    const arrowId = e.type === 'depends' ? 'dep-arrow-depends' : 'dep-arrow-calls';
+    const mx = (sx + ex)/2 - uy * 15;
+    const my = (sy + ey)/2 + ux * 15;
+    const midLabelX = (sx + mx + ex)/3;
+    const midLabelY = (sy + my + ey)/3 - 5;
+    edgesSVG += `
+    <path d="M ${sx} ${sy} Q ${mx} ${my} ${ex} ${ey}" stroke="${color}" stroke-width="1.2" fill="none" stroke-dasharray="${dash}" marker-end="url(#${arrowId})" opacity="0.6"/>
+    <text x="${midLabelX}" y="${midLabelY}" text-anchor="middle" fill="${color}" font-size="8" font-family="-apple-system,sans-serif" opacity="0.75">${e.type}</text>`;
+  });
+
+  const svg = document.getElementById('dep-svg');
+  svg.setAttribute('width', W);
+  svg.setAttribute('height', H);
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  svg.innerHTML = `
+  <defs>
+    <marker id="dep-arrow-calls" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#58a6ff"/>
+    </marker>
+    <marker id="dep-arrow-depends" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L8,3 z" fill="#bc8cff"/>
+    </marker>
+  </defs>
+  ${edgesSVG}
+  ${nodesSVG}`;
+}
+
+// ─── RENDER AUTO DECISIONS ────────────────────────────────────────────────────
+
+function renderDecisions() {
+  const grid = document.getElementById('decisions-grid');
+  document.getElementById('decisions-count').textContent = `${INDEX.auto_decisions.length} decisions`;
+
+  grid.innerHTML = INDEX.auto_decisions.map((d, i) => {
+    const impactClass = `impact-${d.impact_level}`;
+    const alts = (d.alternatives || []).map(a => `<li>${escHtml(a)}</li>`).join('');
+    return `
+    <div class="decision-card">
+      <div class="decision-top">
+        <div class="decision-num">${i+1}</div>
+        <div class="decision-text">${escHtml(d.decision)}</div>
+        <div class="impact-badge ${impactClass}">${d.impact_level}</div>
+      </div>
+      <div class="decision-section-label">Rationale</div>
+      <div class="decision-rationale">${escHtml(d.rationale)}</div>
+      ${d.alternatives && d.alternatives.length ? `
+      <div class="decision-section-label">Rejected Alternatives</div>
+      <ul class="decision-alt-list">${alts}</ul>` : ''}
+      ${d.impact ? `
+      <div class="decision-section-label">Impact</div>
+      <div class="decision-rationale">${escHtml(d.impact)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ─── RENDER REVIEW STATUS ─────────────────────────────────────────────────────
+
+function renderReview() {
+  const bv = REVIEW.backward_verification;
+  const blocks = bv.uncovered_criteria.filter(f => f.severity === 'block');
+  const warns = [
+    ...bv.uncovered_criteria.filter(f => f.severity === 'warn'),
+    ...bv.invariant_violations,
+    ...REVIEW.undeclared_core_behaviors,
+    ...REVIEW.interface_consistency.findings.filter(f => f.severity === 'warn'),
+  ];
+  const ifaceBlocks = REVIEW.interface_consistency.findings.filter(f => f.severity === 'block');
+
+  const summary = document.getElementById('review-summary');
+  summary.innerHTML = `
+  <div class="review-stat">
+    <div class="review-stat-num" style="color:var(--red)">${blocks.length + ifaceBlocks.length}</div>
+    <div class="review-stat-label">Blocking Issues</div>
+  </div>
+  <div class="review-stat">
+    <div class="review-stat-num" style="color:var(--amber)">${warns.length}</div>
+    <div class="review-stat-label">Warnings</div>
+  </div>
+  <div class="review-stat">
+    <div class="review-stat-num" style="color:var(--text-muted)">45</div>
+    <div class="review-stat-label">Total Criteria</div>
+  </div>
+  <div class="review-stat">
+    <div class="review-stat-num" style="color:var(--amber)">73%</div>
+    <div class="review-stat-label">AC Coverage</div>
+  </div>`;
+
+  const grid = document.getElementById('review-grid');
+
+  const findings = [
+    ...bv.uncovered_criteria.map(f => ({ ...f, section: 'Backward Verification', target: f.criteria_id })),
+    ...ifaceBlocks.map(f => ({ ...f, section: 'Interface Consistency', target: f.target_id })),
+    ...bv.invariant_violations.map(f => ({ ...f, section: 'Invariant Check', target: `${f.invariant_id} / ${f.module_id}`, finding: f.finding })),
+    ...REVIEW.undeclared_core_behaviors.map(f => ({ criteria_id: 'UNDECLARED', section: 'Undeclared Behavior', target: f.module_id, finding: f.behavior, severity: f.severity, ai_bias_flags: f.ai_bias_flags })),
+    ...REVIEW.interface_consistency.findings.filter(f => f.severity === 'warn').map(f => ({ ...f, section: 'Coverage Gap', target: f.target_id })),
+  ];
+
+  grid.innerHTML = findings.map(f => {
+    const sevClass = f.severity === 'block' ? 'block' : 'warn';
+    const biasFlags = (f.ai_bias_flags || []).map(b => `<span class="bias-flag">${escHtml(b)}</span>`).join('');
+    return `
+    <div class="finding-card ${sevClass}">
+      <div class="finding-header ${sevClass}">
+        <span class="sev-badge sev-${sevClass}">${f.severity.toUpperCase()}</span>
+        <span class="finding-criteria">${escHtml(f.criteria_id || f.target || '')}</span>
+        <span class="finding-target">${escHtml(f.section || '')}</span>
+      </div>
+      <div class="finding-body">
+        ${escHtml(f.finding || '')}
+        ${biasFlags ? `<div class="bias-flags">${biasFlags}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── UTILS ────────────────────────────────────────────────────────────────────
+
+function escHtml(s) {
+  if (typeof s !== 'string') s = String(s || '');
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toggleEl(el) {
+  el.classList.toggle('open');
+}
+
+function toggleModule(header) {
+  const body = header.nextElementSibling;
+  const chevron = header.querySelector('.module-chevron');
+  body.classList.toggle('open');
+  chevron.classList.toggle('open');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  // Interface modules
+  const ifaceContainer = document.getElementById('iface-modules');
+  ifaceContainer.innerHTML = MODULES.map((mod, i) => buildModuleCard(mod, i)).join('');
+
+  // Data models
+  const dmGrid = document.getElementById('dm-grid');
+  const allModels = [];
+  MODULES.forEach(mod => {
+    (mod.data_models || []).forEach(dm => {
+      allModels.push({ model: dm, modId: mod.id });
+    });
+  });
+  dmGrid.innerHTML = allModels.map(({ model, modId }) => buildDMCard(model, modId)).join('');
+
+  // State machines
+  const smContainer = document.getElementById('sm-container');
+  const smMods = MODULES.filter(m => m.state_machine && m.state_machine.states);
+  smContainer.innerHTML = smMods.map(m => buildStateMachineSVG(m.state_machine, m.id, m.name)).join('');
+
+  // Dep graph
+  renderDepGraph();
+
+  // Auto decisions
+  renderDecisions();
+
+  // Review
+  renderReview();
+});
+</script>
+</body>
+</html>

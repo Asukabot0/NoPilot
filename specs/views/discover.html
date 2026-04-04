@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoPilot — Discover Phase</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d1117;
+    --card: #161b22;
+    --card-hover: #1c2430;
+    --border: #30363d;
+    --border-muted: #21262d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --text-subtle: #6e7681;
+    --green: #3fb950;
+    --green-dim: #1a3a20;
+    --red: #f85149;
+    --red-dim: #3a1a1a;
+    --amber: #d29922;
+    --amber-dim: #3a2a10;
+    --blue: #58a6ff;
+    --blue-dim: #1a2a3a;
+    --purple: #bc8cff;
+    --purple-dim: #2a1a3a;
+    --teal: #39d353;
+    --nav-h: 56px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: var(--nav-h);
+    background: rgba(13,17,23,0.92);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 0;
+  }
+  .nav-brand {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    margin-right: 32px;
+    text-decoration: none;
+  }
+  .nav-brand span { color: var(--green); }
+  .nav-links { display: flex; gap: 4px; flex: 1; }
+  .nav-link {
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    color: var(--text-muted);
+    transition: background 0.15s, color 0.15s;
+  }
+  .nav-link:hover { background: var(--border-muted); color: var(--text); }
+  .nav-link.active {
+    background: var(--green-dim);
+    color: var(--green);
+    border: 1px solid rgba(63,185,80,0.25);
+  }
+  .nav-link.disabled { color: var(--text-subtle); pointer-events: none; }
+  .nav-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── Layout ── */
+  .page-wrap { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .page-header {
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border-muted);
+  }
+  .page-header-meta {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px;
+    font-size: 12px; color: var(--text-subtle);
+    text-transform: uppercase; letter-spacing: 0.8px;
+  }
+  .page-header h1 {
+    font-size: 28px; font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 10px;
+  }
+  .page-header h1 span { color: var(--green); }
+  .page-header p { color: var(--text-muted); font-size: 15px; max-width: 640px; }
+  .page-header-badges { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* ── Badges ── */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.2px;
+    line-height: 1.6;
+  }
+  .badge-green { background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .badge-red { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .badge-amber { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(210,153,34,0.3); }
+  .badge-blue { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(88,166,255,0.3); }
+  .badge-purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(188,140,255,0.3); }
+  .badge-gray { background: #21262d; color: var(--text-subtle); border: 1px solid var(--border); }
+  .badge-outline { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+
+  /* ── Section ── */
+  .section { margin-bottom: 56px; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-header:hover .section-title { color: var(--text); }
+  .section-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-size: 17px; font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.3px;
+    flex: 1;
+  }
+  .section-count {
+    font-size: 12px; color: var(--text-subtle);
+    background: var(--border-muted);
+    padding: 2px 8px; border-radius: 20px;
+  }
+  .collapse-btn {
+    width: 24px; height: 24px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+  }
+  .collapse-btn:hover { background: var(--border-muted); }
+  .section-body { transition: opacity 0.2s; }
+  .section-body.collapsed { display: none; }
+
+  /* ── Cards (generic) ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .card:hover { border-color: #484f58; background: var(--card-hover); }
+
+  /* ── Grid ── */
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3, .grid-auto { grid-template-columns: 1fr; }
+    .page-wrap { padding: 24px 16px 60px; }
+  }
+
+  /* ── REQ Cards ── */
+  .req-card { position: relative; overflow: hidden; }
+  .req-card::before {
+    content: '';
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+  .req-card.source-user_stated::before { background: var(--blue); }
+  .req-card.source-ai_inferred::before { background: var(--purple); }
+  .req-id {
+    font-size: 11px; font-weight: 700;
+    color: var(--text-subtle);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .req-story {
+    font-size: 13px; color: var(--text);
+    margin-bottom: 14px;
+    line-height: 1.55;
+  }
+  .req-story em { color: var(--blue); font-style: normal; font-weight: 500; }
+  .ac-list { list-style: none; margin-bottom: 14px; }
+  .ac-item {
+    display: flex; gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    background: rgba(255,255,255,0.03);
+    font-size: 12px;
+    line-height: 1.5;
+    align-items: flex-start;
+  }
+  .ac-item:last-child { margin-bottom: 0; }
+  .ac-type-badge {
+    flex-shrink: 0;
+    margin-top: 1px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+  }
+  .ac-type-state { background: rgba(88,166,255,0.15); color: var(--blue); }
+  .ac-type-event_driven { background: rgba(63,185,80,0.15); color: var(--green); }
+  .ac-type-condition { background: rgba(188,140,255,0.15); color: var(--purple); }
+  .ac-type-ubiquitous { background: rgba(210,153,34,0.15); color: var(--amber); }
+  .ac-text { color: var(--text-muted); }
+  .ac-text strong { color: var(--text); }
+  .req-footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .req-impact {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-muted);
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .req-impact-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.8px; color: var(--text-subtle);
+    margin-bottom: 4px;
+  }
+  .req-impact-row { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+  .req-impact-item { display: flex; gap: 4px; align-items: center; }
+  .req-impact-item span:first-child { color: var(--text-subtle); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  /* ── Scenario flow ── */
+  .scenario-block {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .scenario-head {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-muted);
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .scenario-head:hover { background: var(--card-hover); }
+  .scenario-id-pill {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    background: var(--border-muted);
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .scenario-title { font-size: 14px; font-weight: 600; flex: 1; }
+  .scenario-body { padding: 20px; }
+  .scenario-desc {
+    font-size: 13px; color: var(--text-muted);
+    line-height: 1.65;
+    margin-bottom: 20px;
+  }
+  .scenario-flow {
+    display: flex; gap: 0;
+    flex-wrap: wrap;
+    align-items: stretch;
+    margin-bottom: 20px;
+  }
+  .flow-step {
+    display: flex; align-items: center;
+  }
+  .flow-node {
+    padding: 8px 14px;
+    border-radius: 8px;
+    background: var(--border-muted);
+    border: 1px solid var(--border);
+    font-size: 12px; font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    position: relative;
+    transition: border-color 0.15s;
+  }
+  .flow-node:hover { border-color: var(--green); color: var(--green); }
+  .flow-arrow {
+    padding: 0 6px;
+    color: var(--text-subtle);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .req-refs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .req-ref-tag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px; font-weight: 600;
+    background: var(--blue-dim);
+    color: var(--blue);
+    border: 1px solid rgba(88,166,255,0.2);
+  }
+
+  /* ── Priority matrix ── */
+  .matrix-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+  }
+  .matrix-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex; gap: 12px; align-items: flex-start;
+    transition: border-color 0.15s;
+  }
+  .matrix-card:hover { border-color: #484f58; }
+  .feasibility-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+  .feasibility-High { background: var(--green); box-shadow: 0 0 6px rgba(63,185,80,0.5); }
+  .feasibility-Medium { background: var(--amber); box-shadow: 0 0 6px rgba(210,153,34,0.5); }
+  .feasibility-Low { background: var(--red); box-shadow: 0 0 6px rgba(248,81,73,0.5); }
+  .matrix-content { flex: 1; min-width: 0; }
+  .matrix-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+  .matrix-note { font-size: 11px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px; }
+  .matrix-req-refs { display: flex; gap: 4px; flex-wrap: wrap; }
+
+  /* ── Design philosophy ── */
+  .philosophy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 16px;
+  }
+  .philosophy-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .philosophy-card::before {
+    content: '"';
+    position: absolute;
+    top: -8px; left: 16px;
+    font-size: 80px;
+    color: rgba(63,185,80,0.08);
+    font-family: Georgia, serif;
+    line-height: 1;
+    pointer-events: none;
+  }
+  .philosophy-principle {
+    font-size: 16px; font-weight: 700;
+    color: var(--text);
+    margin-bottom: 12px;
+    line-height: 1.35;
+    position: relative;
+  }
+  .philosophy-justification {
+    font-size: 13px; color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 16px;
+    position: relative;
+  }
+  .philosophy-decisions {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .decision-tag {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-subtle);
+    border: 1px solid var(--border-muted);
+  }
+
+  /* ── Domain model SVG ── */
+  .domain-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .domain-svg { display: block; margin: 0 auto; }
+
+  /* ── Direction comparison ── */
+  .directions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+  .direction-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .direction-card.status-merged { border-color: rgba(88,166,255,0.4); }
+  .direction-card.status-abandoned { opacity: 0.65; }
+  .direction-card.status-selected { border-color: rgba(63,185,80,0.5); }
+  .direction-status-bar {
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .status-merged .direction-status-bar { background: var(--blue); }
+  .status-abandoned .direction-status-bar { background: var(--border); }
+  .status-selected .direction-status-bar { background: var(--green); }
+  .direction-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; margin-top: 8px; }
+  .direction-title { font-size: 13px; font-weight: 600; flex: 1; line-height: 1.45; }
+  .direction-differentiator {
+    font-size: 12px; color: var(--text-muted);
+    line-height: 1.55; margin-bottom: 12px;
+    font-style: italic;
+  }
+  .direction-risk {
+    font-size: 12px; color: var(--amber);
+    background: var(--amber-dim);
+    border: 1px solid rgba(210,153,34,0.2);
+    border-radius: 6px;
+    padding: 8px 10px;
+    margin-bottom: 12px;
+    line-height: 1.5;
+  }
+  .direction-reason {
+    font-size: 11px; color: var(--text-subtle);
+    font-style: italic;
+  }
+
+  /* ── Review status ── */
+  .review-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .review-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .review-card-head {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-muted);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .review-pass-icon {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; flex-shrink: 0;
+  }
+  .review-pass-icon.pass { background: var(--green-dim); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+  .review-pass-icon.fail { background: var(--red-dim); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+  .review-card-title { font-size: 14px; font-weight: 600; flex: 1; }
+  .review-card-body { padding: 14px 16px; }
+  .finding-item {
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+  .finding-item:last-child { margin-bottom: 0; }
+  .finding-item.warn { background: rgba(210,153,34,0.08); border: 1px solid rgba(210,153,34,0.2); }
+  .finding-item.block { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); }
+  .finding-item.fixed { background: rgba(63,185,80,0.06); border: 1px solid rgba(63,185,80,0.2); }
+  .finding-id {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .finding-id.warn { color: var(--amber); }
+  .finding-id.block { color: var(--red); }
+  .finding-id.fixed { color: var(--green); }
+  .finding-text { color: var(--text-muted); }
+  .finding-target {
+    display: inline-block;
+    padding: 0 5px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+    font-family: monospace;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
+
+  .review-summary-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    display: flex; gap: 32px; flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  .review-summary-stat { text-align: center; }
+  .review-summary-stat .num {
+    font-size: 28px; font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .review-summary-stat .label {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--text-subtle);
+  }
+  .review-summary-stat .num.green { color: var(--green); }
+  .review-summary-stat .num.amber { color: var(--amber); }
+  .review-summary-stat .num.red { color: var(--red); }
+  .review-summary-stat .num.blue { color: var(--blue); }
+
+  /* bias detection */
+  .bias-list { display: flex; flex-direction: column; gap: 10px; }
+  .bias-item {
+    padding: 12px 14px;
+    border-radius: 8px;
+    background: rgba(210,153,34,0.06);
+    border: 1px solid rgba(210,153,34,0.2);
+  }
+  .bias-type {
+    font-size: 11px; font-weight: 700;
+    color: var(--amber);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 4px;
+  }
+  .bias-evidence { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
+  .bias-conf {
+    display: inline-block; margin-top: 6px;
+    font-size: 10px; color: var(--text-subtle);
+    font-style: italic;
+  }
+
+  /* completeness snapshot */
+  .snapshot-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 16px;
+  }
+  .snapshot-title {
+    font-size: 13px; font-weight: 600; margin-bottom: 16px;
+    color: var(--text-muted);
+  }
+  .snapshot-bars { display: flex; flex-direction: column; gap: 10px; }
+  .snap-row { display: flex; align-items: center; gap: 12px; }
+  .snap-label { width: 180px; font-size: 12px; color: var(--text-muted); flex-shrink: 0; }
+  .snap-bar-bg {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-muted);
+    overflow: hidden;
+  }
+  .snap-bar-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 1s ease;
+  }
+  .snap-val { width: 36px; font-size: 12px; font-weight: 600; text-align: right; }
+
+  /* NFR table */
+  .nfr-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .nfr-table th {
+    text-align: left;
+    padding: 8px 12px;
+    background: var(--border-muted);
+    color: var(--text-subtle);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+  }
+  .nfr-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-muted);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+  .nfr-table tr:last-child td { border-bottom: none; }
+  .nfr-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .nfr-table td:first-child { color: var(--text); font-weight: 500; }
+  .nfr-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  /* invariants */
+  .invariant-list { display: flex; flex-direction: column; gap: 10px; }
+  .invariant-item {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 14px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .invariant-id {
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px; font-weight: 700;
+    background: rgba(188,140,255,0.12);
+    color: var(--purple);
+    border: 1px solid rgba(188,140,255,0.2);
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 1px;
+  }
+  .invariant-text {
+    font-size: 12px; color: var(--text-muted); line-height: 1.55;
+    font-family: 'SF Mono', 'Fira Mono', monospace;
+    flex: 1;
+  }
+  .invariant-scope {
+    font-size: 10px; color: var(--text-subtle);
+    margin-top: 4px; font-style: italic;
+  }
+
+  /* ── Tooltip ── */
+  [data-tip] { position: relative; cursor: default; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d333b;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+    max-width: 260px;
+    white-space: normal;
+    text-align: center;
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-brand" href="#">No<span>Pilot</span></a>
+  <div class="nav-links">
+    <a class="nav-link" href="dashboard.html">Dashboard</a>
+    <a class="nav-link active" href="discover.html">Discover</a>
+    <a class="nav-link" href="spec.html">Spec</a>
+    <a class="nav-link disabled" href="#">Build</a>
+  </div>
+  <div class="nav-status">
+    <div class="status-dot"></div>
+    approved · schema 4.0
+  </div>
+</nav>
+
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-header-meta">
+      <span>Phase</span>
+      <span style="color:var(--border)">·</span>
+      <span style="color:var(--green)">Discover</span>
+      <span style="color:var(--border)">·</span>
+      <span>Open Design Co-pilot</span>
+    </div>
+    <h1>Discover <span>Phase</span></h1>
+    <p>Platform-agnostic interactive design preview engine with adapter architecture. Stitch primary, agent HTML fallback.</p>
+    <div class="page-header-badges">
+      <span class="badge badge-green">Approved</span>
+      <span class="badge badge-outline">Schema 4.0</span>
+      <span class="badge badge-blue">12 Requirements</span>
+      <span class="badge badge-purple">3 Scenarios</span>
+      <span class="badge badge-outline">6 Invariants</span>
+      <span class="badge badge-amber">11 Warnings</span>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 1. Requirements Card List -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-requirements">
+    <div class="section-header" onclick="toggleSection('requirements')">
+      <div class="section-icon" style="background:var(--blue-dim)">📋</div>
+      <span class="section-title">Requirements</span>
+      <span class="section-count">12 items</span>
+      <button class="collapse-btn" id="btn-requirements">−</button>
+    </div>
+    <div class="section-body" id="body-requirements">
+      <div class="grid-auto" id="req-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 2. Core Scenarios Flow -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-scenarios">
+    <div class="section-header" onclick="toggleSection('scenarios')">
+      <div class="section-icon" style="background:var(--green-dim)">⚡</div>
+      <span class="section-title">Core Scenarios</span>
+      <span class="section-count">3 flows</span>
+      <button class="collapse-btn" id="btn-scenarios">−</button>
+    </div>
+    <div class="section-body" id="body-scenarios">
+      <div id="scenarios-wrap"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 3. Feature Priority Matrix -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-matrix">
+    <div class="section-header" onclick="toggleSection('matrix')">
+      <div class="section-icon" style="background:var(--amber-dim)">🎯</div>
+      <span class="section-title">Feature Priority Matrix</span>
+      <span class="section-count">12 MVP features</span>
+      <button class="collapse-btn" id="btn-matrix">−</button>
+    </div>
+    <div class="section-body" id="body-matrix">
+      <div class="matrix-grid" id="matrix-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 4. Design Philosophy -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-philosophy">
+    <div class="section-header" onclick="toggleSection('philosophy')">
+      <div class="section-icon" style="background:rgba(63,185,80,0.12)">✦</div>
+      <span class="section-title">Design Philosophy</span>
+      <span class="section-count">5 principles</span>
+      <button class="collapse-btn" id="btn-philosophy">−</button>
+    </div>
+    <div class="section-body" id="body-philosophy">
+      <div class="philosophy-grid" id="philosophy-grid"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 5. Domain Model Diagram -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-domain">
+    <div class="section-header" onclick="toggleSection('domain')">
+      <div class="section-icon" style="background:var(--purple-dim)">⬡</div>
+      <span class="section-title">Domain Model</span>
+      <span class="section-count">7 entities · 7 relationships</span>
+      <button class="collapse-btn" id="btn-domain">−</button>
+    </div>
+    <div class="section-body" id="body-domain">
+      <div class="domain-wrap">
+        <svg class="domain-svg" id="domain-svg" viewBox="0 0 900 500" width="100%" style="max-width:900px;min-height:400px;"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 6. Direction Comparison -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-directions">
+    <div class="section-header" onclick="toggleSection('directions')">
+      <div class="section-icon" style="background:rgba(88,166,255,0.1)">↯</div>
+      <span class="section-title">Direction Comparison</span>
+      <span class="section-count">4 explored</span>
+      <button class="collapse-btn" id="btn-directions">−</button>
+    </div>
+    <div class="section-body" id="body-directions">
+      <div class="directions-grid" id="directions-grid"></div>
+
+      <!-- Decision log -->
+      <div style="margin-top:20px;">
+        <div style="font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;font-weight:600;">Decision Log</div>
+        <div id="decision-log"></div>
+      </div>
+
+      <!-- Completeness snapshots -->
+      <div style="margin-top:24px;">
+        <div style="font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:12px;font-weight:600;">Completeness Progression</div>
+        <div id="snapshots-wrap"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 7. Review Status -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-review">
+    <div class="section-header" onclick="toggleSection('review')">
+      <div class="section-icon" style="background:rgba(63,185,80,0.1)">✓</div>
+      <span class="section-title">Review Status</span>
+      <span class="section-count" id="review-count-badge"></span>
+      <button class="collapse-btn" id="btn-review">−</button>
+    </div>
+    <div class="section-body" id="body-review">
+      <!-- Summary bar -->
+      <div class="review-summary-bar" id="review-summary"></div>
+      <!-- Cards -->
+      <div class="review-grid" id="review-cards"></div>
+      <!-- AI bias -->
+      <div style="margin-top:8px;">
+        <div style="font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;font-weight:600;">AI Bias Detection</div>
+        <div class="bias-list" id="bias-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════ -->
+  <!-- 8. Invariants & NFRs (bonus) -->
+  <!-- ══════════════════════════════════════ -->
+  <div class="section" id="sec-invariants">
+    <div class="section-header" onclick="toggleSection('invariants')">
+      <div class="section-icon" style="background:var(--purple-dim)">⊞</div>
+      <span class="section-title">System Invariants & NFRs</span>
+      <span class="section-count">6 invariants · 8 NFRs</span>
+      <button class="collapse-btn" id="btn-invariants">−</button>
+    </div>
+    <div class="section-body" id="body-invariants">
+      <div style="margin-bottom:20px;">
+        <div style="font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;font-weight:600;">Invariants</div>
+        <div class="invariant-list" id="invariant-list"></div>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.7px;margin-bottom:10px;font-weight:600;">Non-Functional Requirements</div>
+        <div class="nfr-wrap">
+          <table class="nfr-table" id="nfr-table">
+            <thead>
+              <tr>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Target</th>
+                <th>Priority</th>
+                <th>Source</th>
+              </tr>
+            </thead>
+            <tbody id="nfr-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page-wrap -->
+
+<script>
+// ── Embedded data ──────────────────────────────────────────
+const INDEX = {"phase":"discover","version":"4.0","status":"approved","mode":"full","constraints":{"tech_stack":["NoPilot TypeScript + prompt-based commands","Stitch MCP (@_davideast/stitch-mcp proxy) as primary design engine","W3C DTCG .tokens.json (2025.10) for design token export","Node.js HTTP server for local preview"],"time":null,"platform":[],"exclusions":[],"budget":null,"existing_assets":["commands/discover.md — current discover prompt with Step 0c at lines 41-55","schemas/discover.schema.json — v4.0 schema with 6-field constraints object","workflow.json — constraint_collection state definition","Stitch MCP configured and verified (API key, proxy mode, 12 tools available)","Interactive preview POC: device simulation + tab switching + iframe rendering","Stitch variant generation POC: generate_screen_from_text + generate_variants verified"],"additional":{"stitch_dependency_strategy":"Stitch preferred, Tier 2 (agent HTML) must also achieve relatively high quality","documentation":"README must be updated with Stitch setup guide and usage tutorial after integration"}},"selected_direction":{"description":"Open Design Co-pilot — Platform-agnostic interactive design preview engine with adapter architecture (Stitch primary, agent HTML fallback), providing full interactive design co-creation experience in the discover phase: multi-variant side-by-side comparison, device simulation, text micro-feedback, hybrid DNA selection, iteration history rollback.","differentiator":"Only tool in the market that embeds interactive UI design exploration in the requirements discovery phase. Not locked to any single design vendor. CLI-native with zero context-switching.","rationale":"Merged Direction 2 (open adapters) + Direction 4 (design co-pilot) to maximize both extensibility and user experience completeness. User explicitly prioritized experience completeness over delivery speed (12/12 features kept, zero cuts).","pre_mortem":[{"scenario":"Stitch API quota exhausted mid-session, user stuck waiting","cause":"10 pages x 5 variants x 2-3 iteration rounds = ~150 API calls exceeds free tier","early_warning":"Track API call count from first generation; warn at 80% estimated quota"},{"scenario":"Tier 2 agent HTML quality perceived as unusably low compared to Stitch","cause":"LLM-generated HTML lacks the design polish of Gemini 3.1 Pro + Stitch rendering pipeline","early_warning":"A/B test Tier 1 vs Tier 2 output on 5 reference designs during development"},{"scenario":"Adapter abstraction over-engineered, delays delivery with no near-term payoff","cause":"Only 2 providers initially; generic interface adds complexity without immediate multi-source usage","early_warning":"If DesignProvider interface definition exceeds 1 day, simplify"},{"scenario":"designMd to DTCG token conversion produces inaccurate or incomplete tokens","cause":"Stitch Markdown format is unstructured; LLM extraction misses or misinterprets values","early_warning":"First batch conversion results: human audit pass rate < 80% triggers redesign"},{"scenario":"Selection callback fails in enterprise/SSH/WSL/Docker environments","cause":"Localhost POST blocked by firewall, network namespace isolation, or proxy settings","early_warning":"Test in 3+ distinct environments before shipping"}],"grounding":"search_verified"},"design_philosophy":[{"principle":"Experience completeness over delivery speed","justification":"12 features全Keep，拒绝轻量方案。产品完整度是不可妥协的底线。","source_decisions":["Direction 2+4 merge","Zero feature cuts in pruning"]},{"principle":"Open architecture, no vendor lock-in","justification":"即使Stitch是当前最佳选择，仍要求适配器抽象 + DTCG标准格式，为Figma/v0扩展留口。","source_decisions":["Direction 2 selection","DTCG token format choice"]},{"principle":"Degradation without quality collapse","justification":"Stitch不可用时不回退到残废体验，Tier 2必须'较高质量'。每一层降级都有质量下限。","source_decisions":["Tier 2 quality requirement","REQ-010-AC-5 ACCEPT_COST"]},{"principle":"Zero-friction closed loop","justification":"选择自动回传、端口自动检测、环境自动适配、临时文件自动清理——所有机械步骤系统化。","source_decisions":["Selection POST callback","Auto port detection","SSH environment detection","Temp file cleanup"]},{"principle":"Transparent system state","justification":"配额耗尽要通知、生成过程要进度提示、降级切换要告知。系统状态不隐藏。","source_decisions":["API quota notification requirement","Progress indication NFR","Degradation notification"]}],"domain_model":{"entities":[{"name":"DesignProvider","description":"Abstract interface for design generation sources (Stitch, AgentHTML, future Figma/v0)"},{"name":"DesignVariant","description":"A single UI style variant containing HTML code, screenshot, and metadata"},{"name":"PreviewSession","description":"A browser-based interactive preview session with variant collection, device config, and user selection state"},{"name":"DesignDNA","description":"Extracted style genome from variants: color palette, typography scale, spacing, border-radius, animation level"},{"name":"DesignToken","description":"W3C DTCG formatted design token exported from DesignDNA for build-phase consumption"},{"name":"SelectionResult","description":"User's selection outcome including chosen variant ID, text feedback, hybrid DNA annotations, iteration history"},{"name":"PageSpec","description":"Specification for a page needing design: name, target platform, device type, existing style constraints"}],"relationships":[{"from":"DesignProvider","to":"DesignVariant","type":"generates","description":"Provider generates multiple variants per page"},{"from":"PageSpec","to":"DesignVariant","type":"has_many","description":"Each page has 5+ variants"},{"from":"PreviewSession","to":"DesignVariant","type":"contains","description":"Session presents all variants for one page"},{"from":"PreviewSession","to":"SelectionResult","type":"produces","description":"User interaction produces a selection"},{"from":"SelectionResult","to":"DesignDNA","type":"extracts","description":"Selected variant's style genome is extracted"},{"from":"DesignDNA","to":"DesignToken","type":"exports","description":"DNA is exported as DTCG tokens"},{"from":"DesignDNA","to":"DesignVariant","type":"constrains","description":"DNA constrains next page's variant generation for cross-page consistency"}]},"mvp_features":[{"name":"Design source adapter architecture","feasibility":"High","competitive_notes":"No competitor has pluggable design source architecture in CLI workflows","source_refs":[],"requirement_refs":["REQ-001"]},{"name":"Multi-variant generation","feasibility":"High","competitive_notes":"v0 generates single variant; Stitch generates 2-4; we generate 5+ with creative range control","source_refs":[],"requirement_refs":["REQ-002"]},{"name":"Interactive preview engine","feasibility":"High","competitive_notes":"Market blank — no competitor offers device-simulated multi-variant preview in CLI workflow","source_refs":[],"requirement_refs":["REQ-003"]},{"name":"Selection callback closed loop","feasibility":"High","competitive_notes":"All competitors require manual context switching","source_refs":[],"requirement_refs":["REQ-004"]},{"name":"Iterative refinement engine","feasibility":"Medium","competitive_notes":"No competitor supports hybrid DNA selection or iteration history in design exploration","source_refs":[],"requirement_refs":["REQ-005"]},{"name":"Existing project style detection","feasibility":"Medium","competitive_notes":"Stitch has experimental URL extraction; we do source-code-level analysis","source_refs":[],"requirement_refs":["REQ-006"]},{"name":"Cross-page style consistency","feasibility":"High","competitive_notes":"Figma does this natively; we bring it to CLI-native workflow","source_refs":[],"requirement_refs":["REQ-007"]},{"name":"Design token export (DTCG)","feasibility":"Medium","competitive_notes":"No tool exports DTCG tokens from requirements discovery phase","source_refs":[],"requirement_refs":["REQ-008"]},{"name":"HTML post-processing","feasibility":"High","competitive_notes":"Engineering necessity, not competitive differentiator","source_refs":[],"requirement_refs":["REQ-009"]},{"name":"Three-tier degradation","feasibility":"Medium","competitive_notes":"No competitor considers offline/unavailable scenarios","source_refs":[],"requirement_refs":["REQ-010"]},{"name":"Dark/Light mode pairing","feasibility":"High","competitive_notes":"Stitch supports colorMode; we integrate into selection flow","source_refs":[],"requirement_refs":["REQ-011"]},{"name":"README usage tutorial","feasibility":"High","competitive_notes":"Documentation requirement","source_refs":[],"requirement_refs":["REQ-012"]}],"non_functional_requirements":[{"category":"performance","description":"End-to-end time from variant generation start to preview visible","target":"< 90 seconds for 5 variants","source":"ai_inferred","priority":"should_have"},{"category":"performance","description":"Preview page load time in browser","target":"< 3 seconds","source":"ai_inferred","priority":"must_have"},{"category":"availability","description":"Automatic degradation when Stitch is unavailable","target":"Degradation switch < 5 seconds, no user intervention required","source":"user_stated","priority":"must_have"},{"category":"security","description":"Stitch API key must not enter git repository","target":"Key only in ~/.mcp.json or environment variables","source":"ai_inferred","priority":"must_have"},{"category":"availability","description":"Support SSH remote and local environments","target":"Auto-detect and adapt (URL display vs browser auto-open)","source":"user_stated","priority":"must_have"},{"category":"accessibility","description":"Preview engine browser compatibility","target":"Chrome, Firefox, Safari all render correctly","source":"ai_inferred","priority":"should_have"},{"category":"scale","description":"Maximum pages per single discover session","target":"10 pages","source":"ai_inferred","priority":"nice_to_have"},{"category":"performance","description":"Generation progress indication","target":"Real-time status display per variant","source":"user_stated","priority":"must_have"}]};
+
+const REQUIREMENTS = {"requirements":[{"id":"REQ-001","user_story":"As a NoPilot developer, I want the UI taste system to support multiple design sources through a pluggable adapter interface, so that the system is not locked to a single vendor.","acceptance_criteria":[{"id":"REQ-001-AC-1","type":"state","ears":"THE SYSTEM SHALL define a DesignProvider interface with methods: generateScreen, generateVariants, extractDesignContext, createDesignSystem","source_refs":[]},{"id":"REQ-001-AC-2","type":"state","ears":"THE SYSTEM SHALL ship with two implementations: StitchProvider and AgentHTMLProvider","source_refs":[]},{"id":"REQ-001-AC-3","type":"condition","ears":"WHILE Stitch MCP is available and configured, THE SYSTEM SHALL use StitchProvider as the default","source_refs":[]},{"id":"REQ-001-AC-4","type":"event_driven","ears":"WHEN a new DesignProvider implementation is registered, THE SYSTEM SHALL make it available for selection without modifying core flow logic","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Architectural foundation — all other features depend on this interface. Strategy pattern with runtime provider selection.","test_complexity":"Medium","effort_estimate":"2-3 days"}},{"id":"REQ-002","user_story":"As a product owner, I want to see at least 5 distinct visual style variants for each page, so that I can explore a wide range of aesthetic possibilities.","acceptance_criteria":[{"id":"REQ-002-AC-1","type":"event_driven","ears":"WHEN UI taste exploration is triggered for a page, THE SYSTEM SHALL generate at least 5 style variants via the active DesignProvider","source_refs":[]},{"id":"REQ-002-AC-2","type":"condition","ears":"WHILE the project is greenfield (no existing frontend), THE SYSTEM SHALL use REIMAGINE creative range","source_refs":[]},{"id":"REQ-002-AC-3","type":"condition","ears":"WHILE the project has existing frontend, THE SYSTEM SHALL use REFINE creative range","source_refs":[]},{"id":"REQ-002-AC-4","type":"event_driven","ears":"WHEN using Stitch, THE SYSTEM SHALL use Gemini 3.1 Pro model for generation","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Primary Stitch API consumer. Each call to generate_variants with variantCount:5 is one API call.","test_complexity":"Low","effort_estimate":"1-2 days"}},{"id":"REQ-003","user_story":"As a product owner, I want to preview design variants in an interactive browser interface with real dynamic effects, so that I can accurately evaluate each style.","acceptance_criteria":[{"id":"REQ-003-AC-1","type":"event_driven","ears":"WHEN variants are ready, THE SYSTEM SHALL start a local HTTP server on an auto-detected available port","source_refs":[]},{"id":"REQ-003-AC-2","type":"state","ears":"THE SYSTEM SHALL render variants via iframe embedding of actual HTML (not screenshots)","source_refs":[]},{"id":"REQ-003-AC-3","type":"state","ears":"THE SYSTEM SHALL provide tab-based switching between all variants","source_refs":[]},{"id":"REQ-003-AC-4","type":"state","ears":"THE SYSTEM SHALL provide device preview buttons for: iPhone SE (375x667), iPhone 16 Pro (393x852), iPhone 16 Pro Max (430x932), iPad mini (744x1133), iPad Pro 11 inch (834x1194), iPad Pro 13 inch (1024x1366), iPad Split View (507x1194), Slide Over (320x1194), Desktop (1440x900), Full screen","source_refs":[]},{"id":"REQ-003-AC-5","type":"state","ears":"THE SYSTEM SHALL support side-by-side comparison of any 2 variants at the same device size","source_refs":[]},{"id":"REQ-003-AC-6","type":"event_driven","ears":"WHEN the user is in an SSH environment, THE SYSTEM SHALL display the URL; WHEN local, THE SYSTEM SHALL auto-open the browser","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Core UX component shared by Tier 1 and Tier 2. Node.js http module, auto port detection, HTML template generation.","test_complexity":"Medium","effort_estimate":"2-3 days"}},{"id":"REQ-004","user_story":"As a product owner, I want my design selection to automatically flow back to the CLI without manual copy-paste, so that the workflow is seamless.","acceptance_criteria":[{"id":"REQ-004-AC-1","type":"event_driven","ears":"WHEN the user clicks select in the preview browser, THE SYSTEM SHALL POST the selection to a localhost endpoint","source_refs":[]},{"id":"REQ-004-AC-2","type":"event_driven","ears":"WHEN the CLI receives the POST, THE SYSTEM SHALL resolve the pending Promise and continue the discover flow","source_refs":[]},{"id":"REQ-004-AC-3","type":"event_driven","ears":"WHEN 30 minutes pass with no selection, THE SYSTEM SHALL timeout, close the server, and prompt the user in CLI","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"HTTP POST endpoint on preview server. Promise-based async wait in CLI. Timeout cleanup.","test_complexity":"Medium","effort_estimate":"1-2 days"}},{"id":"REQ-005","user_story":"As a product owner, I want to refine designs iteratively through text feedback, hybrid style mixing, and history rollback, so that I can converge on exactly the style I want.","acceptance_criteria":[{"id":"REQ-005-AC-1","type":"event_driven","ears":"WHEN the user submits text feedback, THE SYSTEM SHALL use it as prompt constraint for the next generation round","source_refs":[]},{"id":"REQ-005-AC-2","type":"event_driven","ears":"WHEN the user selects 3 variants for hybrid DNA analysis, THE SYSTEM SHALL call extractDesignContext on each, allow user to annotate preferred dimensions per variant, and synthesize a composite constraint","source_refs":[]},{"id":"REQ-005-AC-3","type":"state","ears":"THE SYSTEM SHALL preserve all previous iteration rounds in memory during the session","source_refs":[]},{"id":"REQ-005-AC-4","type":"event_driven","ears":"WHEN the user requests rollback, THE SYSTEM SHALL restore that round's variants in the preview","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"LLM DNA synthesis quality is the key risk. In-memory iteration history management. ACCEPT_COST: may need multiple tuning iterations.","test_complexity":"High","effort_estimate":"2-3 days"}},{"id":"REQ-006","user_story":"As a developer adding features to an existing app, I want the system to detect and respect my current design language, so that new pages are visually consistent with existing ones.","acceptance_criteria":[{"id":"REQ-006-AC-1","type":"event_driven","ears":"WHEN the project contains CSS/SCSS/Tailwind config/theme files, THE SYSTEM SHALL analyze them and extract a style profile","source_refs":[]},{"id":"REQ-006-AC-2","type":"event_driven","ears":"WHEN the user provides screenshots of existing UI, THE SYSTEM SHALL use them as style reference for generation","source_refs":[]},{"id":"REQ-006-AC-3","type":"event_driven","ears":"WHEN existing style is detected, THE SYSTEM SHALL synthesize a designMd constraint document and apply it to all subsequent generation calls","source_refs":[]},{"id":"REQ-006-AC-4","type":"condition","ears":"WHILE no existing frontend is detected and no screenshots are provided, THE SYSTEM SHALL skip Phase 0 and proceed to full exploration","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"CSS/Tailwind/SCSS parser needed. ACCEPT_COST: cover CSS + Tailwind + SCSS first, extend incrementally.","test_complexity":"High","effort_estimate":"2-3 days"}},{"id":"REQ-007","user_story":"As a product owner, I want all pages in my app to share a consistent design language after I select a style for the first page.","acceptance_criteria":[{"id":"REQ-007-AC-1","type":"event_driven","ears":"WHEN the user selects a variant for the first page, THE SYSTEM SHALL extract Design DNA and create a design system via the DesignProvider","source_refs":[]},{"id":"REQ-007-AC-2","type":"condition","ears":"WHILE generating variants for subsequent pages, THE SYSTEM SHALL apply the established design system as a constraint","source_refs":[]},{"id":"REQ-007-AC-3","type":"state","ears":"THE SYSTEM SHALL allow the user to override the inherited style for a specific page if explicitly requested","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Depends on Stitch design system API (create_design_system, apply_design_system). For Tier 2, designMd constraint propagation.","test_complexity":"Medium","effort_estimate":"1-2 days"}},{"id":"REQ-008","user_story":"As a developer, I want the selected design exported as standardized design tokens, so that the build phase can directly consume them.","acceptance_criteria":[{"id":"REQ-008-AC-1","type":"event_driven","ears":"WHEN all pages are selected, THE SYSTEM SHALL export design tokens in W3C DTCG .tokens.json format to specs/mockups/tokens.json","source_refs":[]},{"id":"REQ-008-AC-2","type":"state","ears":"THE SYSTEM SHALL include color palette, typography scale, spacing, border-radius, and shadow tokens","source_refs":[]},{"id":"REQ-008-AC-3","type":"event_driven","ears":"WHEN using Tier 2 (AgentHTML), THE SYSTEM SHALL export tokens as CSS custom properties format (simplified)","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"designMd to DTCG conversion via LLM. Style Dictionary compatible output. Build phase reads tokens.json directly.","test_complexity":"Medium","effort_estimate":"2-3 days"}},{"id":"REQ-009","user_story":"As a developer, I want downloaded mockup HTML files to be self-contained and use the correct fonts, so that they render correctly offline and long-term.","acceptance_criteria":[{"id":"REQ-009-AC-1","type":"event_driven","ears":"WHEN HTML is downloaded from Stitch, THE SYSTEM SHALL replace font-family declarations with the user-specified font stack","source_refs":[]},{"id":"REQ-009-AC-2","type":"event_driven","ears":"WHEN HTML contains externally hosted images, THE SYSTEM SHALL download and convert them to base64 data URIs","source_refs":[]},{"id":"REQ-009-AC-3","type":"event_driven","ears":"WHEN HTML lacks responsive CSS (no media queries or container queries), THE SYSTEM SHALL inject basic responsive breakpoints","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"HTML string manipulation, image download + base64 encoding, CSS injection. Edge cases with various HTML structures.","test_complexity":"Medium","effort_estimate":"1-2 days"}},{"id":"REQ-010","user_story":"As a developer without Stitch configured, I want the UI taste system to still provide a useful experience, so that the feature works regardless of external dependencies.","acceptance_criteria":[{"id":"REQ-010-AC-1","type":"event_driven","ears":"WHEN Stitch MCP is available, THE SYSTEM SHALL use Tier 1 (StitchProvider)","source_refs":[]},{"id":"REQ-010-AC-2","type":"event_driven","ears":"WHEN Stitch MCP is unavailable but browser is accessible, THE SYSTEM SHALL fall back to Tier 2 (AgentHTMLProvider) within 5 seconds","source_refs":[]},{"id":"REQ-010-AC-3","type":"event_driven","ears":"WHEN neither Stitch nor browser is available, THE SYSTEM SHALL fall back to Tier 3 (text-based taste questions)","source_refs":[]},{"id":"REQ-010-AC-4","type":"event_driven","ears":"WHEN Stitch API quota is exhausted mid-session, THE SYSTEM SHALL notify the user and switch to Tier 2 for remaining pages","source_refs":[]},{"id":"REQ-010-AC-5","type":"state","ears":"THE Tier 2 AgentHTMLProvider SHALL produce mockups with designMd constraints to achieve quality defined as: correct base layout, coordinated color scheme, basic animation effects, passing human review checklist","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Provider availability detection. Automatic fallback chain. Tier 2 quality is high-risk. ACCEPT_COST: quality defined as layout correct + colors coordinated + basic animation, verified by human checklist.","test_complexity":"High","effort_estimate":"3-4 days"}},{"id":"REQ-011","user_story":"As a product owner, I want to preview and select both dark and light mode variants, so that my app has a consistent dual-mode experience.","acceptance_criteria":[{"id":"REQ-011-AC-1","type":"event_driven","ears":"WHEN the user selects a variant, THE SYSTEM SHALL auto-generate the corresponding dark/light counterpart","source_refs":[]},{"id":"REQ-011-AC-2","type":"state","ears":"THE preview engine SHALL provide a dark/light toggle button to switch between modes","source_refs":[]},{"id":"REQ-011-AC-3","type":"event_driven","ears":"WHEN the user is not satisfied with the auto-generated counterpart, THE SYSTEM SHALL allow manual adjustment or re-generation","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Stitch colorMode parameter toggle. Preview UI dark/light switch. Paired mockup storage.","test_complexity":"Medium","effort_estimate":"1-2 days"}},{"id":"REQ-012","user_story":"As a new NoPilot user, I want clear documentation on how to configure Stitch and use the UI taste feature, so that I can get started quickly.","acceptance_criteria":[{"id":"REQ-012-AC-1","type":"state","ears":"THE README SHALL include a section on Stitch MCP configuration (API key setup, .mcp.json placement)","source_refs":[]},{"id":"REQ-012-AC-2","type":"state","ears":"THE README SHALL include a usage tutorial for the UI taste exploration flow with example screenshots","source_refs":[]},{"id":"REQ-012-AC-3","type":"state","ears":"THE README SHALL document the three-tier degradation behavior","source_refs":[]}],"source":"user_stated","downstream_impact":{"tech_implications":"Documentation only. Requires screenshots from working implementation.","test_complexity":"Low","effort_estimate":"1 day"}}],"invariants":[{"id":"INV-001","statement":"THE SYSTEM SHALL never write Stitch API keys to any file inside the project repository","scope":"system-wide","requirement_refs":["REQ-001","REQ-010"]},{"id":"INV-002","statement":"THE SYSTEM SHALL never leave temporary preview files in the project directory after a discover session completes or is abandoned","scope":"system-wide","requirement_refs":["REQ-003","REQ-004"]},{"id":"INV-003","statement":"All design artifacts saved to specs/mockups/ SHALL be self-contained with no external URL dependencies","scope":"module-specific","requirement_refs":["REQ-009"]},{"id":"INV-004","statement":"THE SYSTEM SHALL maintain backward compatibility with discover.json v4.0 — projects without UI taste data SHALL continue to work without modification","scope":"system-wide","requirement_refs":["REQ-001","REQ-008"]},{"id":"INV-005","statement":"THE SYSTEM SHALL never block the discover flow if a design provider fails — degradation SHALL be automatic","scope":"system-wide","requirement_refs":["REQ-010"]},{"id":"INV-006","statement":"Each concurrent discover session SHALL use a unique HTTP server port","scope":"module-specific","requirement_refs":["REQ-003"]}]};
+
+const SCENARIOS = {"core_scenarios":[{"id":"SCENARIO-001","description":"Greenfield project full UI taste exploration. User describes a weather app idea. Step 0c detects frontend involvement, asks platform preference (iOS). System identifies 3 key pages (home, detail, settings). For each page: generates 5 variants via Stitch MCP (Gemini 3.1 Pro), downloads HTML, post-processes (font patch to PingFang SC, asset inlining), starts local preview server. User switches between iPhone/iPad device sizes, uses side-by-side comparison, selects variant for home page. System extracts Design DNA, creates design system, subsequent pages auto-inherit style. User provides text feedback on home page variant ('make the header more compact'), system regenerates with constraint applied. User selects 2 variants for hybrid DNA analysis, annotates preferred dimensions, system synthesizes composite constraint. Iteration history preserved — user can rollback to any previous round. After finalizing home page, system auto-generates dark/light counterpart; user toggles between modes in preview, accepts or requests re-generation. All pages selected: Design tokens exported to specs/mockups/tokens.json (DTCG format), selected mockups saved to specs/mockups/, constraints written to discover.json, temp files cleaned up. Discover flow continues to Layer 1.","requirement_refs":["REQ-001","REQ-002","REQ-003","REQ-004","REQ-007","REQ-008","REQ-009","REQ-005","REQ-011"],"priority":"highest"},{"id":"SCENARIO-002","description":"Existing project new page addition. User runs /discover in an existing React project with tailwind.config.js and established component library. Step 0c detects existing frontend. System reads tailwind.config.js and existing CSS, extracts style profile (color palette, spacing, border-radius, font stack). Synthesizes designMd constraint. Generates 5 variants in REFINE mode (subtle variations within established style). User selects variant consistent with existing app. New page mockup saved alongside design tokens compatible with existing system.","requirement_refs":["REQ-006","REQ-002","REQ-007","REQ-003","REQ-004","REQ-008"],"priority":"highest"},{"id":"SCENARIO-003","description":"Stitch unavailable degradation. User has not configured Stitch API key. System detects Stitch MCP unavailable, switches to Tier 2 (AgentHTMLProvider) within 5 seconds. Agent generates 3-5 HTML mockups using designMd constraints for quality (correct layout, coordinated colors, basic animation). Same preview engine serves the variants. User selects. Tokens exported as CSS custom properties (simplified format). Mid-session quota variant: Stitch available initially, quota exhausted on page 3 of 5. System notifies user, switches to Tier 2 for remaining pages.","requirement_refs":["REQ-010","REQ-001","REQ-003","REQ-004","REQ-008"],"priority":"highest"}]};
+
+const HISTORY = {"explored_directions":[{"description":"Stitch Deep Integration — Stitch MCP as core design engine, NoPilot as thin orchestration layer. All UI generation, variants, Design DNA extraction through Stitch API. Tier 2 uses Stitch designMd philosophy to constrain agent HTML quality.","differentiator":"Standing on Gemini 3.1 Pro design quality, NoPilot focuses on workflow orchestration only.","risk":"Strong dependency on Stitch API — if Google changes API, limits quota, or MCP server maintenance lags, core feature breaks.","status":"abandoned","abandonment_reason":"Vendor lock-in risk. User requires open adapter architecture (Direction 2)."},{"description":"Platform-Agnostic Preview Engine — Standalone design preview/selection engine consuming designs from any source (Stitch, Figma MCP, agent-generated, user uploads) through adapters. Preview, device simulation, selection callback, Design Token export are core infra.","differentiator":"Not locked to any single design tool. Future-proof for Figma AI, v0, etc.","risk":"Engineering cost doubled — each adapter needs individual development/maintenance. Only 2 providers initially, adapter abstraction may be premature.","status":"merged","abandonment_reason":null},{"description":"Prompt-First Lightweight — Minimal infra: enhance discover prompt with UI taste questions, use Stitch when available but user reviews on Stitch website directly. NoPilot only calls Stitch API + extracts Design DNA + writes to discover.json. Reuse existing /visualize infra.","differentiator":"Fastest to deliver, minimal invasiveness.","risk":"UX discontinuity — user must switch between CLI and Stitch website. Selection callback is manual. Device preview depends on Stitch's own capabilities. Tier 2 degradation experience is poor.","status":"abandoned","abandonment_reason":"User explicitly prioritized experience completeness over delivery speed. Context-switching violates 'zero-friction closed loop' philosophy."},{"description":"Interactive Design Workshop (Design Co-pilot) — Full interactive design session in discover phase. Stitch generates initial variants, user iterates via text feedback, screenshot annotation, hybrid selection. Local preview with side-by-side comparison, device simulation, dark/light toggle. Auto-learning user preferences across iterations.","differentiator":"Most complete experience — no competitor offers interactive design co-creation in requirements discovery phase.","risk":"Largest engineering scope (9 phases, local HTTP server, selection callback, iteration history, font patching, asset inlining, three-tier degradation). May need 2-3 iterations to stabilize.","status":"merged","abandonment_reason":null}],"pruned_features":[],"decision_log":[{"layer":"direction","action":"MERGE","detail":"Merged Direction 2 (open adapters) + Direction 4 (design co-pilot) into 'Open Design Co-pilot'. User explicitly chose maximum experience completeness + vendor independence.","timestamp":"2026-04-04T03:00:00Z"},{"layer":"mvp","action":"APPROVE","detail":"All 12 features kept in MVP. Zero cuts, zero deferrals. User confirmed 'all keep'.","timestamp":"2026-04-04T03:15:00Z"},{"layer":"lock","action":"APPROVE","detail":"12 requirements locked with EARS criteria. 3 high-risk items (REQ-005 DNA synthesis, REQ-006 source code parsing coverage, REQ-010-AC-5 Tier 2 quality) all resolved as ACCEPT_COST. 6 system invariants extracted. All 3 core scenarios covered.","timestamp":"2026-04-04T03:30:00Z"}],"completeness_snapshots":[{"layer":"1","dimensions":{"core_feature_definition":75,"user_scenario_coverage":55,"technical_constraints":60,"boundary_conditions":25,"non_functional_requirements":15},"gaps_noted":["Boundary conditions undefined","NFRs not yet discussed"],"timestamp":"2026-04-04T02:50:00Z"},{"layer":"2","dimensions":{"core_feature_definition":90,"user_scenario_coverage":80,"technical_constraints":80,"boundary_conditions":55,"non_functional_requirements":70},"gaps_noted":["API rate limiting strategy needed","Concurrent session port handling needed"],"timestamp":"2026-04-04T03:10:00Z"},{"layer":"3","dimensions":{"core_feature_definition":95,"user_scenario_coverage":90,"technical_constraints":85,"boundary_conditions":75,"non_functional_requirements":80},"gaps_noted":[],"timestamp":"2026-04-04T03:30:00Z"}]};
+
+const REVIEW = {"review_phase":"discover","reviewer":"critic-agent-independent","review_mode":"THOROUGH","review_mode_justification":"Started in THOROUGH mode. Found 2 CRITICAL (block) coverage findings but both were successfully self-fixed in iteration 1. No escalation to ADVERSARIAL warranted.","iteration":1,"fix_iteration_summary":{"total_iterations":1,"initial_blocks":2,"final_blocks":0,"initial_warns":11,"final_warns":11},"6cs_audit":{"passed":true,"findings":[{"id":"6CS-001","severity":"warn","dimension":"conciseness","target":"REQ-005-AC-2","finding":"Over-specifies exactly '3 variants' for hybrid DNA analysis. This magic number creates a false constraint.","evidence":"EARS: 'WHEN the user selects 3 variants for hybrid DNA analysis...'","confidence":"high"},{"id":"6CS-002","severity":"warn","dimension":"completeness","target":"REQ-004-AC-3","finding":"Timeout behavior does not address whether partially completed selections are preserved or discarded.","evidence":"EARS: 'WHEN 30 minutes pass with no selection, THE SYSTEM SHALL timeout, close the server, and prompt the user in CLI'","confidence":"high"},{"id":"6CS-003","severity":"warn","dimension":"concreteness","target":"REQ-010-AC-5","finding":"Quality definition for Tier 2 includes 'passing human review checklist' — but no such checklist is defined or referenced.","evidence":"EARS references a checklist that doesn't exist anywhere in artifacts.","confidence":"high"},{"id":"6CS-004","severity":"warn","dimension":"completeness","target":"REQ-001","finding":"No acceptance criterion addresses what happens when a registered DesignProvider fails during generation. 10 of 12 requirements lack any negative/error path.","evidence":"REQ-001 has 4 ACs, all happy-path.","confidence":"high","ai_bias_flags":["missing_negative_paths"]},{"id":"6CS-005","severity":"warn","dimension":"clarity","target":"REQ-006-AC-2","finding":"Screenshot-based style reference is underspecified. Does 'use them as style reference' mean passing to Stitch, vision model extraction, or visual examples in prompt?","evidence":"EARS: 'WHEN the user provides screenshots of existing UI, THE SYSTEM SHALL use them as style reference for generation'","confidence":"medium"},{"id":"6CS-006","severity":"warn","dimension":"completeness","target":"REQ-003-AC-4","finding":"Device list is iOS/iPad/Desktop-centric. No Android device dimensions listed despite platform array being empty.","evidence":"REQ-003-AC-4 lists only Apple devices except Desktop/Full screen","confidence":"medium"},{"id":"6CS-007","severity":"warn","dimension":"consistency","target":"REQ-008-AC-3","finding":"Unclear whether Tier 2 'simplified' format must include all 5 token categories or may omit some.","evidence":"REQ-008-AC-2 mandates all 5 categories without scoping to Tier 1 only.","confidence":"medium"}],"issues":[]},"invariant_verification":{"passed":true,"findings":[{"id":"INV-WARN-001","severity":"warn","finding":"No invariant covers data persistence during session interruption. Partial selections may be lost.","confidence":"medium"},{"id":"INV-WARN-002","severity":"warn","finding":"No invariant governs cross-page design consistency enforcement. Subsequent pages could be generated without the established design system.","confidence":"medium"}],"completeness_gaps":[{"description":"Missing invariant for session state persistence across interruptions","severity":"warn","confidence":"medium"},{"description":"Missing invariant ensuring design DNA constraint is always applied to subsequent page generation","severity":"warn","confidence":"medium"}],"contradictions":[]},"acceptance_criteria_verification":{"passed":true,"findings":[{"id":"AC-WARN-001","severity":"warn","target":"REQ-010-AC-5","finding":"The 'passing human review checklist' component is not automatable.","confidence":"high"},{"id":"AC-WARN-002","severity":"warn","target":"REQ-006-AC-2","finding":"'Use them as style reference for generation' does not specify HOW screenshots become constraints.","confidence":"medium"}],"untestable_criteria":[{"criteria_id":"REQ-010-AC-5","reason":"References 'passing human review checklist' which is not defined anywhere. Partially testable but the checklist reference is dangling.","severity":"warn","confidence":"high"}]},"coverage_verification":{"passed":true,"findings":[{"id":"COV-BLOCK-001","severity":"block","original_severity":"block","status":"fixed","finding":"REQ-005 (iterative refinement) was not referenced by any scenario. Fixed: added REQ-005 to SCENARIO-001.","confidence":"high"},{"id":"COV-BLOCK-002","severity":"block","original_severity":"block","status":"fixed","finding":"REQ-011 (dark/light mode pairing) was not referenced by any scenario. Fixed: added REQ-011 to SCENARIO-001.","confidence":"high"},{"id":"COV-WARN-001","severity":"warn","finding":"REQ-012 (README documentation) is not referenced by any scenario. Documentation requirement — verified by file existence, not user journey.","confidence":"high"},{"id":"COV-WARN-002","severity":"warn","original_severity":"warn","status":"fixed","finding":"SCENARIO-002 functionally uses REQ-003, REQ-004, REQ-008 but did not list them. Fixed.","confidence":"high"},{"id":"COV-WARN-003","severity":"warn","original_severity":"warn","status":"fixed","finding":"SCENARIO-003 functionally uses REQ-003, REQ-004, REQ-008 but did not list them. Fixed.","confidence":"high"}],"uncovered_scenarios":[],"orphan_requirements":["REQ-012"]},"ai_bias_detection":{"patterns_found":[{"bias_type":"missing_negative_paths","target_id":"general","evidence":"10 of 12 requirements have zero error/failure/negative-path acceptance criteria. Only REQ-004 (timeout) and REQ-010 (degradation) address failure scenarios.","confidence":"high"},{"bias_type":"optimistic_assessment","target_id":"general","evidence":"Layer 3 shows 95/90/85/75/80 with zero gaps_noted, yet review found multiple boundary condition gaps.","confidence":"medium"},{"bias_type":"self_approval_bias","target_id":"general","evidence":"Decision log records three consecutive APPROVE actions with no REJECT or REVISE.","confidence":"medium"}]},"self_fix_log":[{"iteration":1,"fixes_applied":["COV-BLOCK-001: Added REQ-005 to SCENARIO-001","COV-BLOCK-002: Added REQ-011 to SCENARIO-001","COV-WARN-002: Added REQ-003, REQ-004, REQ-008 to SCENARIO-002","COV-WARN-003: Added REQ-003, REQ-004, REQ-008 to SCENARIO-003"],"reverify_result":"passed","remaining_blocks":0,"remaining_warns":11}],"global_coherence_check":{"passed":true,"findings":["All 12 requirements trace directly to the 'Open Design Co-pilot' direction description, user constraints, or user-confirmed decisions.","All 5 design philosophy principles honored.","Tech direction matches constraints.tech_stack exactly.","Adapter pattern with 2 initial providers acknowledged as potential premature abstraction."]}};
+
+// ── Helpers ─────────────────────────────────────────────
+function el(tag, cls, html) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (html !== undefined) e.innerHTML = html;
+  return e;
+}
+
+function badge(text, variant) {
+  return `<span class="badge badge-${variant}">${esc(text)}</span>`;
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function sourceBadge(src) {
+  return src === 'user_stated'
+    ? badge('user stated', 'blue')
+    : badge('ai inferred', 'purple');
+}
+
+function acTypeBadge(type) {
+  const labels = { state: 'state', event_driven: 'event', condition: 'condition', ubiquitous: 'ubiquitous' };
+  return `<span class="ac-type-badge ac-type-${type}">${labels[type] || type}</span>`;
+}
+
+function toggleSection(id) {
+  const body = document.getElementById('body-' + id);
+  const btn = document.getElementById('btn-' + id);
+  if (!body || !btn) return;
+  const collapsed = body.classList.toggle('collapsed');
+  btn.textContent = collapsed ? '+' : '−';
+}
+
+// ── 1. Requirements ──────────────────────────────────────
+function renderRequirements() {
+  const grid = document.getElementById('req-grid');
+  REQUIREMENTS.requirements.forEach(req => {
+    const card = el('div', `card req-card source-${req.source}`);
+
+    let acHtml = '<ul class="ac-list">';
+    req.acceptance_criteria.forEach(ac => {
+      // Highlight keywords
+      let text = esc(ac.ears)
+        .replace(/\bTHE SYSTEM SHALL\b/g, '<strong>THE SYSTEM SHALL</strong>')
+        .replace(/\bTHE README SHALL\b/g, '<strong>THE README SHALL</strong>')
+        .replace(/\bWHEN\b/g, '<strong>WHEN</strong>')
+        .replace(/\bWHILE\b/g, '<strong>WHILE</strong>');
+      acHtml += `<li class="ac-item">${acTypeBadge(ac.type)}<span class="ac-text">${text}</span></li>`;
+    });
+    acHtml += '</ul>';
+
+    const imp = req.downstream_impact;
+    const complexColor = {High:'red',Medium:'amber',Low:'green'}[imp.test_complexity] || 'gray';
+
+    card.innerHTML = `
+      <div class="req-id">${esc(req.id)}</div>
+      <div class="req-story">${esc(req.user_story)}</div>
+      ${acHtml}
+      <div class="req-impact">
+        <div class="req-impact-label">Downstream Impact</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">${esc(imp.tech_implications)}</div>
+        <div class="req-impact-row" style="margin-top:8px;">
+          <div class="req-impact-item">
+            <span>Complexity</span>
+            <span class="badge badge-${complexColor}" style="font-size:10px;">${esc(imp.test_complexity)}</span>
+          </div>
+          <div class="req-impact-item">
+            <span>Effort</span>
+            <span style="font-size:12px;color:var(--text);">${esc(imp.effort_estimate)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="req-footer" style="margin-top:12px;">
+        ${sourceBadge(req.source)}
+        <span class="badge badge-gray">${esc(req.id)}</span>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── 2. Scenarios ─────────────────────────────────────────
+function scenarioSteps(desc) {
+  // Extract key actions as flow steps
+  const actions = [
+    'Trigger', 'Detect', 'Generate', 'Post-process', 'Preview',
+    'Select', 'Extract DNA', 'Iterate', 'Export', 'Cleanup'
+  ];
+  // Simple: split on ". " and take first 8 sentences as steps
+  const sentences = desc.split(/\.\s+/);
+  const steps = sentences.slice(0, Math.min(8, sentences.length)).map((s, i) => {
+    const words = s.trim().split(' ').slice(0, 5).join(' ');
+    return words.length > 3 ? words + '…' : words;
+  }).filter(s => s.length > 3);
+  return steps;
+}
+
+function renderScenarios() {
+  const wrap = document.getElementById('scenarios-wrap');
+  SCENARIOS.core_scenarios.forEach((sc, i) => {
+    const block = el('div', 'scenario-block');
+    const priorityColor = sc.priority === 'highest' ? 'green' : 'amber';
+
+    // Steps from description keywords
+    const stepKeywords = [];
+    const descLower = sc.description.toLowerCase();
+    if (descLower.includes('detect')) stepKeywords.push('Detect Context');
+    if (descLower.includes('generat')) stepKeywords.push('Generate Variants');
+    if (descLower.includes('post-process') || descLower.includes('font patch')) stepKeywords.push('Post-process HTML');
+    if (descLower.includes('preview server') || descLower.includes('local http')) stepKeywords.push('Start Preview Server');
+    if (descLower.includes('side-by-side') || descLower.includes('switch')) stepKeywords.push('Compare Variants');
+    if (descLower.includes('selects variant') || descLower.includes('user selects')) stepKeywords.push('User Selects');
+    if (descLower.includes('design dna') || descLower.includes('design system')) stepKeywords.push('Extract DNA');
+    if (descLower.includes('text feedback') || descLower.includes('iterate')) stepKeywords.push('Iterate');
+    if (descLower.includes('dark/light') || descLower.includes('dark mode')) stepKeywords.push('Dark/Light Pair');
+    if (descLower.includes('export') || descLower.includes('tokens')) stepKeywords.push('Export Tokens');
+    if (descLower.includes('cleanup') || descLower.includes('temp files')) stepKeywords.push('Cleanup');
+    if (descLower.includes('fallback') || descLower.includes('tier 2')) stepKeywords.push('Fallback Tier 2');
+    if (descLower.includes('quota')) stepKeywords.push('Quota Switch');
+
+    const steps = stepKeywords.length ? stepKeywords : ['Start', 'Process', 'Select', 'Complete'];
+
+    let flowHtml = '<div class="scenario-flow">';
+    steps.forEach((step, si) => {
+      flowHtml += `<div class="flow-step">
+        <div class="flow-node">${esc(step)}</div>
+        ${si < steps.length - 1 ? '<div class="flow-arrow">→</div>' : ''}
+      </div>`;
+    });
+    flowHtml += '</div>';
+
+    const reqRefsHtml = '<div class="req-refs">' +
+      sc.requirement_refs.map(r => `<span class="req-ref-tag">${esc(r)}</span>`).join('') +
+      '</div>';
+
+    block.innerHTML = `
+      <div class="scenario-head" onclick="this.nextElementSibling.classList.toggle('collapsed')">
+        <span class="scenario-id-pill">${esc(sc.id)}</span>
+        <span class="scenario-title">${sc.id === 'SCENARIO-001' ? 'Greenfield Full Exploration' : sc.id === 'SCENARIO-002' ? 'Existing Project New Page' : 'Stitch Unavailable Degradation'}</span>
+        <span class="badge badge-${priorityColor}">${esc(sc.priority)}</span>
+      </div>
+      <div class="scenario-body">
+        <p class="scenario-desc">${esc(sc.description)}</p>
+        ${flowHtml}
+        <div style="margin-top:4px;">
+          <div style="font-size:11px;color:var(--text-subtle);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:6px;font-weight:600;">Requirement Coverage</div>
+          ${reqRefsHtml}
+        </div>
+      </div>
+    `;
+    wrap.appendChild(block);
+  });
+}
+
+// ── 3. Feature Priority Matrix ────────────────────────────
+function renderMatrix() {
+  const grid = document.getElementById('matrix-grid');
+  INDEX.mvp_features.forEach(f => {
+    const card = el('div', 'matrix-card');
+    const fc = f.feasibility;
+    const fcColor = fc === 'High' ? 'green' : fc === 'Medium' ? 'amber' : 'red';
+    const reqTagsHtml = f.requirement_refs.map(r => `<span class="badge badge-outline" style="font-size:10px;">${esc(r)}</span>`).join('');
+
+    card.innerHTML = `
+      <div class="feasibility-dot feasibility-${esc(fc)}"></div>
+      <div class="matrix-content">
+        <div class="matrix-name">${esc(f.name)}</div>
+        <div class="matrix-note">${esc(f.competitive_notes)}</div>
+        <div class="matrix-req-refs">
+          <span class="badge badge-${fcColor}" style="margin-right:4px;">${esc(fc)}</span>
+          ${reqTagsHtml}
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── 4. Design Philosophy ─────────────────────────────────
+function renderPhilosophy() {
+  const grid = document.getElementById('philosophy-grid');
+  INDEX.design_philosophy.forEach((p, i) => {
+    const card = el('div', 'philosophy-card');
+    const decisionTagsHtml = p.source_decisions.map(d => `<span class="decision-tag">${esc(d)}</span>`).join('');
+    card.innerHTML = `
+      <div class="philosophy-principle">${esc(p.principle)}</div>
+      <div class="philosophy-justification">${esc(p.justification)}</div>
+      <div class="philosophy-decisions">${decisionTagsHtml}</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ── 5. Domain Model SVG ──────────────────────────────────
+function renderDomainModel() {
+  const svg = document.getElementById('domain-svg');
+  const entities = INDEX.domain_model.entities;
+  const relationships = INDEX.domain_model.relationships;
+
+  // Hand-crafted positions for 7 entities in a pleasing layout
+  const positions = {
+    'DesignProvider':  { x: 100, y: 80 },
+    'PageSpec':        { x: 100, y: 230 },
+    'DesignVariant':   { x: 370, y: 155 },
+    'PreviewSession':  { x: 370, y: 320 },
+    'SelectionResult': { x: 620, y: 230 },
+    'DesignDNA':       { x: 620, y: 80 },
+    'DesignToken':     { x: 820, y: 80 },
+  };
+
+  const nodeW = 140, nodeH = 44;
+
+  // Defs
+  const defs = `
+    <defs>
+      <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto">
+        <path d="M0,0 L0,7 L8,3.5 z" fill="#58a6ff" opacity="0.7"/>
+      </marker>
+      <filter id="glow">
+        <feGaussianBlur stdDeviation="2" result="blur"/>
+        <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+      </filter>
+    </defs>
+  `;
+
+  // Edges
+  let edgesHtml = '';
+  relationships.forEach(rel => {
+    const from = positions[rel.from];
+    const to = positions[rel.to];
+    if (!from || !to) return;
+
+    const fx = from.x + nodeW / 2;
+    const fy = from.y + nodeH / 2;
+    const tx = to.x + nodeW / 2;
+    const ty = to.y + nodeH / 2;
+
+    // Direction vector
+    const dx = tx - fx, dy = ty - fy;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    // Offset so arrow starts/ends at node border
+    const offsetX = (dx / len) * (nodeW / 2 + 4);
+    const offsetY = (dy / len) * (nodeH / 2 + 4);
+
+    const x1 = fx + offsetX, y1 = fy + offsetY;
+    const x2 = tx - offsetX, y2 = ty - offsetY;
+
+    // Midpoint for label
+    const mx = (x1 + x2) / 2;
+    const my = (y1 + y2) / 2;
+
+    // Slight curve
+    const cx = mx + (-dy / len) * 20;
+    const cy = my + (dx / len) * 20;
+
+    edgesHtml += `
+      <path d="M${x1},${y1} Q${cx},${cy} ${x2},${y2}"
+        fill="none" stroke="#58a6ff" stroke-width="1.5" opacity="0.5"
+        stroke-dasharray="4,3" marker-end="url(#arrow)"/>
+      <rect x="${mx-26}" y="${my-9}" width="52" height="16" rx="4"
+        fill="#161b22" stroke="#30363d" stroke-width="1" opacity="0.9"/>
+      <text x="${mx}" y="${my+4}" text-anchor="middle"
+        fill="#8b949e" font-size="9" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">${rel.type}</text>
+    `;
+  });
+
+  // Nodes
+  let nodesHtml = '';
+  entities.forEach(entity => {
+    const pos = positions[entity.name];
+    if (!pos) return;
+    nodesHtml += `
+      <g class="domain-node" style="cursor:default;">
+        <rect x="${pos.x}" y="${pos.y}" width="${nodeW}" height="${nodeH}" rx="8"
+          fill="#1c2430" stroke="#3fb950" stroke-width="1.5" opacity="0.9"/>
+        <text x="${pos.x + nodeW/2}" y="${pos.y + nodeH/2 - 5}" text-anchor="middle"
+          fill="#e6edf3" font-size="11" font-weight="600"
+          font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">${entity.name}</text>
+        <title>${entity.description}</title>
+      </g>
+    `;
+  });
+
+  svg.innerHTML = defs + edgesHtml + nodesHtml;
+}
+
+// ── 6. Directions ─────────────────────────────────────────
+function renderDirections() {
+  const grid = document.getElementById('directions-grid');
+  HISTORY.explored_directions.forEach(dir => {
+    const statusMap = { abandoned: 'gray', merged: 'blue', selected: 'green' };
+    const badgeMap  = { abandoned: 'gray', merged: 'blue', selected: 'green' };
+    const card = el('div', `direction-card status-${dir.status}`);
+
+    const riskHtml = dir.risk ? `<div class="direction-risk">⚠ ${esc(dir.risk)}</div>` : '';
+    const reasonHtml = dir.abandonment_reason
+      ? `<div class="direction-reason">Abandoned: ${esc(dir.abandonment_reason)}</div>`
+      : dir.status === 'merged'
+        ? `<div class="direction-reason" style="color:var(--blue);">Merged into selected direction</div>`
+        : '';
+
+    card.innerHTML = `
+      <div class="direction-status-bar"></div>
+      <div class="direction-header">
+        <div class="direction-title">${esc(dir.differentiator || dir.description.split('—')[0])}</div>
+        <span class="badge badge-${badgeMap[dir.status]}">${esc(dir.status)}</span>
+      </div>
+      <div class="direction-differentiator">${esc(dir.description)}</div>
+      ${riskHtml}
+      ${reasonHtml}
+    `;
+    grid.appendChild(card);
+  });
+
+  // Decision log
+  const logWrap = document.getElementById('decision-log');
+  HISTORY.decision_log.forEach(entry => {
+    const actionColor = entry.action === 'MERGE' ? 'blue' : entry.action === 'APPROVE' ? 'green' : 'red';
+    const item = el('div', '');
+    item.style.cssText = 'display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--border-muted);';
+    item.innerHTML = `
+      <span class="badge badge-${actionColor}" style="flex-shrink:0;margin-top:2px;">${esc(entry.action)}</span>
+      <div>
+        <div style="font-size:13px;color:var(--text);margin-bottom:3px;">${esc(entry.detail)}</div>
+        <div style="font-size:11px;color:var(--text-subtle);">${esc(entry.layer)} · ${new Date(entry.timestamp).toLocaleString()}</div>
+      </div>
+    `;
+    logWrap.appendChild(item);
+  });
+
+  // Completeness snapshots
+  const snapWrap = document.getElementById('snapshots-wrap');
+  const dims = ['core_feature_definition', 'user_scenario_coverage', 'technical_constraints', 'boundary_conditions', 'non_functional_requirements'];
+  const dimLabels = {
+    core_feature_definition: 'Core Features',
+    user_scenario_coverage: 'Scenario Coverage',
+    technical_constraints: 'Tech Constraints',
+    boundary_conditions: 'Boundary Conditions',
+    non_functional_requirements: 'NFRs'
+  };
+
+  // Show layer 3 (final) as bar chart
+  const final = HISTORY.completeness_snapshots[2];
+  const snapDiv = el('div', 'snapshot-wrap');
+  snapDiv.innerHTML = `<div class="snapshot-title">Final layer (Lock) — ${new Date(final.timestamp).toLocaleString()}</div><div class="snapshot-bars"></div>`;
+  const barsWrap = snapDiv.querySelector('.snapshot-bars');
+
+  dims.forEach(dim => {
+    const val = final.dimensions[dim];
+    const color = val >= 85 ? 'var(--green)' : val >= 65 ? 'var(--amber)' : 'var(--red)';
+    const row = el('div', 'snap-row');
+    row.innerHTML = `
+      <div class="snap-label">${dimLabels[dim]}</div>
+      <div class="snap-bar-bg"><div class="snap-bar-fill" style="width:${val}%;background:${color};"></div></div>
+      <div class="snap-val" style="color:${color};">${val}%</div>
+    `;
+    barsWrap.appendChild(row);
+  });
+  snapWrap.appendChild(snapDiv);
+
+  // Layer progression table
+  const tableDiv = el('div', '');
+  tableDiv.style.cssText = 'margin-top:16px;overflow-x:auto;';
+  let tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr>
+      <th style="text-align:left;padding:7px 10px;background:var(--border-muted);color:var(--text-subtle);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;">Dimension</th>
+      <th style="padding:7px 10px;background:var(--border-muted);color:var(--text-subtle);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;text-align:center;">Layer 1</th>
+      <th style="padding:7px 10px;background:var(--border-muted);color:var(--text-subtle);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;text-align:center;">Layer 2</th>
+      <th style="padding:7px 10px;background:var(--border-muted);color:var(--text-subtle);font-size:10px;text-transform:uppercase;letter-spacing:0.6px;text-align:center;">Layer 3</th>
+    </tr></thead><tbody>`;
+
+  dims.forEach(dim => {
+    const vals = HISTORY.completeness_snapshots.map(s => s.dimensions[dim]);
+    tableHtml += `<tr>
+      <td style="padding:7px 10px;color:var(--text-muted);border-bottom:1px solid var(--border-muted);">${dimLabels[dim]}</td>
+      ${vals.map((v,i) => {
+        const c = v >= 85 ? 'var(--green)' : v >= 65 ? 'var(--amber)' : 'var(--red)';
+        return `<td style="padding:7px 10px;text-align:center;font-weight:600;color:${c};border-bottom:1px solid var(--border-muted);">${v}%</td>`;
+      }).join('')}
+    </tr>`;
+  });
+  tableHtml += '</tbody></table>';
+  tableDiv.innerHTML = tableHtml;
+  snapWrap.appendChild(tableDiv);
+}
+
+// ── 7. Review Status ─────────────────────────────────────
+function renderReview() {
+  const fi = REVIEW.fix_iteration_summary;
+  document.getElementById('review-count-badge').textContent = `${fi.final_blocks} blocks · ${fi.final_warns} warnings`;
+
+  // Summary bar
+  const summary = document.getElementById('review-summary');
+  summary.innerHTML = `
+    <div class="review-summary-stat"><div class="num green">${fi.total_iterations}</div><div class="label">Fix Iterations</div></div>
+    <div class="review-summary-stat"><div class="num red">${fi.initial_blocks}</div><div class="label">Initial Blocks</div></div>
+    <div class="review-summary-stat"><div class="num green">${fi.final_blocks}</div><div class="label">Remaining Blocks</div></div>
+    <div class="review-summary-stat"><div class="num amber">${fi.final_warns}</div><div class="label">Warnings</div></div>
+    <div style="margin-left:auto;text-align:right;">
+      <div style="font-size:13px;font-weight:600;color:var(--text);">${esc(REVIEW.reviewer)}</div>
+      <div style="font-size:11px;color:var(--text-subtle);margin-top:2px;">Mode: ${esc(REVIEW.review_mode)}</div>
+    </div>
+  `;
+
+  // Review cards
+  const cards = document.getElementById('review-cards');
+
+  const sections = [
+    {
+      title: '6Cs Audit',
+      pass: REVIEW['6cs_audit'].passed,
+      findings: REVIEW['6cs_audit'].findings,
+      extra: null
+    },
+    {
+      title: 'Invariant Verification',
+      pass: REVIEW.invariant_verification.passed,
+      findings: REVIEW.invariant_verification.findings,
+      extra: null
+    },
+    {
+      title: 'Acceptance Criteria Verification',
+      pass: REVIEW.acceptance_criteria_verification.passed,
+      findings: REVIEW.acceptance_criteria_verification.findings,
+      extra: null
+    },
+    {
+      title: 'Coverage Verification',
+      pass: REVIEW.coverage_verification.passed,
+      findings: REVIEW.coverage_verification.findings,
+      extra: null
+    },
+    {
+      title: 'Global Coherence',
+      pass: REVIEW.global_coherence_check.passed,
+      findings: REVIEW.global_coherence_check.findings.map((f, i) => ({
+        id: `COH-${i+1}`, severity: 'fixed', finding: f, confidence: 'high'
+      })),
+      extra: null
+    }
+  ];
+
+  sections.forEach(sec => {
+    const card = el('div', 'review-card');
+    const icon = sec.pass
+      ? '<div class="review-pass-icon pass">✓</div>'
+      : '<div class="review-pass-icon fail">✗</div>';
+
+    let findingsHtml = '';
+    (sec.findings || []).forEach(f => {
+      const sev = f.status === 'fixed' ? 'fixed' : (f.severity || 'warn');
+      const idColor = sev === 'fixed' ? 'fixed' : sev === 'block' ? 'block' : 'warn';
+      const targetHtml = f.target ? `<span class="finding-target">${esc(f.target)}</span><br>` : '';
+      const fixedLabel = f.status === 'fixed' ? ' <span style="color:var(--green);font-size:10px;">[FIXED]</span>' : '';
+      findingsHtml += `
+        <div class="finding-item ${sev}">
+          <div class="finding-id ${idColor}">${esc(f.id || '')}${fixedLabel}</div>
+          ${targetHtml}
+          <div class="finding-text">${esc(typeof f.finding === 'string' ? f.finding : '')}</div>
+        </div>
+      `;
+    });
+
+    card.innerHTML = `
+      <div class="review-card-head">
+        ${icon}
+        <div class="review-card-title">${esc(sec.title)}</div>
+        <span class="badge badge-${sec.pass ? 'green' : 'red'}">${sec.pass ? 'Pass' : 'Fail'}</span>
+      </div>
+      <div class="review-card-body">${findingsHtml || '<div style="font-size:12px;color:var(--text-subtle);">No findings.</div>'}</div>
+    `;
+    cards.appendChild(card);
+  });
+
+  // AI Bias
+  const biasWrap = document.getElementById('bias-list');
+  REVIEW.ai_bias_detection.patterns_found.forEach(b => {
+    const item = el('div', 'bias-item');
+    item.innerHTML = `
+      <div class="bias-type">${esc(b.bias_type.replace(/_/g, ' '))}</div>
+      <div class="bias-evidence">${esc(b.evidence)}</div>
+      <div class="bias-conf">Confidence: ${esc(b.confidence)}</div>
+    `;
+    biasWrap.appendChild(item);
+  });
+}
+
+// ── 8. Invariants & NFRs ─────────────────────────────────
+function renderInvariants() {
+  const list = document.getElementById('invariant-list');
+  REQUIREMENTS.invariants.forEach(inv => {
+    const item = el('div', 'invariant-item');
+    const reqTagsHtml = inv.requirement_refs.map(r => `<span class="badge badge-outline" style="font-size:10px;">${esc(r)}</span>`).join(' ');
+    item.innerHTML = `
+      <div>
+        <span class="invariant-id">${esc(inv.id)}</span>
+        <div class="invariant-scope">${esc(inv.scope)}</div>
+      </div>
+      <div>
+        <div class="invariant-text">${esc(inv.statement)}</div>
+        <div style="display:flex;gap:4px;margin-top:8px;flex-wrap:wrap;">${reqTagsHtml}</div>
+      </div>
+    `;
+    list.appendChild(item);
+  });
+
+  const tbody = document.getElementById('nfr-tbody');
+  INDEX.non_functional_requirements.forEach(nfr => {
+    const row = el('tr', '');
+    const priorityColor = nfr.priority === 'must_have' ? 'red' : nfr.priority === 'should_have' ? 'amber' : 'gray';
+    const srcColor = nfr.source === 'user_stated' ? 'blue' : 'purple';
+    row.innerHTML = `
+      <td><span class="badge badge-outline" style="font-size:11px;">${esc(nfr.category)}</span></td>
+      <td>${esc(nfr.description)}</td>
+      <td style="color:var(--text);font-family:'SF Mono','Fira Mono',monospace;font-size:12px;">${esc(nfr.target)}</td>
+      <td><span class="badge badge-${priorityColor}">${esc(nfr.priority.replace(/_/g, ' '))}</span></td>
+      <td>${sourceBadge(nfr.source)}</td>
+    `;
+    tbody.appendChild(row);
+  });
+}
+
+// ── Init ─────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  renderRequirements();
+  renderScenarios();
+  renderMatrix();
+  renderPhilosophy();
+  renderDomainModel();
+  renderDirections();
+  renderReview();
+  renderInvariants();
+});
+</script>
+</body>
+</html>

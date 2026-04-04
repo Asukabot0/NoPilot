@@ -24,16 +24,16 @@ program
   .option('--config <path>', 'Path to lash config JSON (used if --platforms omitted)')
   .action(async (opts: { platforms?: string; config?: string }) => {
     const { preflight } = await import('./platform-launcher.js');
+    const { loadConfig } = await import('./config.js');
     let platforms: string[] = [];
     if (opts.platforms) {
       platforms = opts.platforms.split(',').map((p) => p.trim());
-    } else if (opts.config) {
-      const { loadConfig } = await import('./config.js');
+    } else {
       const cfg = loadConfig(opts.config);
       platforms = cfg.platforms ?? [];
     }
     if (platforms.length === 0) {
-      err('no platforms specified; use --platforms or --config');
+      err('no platforms specified and no defaults found');
     }
     try {
       const results = await preflight(platforms);

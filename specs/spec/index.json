@@ -1,0 +1,91 @@
+{
+  "phase": "spec",
+  "version": "4.0",
+  "status": "approved",
+  "module_refs": [
+    "mod-001-design-provider-core.json",
+    "mod-002-stitch-provider.json",
+    "mod-003-agent-html-provider.json",
+    "mod-004-preview-engine.json",
+    "mod-005-iteration-engine.json",
+    "mod-006-style-detector.json",
+    "mod-007-post-processor.json",
+    "mod-008-token-exporter.json",
+    "mod-009-taste-orchestrator.json"
+  ],
+  "dependency_graph": {
+    "edges": [
+      {"from": "MOD-009", "to": "MOD-001", "type": "calls", "description": "Orchestrator selects and calls active DesignProvider"},
+      {"from": "MOD-009", "to": "MOD-004", "type": "calls", "description": "Orchestrator starts preview and awaits selection"},
+      {"from": "MOD-009", "to": "MOD-005", "type": "calls", "description": "Orchestrator delegates iteration logic"},
+      {"from": "MOD-009", "to": "MOD-006", "type": "calls", "description": "Orchestrator triggers style detection for existing projects"},
+      {"from": "MOD-009", "to": "MOD-007", "type": "calls", "description": "Orchestrator runs post-processing on downloaded HTML"},
+      {"from": "MOD-009", "to": "MOD-008", "type": "calls", "description": "Orchestrator exports tokens after final selection"},
+      {"from": "MOD-002", "to": "MOD-001", "type": "depends", "description": "StitchProvider implements DesignProvider interface"},
+      {"from": "MOD-003", "to": "MOD-001", "type": "depends", "description": "AgentHTMLProvider implements DesignProvider interface"},
+      {"from": "MOD-005", "to": "MOD-001", "type": "calls", "description": "IterationEngine calls extractDesignContext on providers"},
+      {"from": "MOD-005", "to": "MOD-004", "type": "calls", "description": "IterationEngine updates preview with new variants"},
+      {"from": "MOD-008", "to": "MOD-001", "type": "calls", "description": "TokenExporter calls extractDesignContext for DNA"}
+    ]
+  },
+  "external_dependencies": [
+    {
+      "name": "Stitch MCP (@_davideast/stitch-mcp)",
+      "purpose": "Primary design generation engine via Gemini 3.1 Pro. Provides generate_screen_from_text, generate_variants, extract_design_context, create_design_system, apply_design_system MCP tools.",
+      "module_refs": ["MOD-002"],
+      "alternatives": ["AgentHTMLProvider (MOD-003) as Tier 2 fallback"],
+      "test_strategy": "mock"
+    },
+    {
+      "name": "Node.js http module",
+      "purpose": "Local HTTP server for interactive preview. Built-in, zero external dependency.",
+      "module_refs": ["MOD-004"],
+      "alternatives": [],
+      "test_strategy": "real"
+    }
+  ],
+  "global_error_strategy": {
+    "api_error_format": "{ error: string, code: string, detail?: string }. Codes: PROVIDER_UNAVAILABLE, GENERATION_FAILED, QUOTA_EXHAUSTED, TIMEOUT, POST_PROCESS_FAILED, STYLE_DETECTION_FAILED, TOKEN_EXPORT_FAILED.",
+    "external_service": "Stitch MCP failures trigger automatic degradation to Tier 2 (MOD-003). If Tier 2 also fails, degrade to Tier 3 (text questions in prompt). All failures logged with error code + original error message.",
+    "logging": "Structured JSON logs to stderr. Fields: timestamp, module, level (info/warn/error), message, error_code. No PII or API keys in logs."
+  },
+  "auto_decisions": [
+    {
+      "decision": "Place new TypeScript modules in src/ui-taste/ directory, parallel to src/lash/",
+      "alternatives": ["Pure prompt + MCP (no new TypeScript)", "Merge into src/lash/ as shared utilities"],
+      "rationale": "User chose option A. Consistent with Lash architecture: TypeScript provides testable infrastructure, prompt handles orchestration. Separate directory avoids coupling with Lash build-specific code.",
+      "impact": "All 9 modules live under src/ui-taste/. CLI exposes subcommands via nopilot CLI.",
+      "impact_level": "high"
+    },
+    {
+      "decision": "Use Promise-based async wait for browser selection callback instead of polling",
+      "alternatives": ["File-based polling (CLI watches /tmp for selection file)", "WebSocket bidirectional channel"],
+      "rationale": "Promise + HTTP POST is simplest reliable approach. No file system race conditions. No WebSocket complexity. CLI starts server, returns Promise, Promise resolves on POST.",
+      "impact": "Preview server must handle POST /api/select endpoint. CLI blocks on Promise until selection or timeout.",
+      "impact_level": "medium"
+    },
+    {
+      "decision": "Store iteration history in-memory (Map<round, DesignVariant[]>) not on disk",
+      "alternatives": ["Write each round to /tmp/nopilot-rounds/", "Store in specs/mockups/.rounds/"],
+      "rationale": "History is session-scoped and ephemeral. In-memory avoids disk I/O and cleanup concerns. Memory is bounded (max ~10 rounds x 5 variants x ~25KB HTML = ~1.25MB).",
+      "impact": "History lost on CLI crash. Acceptable for discover-phase ephemeral data.",
+      "impact_level": "low"
+    },
+    {
+      "decision": "Use regex-based CSS parsing for style detection instead of a full CSS AST parser",
+      "alternatives": ["PostCSS AST parser", "css-tree parser", "Tailwind config JS eval"],
+      "rationale": "We need to extract a small set of tokens (colors, fonts, spacing, border-radius) not transform CSS. Regex covers the 80% case for CSS/SCSS/Tailwind config. PostCSS adds a dependency for marginal benefit. Tailwind config is read as JSON-like structure.",
+      "impact": "Won't parse complex CSS-in-JS (styled-components, emotion). Accepted risk per REQ-006 ACCEPT_COST.",
+      "impact_level": "medium"
+    },
+    {
+      "decision": "Use LLM to convert Stitch designMd to DTCG tokens.json instead of building a deterministic parser",
+      "alternatives": ["Deterministic regex parser for designMd", "Hybrid: regex extract + LLM fill gaps"],
+      "rationale": "Stitch designMd is free-form Markdown with no stable schema. Deterministic parsing is fragile. LLM extraction handles format variation. Accepted risk per REQ-008 ACCEPT_COST (audit pass rate threshold).",
+      "impact": "Token accuracy depends on LLM quality. First-batch human audit at 80% threshold triggers redesign if fails.",
+      "impact_level": "medium"
+    }
+  ],
+  "contract_amendments": [],
+  "context_dependencies": ["specs/discover/index.json"]
+}

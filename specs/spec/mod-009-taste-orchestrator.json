@@ -1,0 +1,183 @@
+{
+  "id": "MOD-009",
+  "name": "taste-orchestrator",
+  "responsibility": "Main entry point and flow coordinator for UI taste exploration. Orchestrates the full Phase 0-8 lifecycle: detects frontend involvement, triggers style detection, coordinates provider selection, manages page-by-page variant generation, delegates to preview/iteration engines, handles cross-page consistency, triggers post-processing and token export, manages final save and cleanup. Integrates with discover.md prompt layer.",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.run",
+      "input_schema": {
+        "pages": "PageSpec[]",
+        "options": "TasteOrchestratorOptions"
+      },
+      "output_schema": {"result": "TasteExplorationResult"},
+      "errors": ["PROVIDER_UNAVAILABLE", "GENERATION_FAILED", "TIMEOUT"],
+      "api_detail": {"method": "Main entry point. Executes the full flow for all pages sequentially. Returns after all pages selected or user abandons."},
+      "requirement_refs": ["REQ-001", "REQ-002", "REQ-003", "REQ-004", "REQ-007"],
+      "acceptance_criteria_refs": ["REQ-001-AC-3", "REQ-002-AC-1", "REQ-003-AC-1", "REQ-004-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.detectExistingStyle",
+      "input_schema": {"projectRoot": "string", "screenshots": "string[]"},
+      "output_schema": {"constraint": "string | null"},
+      "errors": ["STYLE_DETECTION_FAILED"],
+      "api_detail": {"method": "Delegates to StyleDetector.detect + analyzeScreenshots. Returns designMd constraint or null."},
+      "requirement_refs": ["REQ-006"],
+      "acceptance_criteria_refs": ["REQ-006-AC-1", "REQ-006-AC-2", "REQ-006-AC-3", "REQ-006-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.processPage",
+      "input_schema": {"page": "PageSpec", "designSystemRef": "DesignSystemRef | null", "provider": "DesignProvider"},
+      "output_schema": {"selectedVariant": "DesignVariant", "dna": "DesignDNA"},
+      "errors": ["GENERATION_FAILED", "TIMEOUT", "QUOTA_EXHAUSTED"],
+      "api_detail": {
+        "method": "Per-page flow: 1. generateScreen → 2. generateVariants(5) → 3. postProcess all HTML → 4. start preview → 5. iteration loop (awaitSelection → processSelection) until user selects → 6. extractDesignContext → 7. return selected + DNA. On QUOTA_EXHAUSTED: notify user, switch provider to Tier 2."
+      },
+      "requirement_refs": ["REQ-002", "REQ-003", "REQ-004", "REQ-005", "REQ-010"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1", "REQ-010-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.generateDarkLightPair",
+      "input_schema": {"variant": "DesignVariant", "provider": "DesignProvider"},
+      "output_schema": {"darkVariant": "DesignVariant | null", "lightVariant": "DesignVariant | null"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {"method": "Generate the counterpart color mode. If selected variant is dark, generate light version and vice versa via provider.generateScreen with colorMode constraint."},
+      "requirement_refs": ["REQ-011"],
+      "acceptance_criteria_refs": ["REQ-011-AC-1", "REQ-011-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.saveResults",
+      "input_schema": {"results": "PageResult[]", "dna": "DesignDNA", "stitchProjectId": "string | null"},
+      "output_schema": {"savedPaths": "string[]"},
+      "errors": [],
+      "api_detail": {
+        "method": "1. Save selected HTML to specs/mockups/{page-name}.html (and -dark.html if applicable). 2. Generate specs/mockups/index.html overview. 3. Export tokens via TokenExporter. 4. Write ui_taste constraint to discover.json. 5. Persist Stitch project ID. 6. Cleanup all temp files."
+      },
+      "requirement_refs": ["REQ-008", "REQ-009"],
+      "acceptance_criteria_refs": ["REQ-008-AC-1", "REQ-008-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.runTier3",
+      "input_schema": {"pages": "PageSpec[]"},
+      "output_schema": {"result": "TasteExplorationResult"},
+      "errors": [],
+      "api_detail": {
+        "method": "Tier 3 fallback: no browser, no Stitch. Conducts text-based taste questions in CLI. For each page: ask user about UI density (information-dense / minimal / data-viz), primary platform (mobile-first / desktop-first / responsive), visual complexity (static / subtle interactions / expressive animations), design system (existing brand / greenfield). Record answers as a lightweight DesignDNA (colors=null, typography=null, but animationLevel and designMd populated from answers). Export tokens as CSS custom properties with placeholder values annotated with user preferences. tier=3 in result."
+      },
+      "requirement_refs": ["REQ-010"],
+      "acceptance_criteria_refs": ["REQ-010-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.handleOverrideStyle",
+      "input_schema": {"page": "PageSpec", "provider": "DesignProvider"},
+      "output_schema": {"selectedVariant": "DesignVariant", "dna": "DesignDNA"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {
+        "method": "When user sets overrideDesignSystem=true in POST /api/select, orchestrator calls processPage WITHOUT the inherited designSystemRef, allowing full REIMAGINE exploration for this specific page. The resulting DNA does NOT propagate to subsequent pages."
+      },
+      "requirement_refs": ["REQ-007"],
+      "acceptance_criteria_refs": ["REQ-007-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.handleRegeneratePair",
+      "input_schema": {"variant": "DesignVariant", "feedback": "string | null", "provider": "DesignProvider"},
+      "output_schema": {"darkVariant": "DesignVariant | null", "lightVariant": "DesignVariant | null"},
+      "errors": ["GENERATION_FAILED"],
+      "api_detail": {
+        "method": "When user sends action='regenerate_pair' from preview, regenerate the dark/light counterpart with optional text feedback as constraint. Updates preview with new pair."
+      },
+      "requirement_refs": ["REQ-011"],
+      "acceptance_criteria_refs": ["REQ-011-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "TasteOrchestrator.notifyUser",
+      "input_schema": {"type": "'progress' | 'quota_warning' | 'tier_switch' | 'error'", "message": "string"},
+      "output_schema": {"void": true},
+      "errors": [],
+      "api_detail": {"method": "Output structured status message to CLI stderr for user visibility"},
+      "requirement_refs": ["REQ-010"],
+      "acceptance_criteria_refs": ["REQ-010-AC-4"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "TasteOrchestratorOptions",
+      "fields": [
+        {"name": "projectRoot", "type": "string", "constraints": "path to project root for style detection"},
+        {"name": "screenshots", "type": "string[]", "constraints": "user-provided screenshot paths, can be empty"},
+        {"name": "language", "type": "string", "constraints": "target language for UI text, e.g. 'zh-CN'"},
+        {"name": "fontStack", "type": "string", "constraints": "target font family stack"},
+        {"name": "liteMode", "type": "boolean", "constraints": "if true, only process the single most important page"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "PageResult",
+      "fields": [
+        {"name": "page", "type": "PageSpec", "constraints": ""},
+        {"name": "selectedVariant", "type": "DesignVariant", "constraints": ""},
+        {"name": "darkVariant", "type": "DesignVariant | null", "constraints": ""},
+        {"name": "dna", "type": "DesignDNA", "constraints": ""},
+        {"name": "iterationRounds", "type": "number", "constraints": "how many rounds it took"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "TasteExplorationResult",
+      "fields": [
+        {"name": "pages", "type": "PageResult[]", "constraints": ""},
+        {"name": "tokensPath", "type": "string", "constraints": "specs/mockups/tokens.json"},
+        {"name": "mockupsDir", "type": "string", "constraints": "specs/mockups/"},
+        {"name": "designSystemRef", "type": "DesignSystemRef | null", "constraints": ""},
+        {"name": "stitchProjectId", "type": "string | null", "constraints": "persisted for future reference"},
+        {"name": "tier", "type": "1 | 2 | 3", "constraints": "which tier was actually used"},
+        {"name": "totalApiCalls", "type": "number", "constraints": "Stitch API calls made"}
+      ],
+      "relationships": []
+    },
+    {
+      "name": "UITasteConstraint",
+      "fields": [
+        {"name": "designDNA", "type": "DesignDNA", "constraints": "extracted from selected variant"},
+        {"name": "tokensPath", "type": "string", "constraints": "relative path to tokens.json"},
+        {"name": "mockupsDir", "type": "string", "constraints": "relative path to mockups directory"},
+        {"name": "stitchProjectId", "type": "string | null", "constraints": "for future Stitch reference"},
+        {"name": "tier", "type": "1 | 2 | 3", "constraints": "which tier was used"},
+        {"name": "selectedPages", "type": "Array<{name: string, mockupFile: string, darkMockupFile: string | null}>", "constraints": ""}
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": {
+    "states": ["idle", "detecting_style", "selecting_provider", "processing_page", "tier3_text", "saving_results", "complete", "failed"],
+    "transitions": [
+      {"from": "idle", "event": "run", "to": "detecting_style"},
+      {"from": "detecting_style", "event": "style_detected", "to": "selecting_provider"},
+      {"from": "detecting_style", "event": "no_style", "to": "selecting_provider"},
+      {"from": "selecting_provider", "event": "provider_selected", "to": "processing_page"},
+      {"from": "selecting_provider", "event": "all_unavailable", "to": "tier3_text", "guard": "no provider and no browser available"},
+      {"from": "tier3_text", "event": "tier3_complete", "to": "saving_results"},
+      {"from": "processing_page", "event": "page_complete", "to": "processing_page", "guard": "more pages remaining"},
+      {"from": "processing_page", "event": "page_complete", "to": "saving_results", "guard": "all pages done"},
+      {"from": "processing_page", "event": "quota_exhausted", "to": "selecting_provider", "guard": "switch to Tier 2"},
+      {"from": "processing_page", "event": "timeout", "to": "failed"},
+      {"from": "saving_results", "event": "saved", "to": "complete"},
+      {"from": "complete", "event": "cleanup", "to": "idle"}
+    ]
+  },
+  "nfr_constraints": {
+    "performance": "Full flow for 1 page (5 variants + selection): < 3 minutes end-to-end including user think time excluded.",
+    "security": "Never write API keys to specs/ directory (INV-001). All temp files in /tmp only (INV-002).",
+    "other": "discover.json backward compatibility: ui_taste field is optional, absence means no UI (INV-004)."
+  },
+  "requirement_refs": ["REQ-001", "REQ-002", "REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-009", "REQ-010", "REQ-011", "REQ-012"],
+  "invariant_refs": ["INV-001", "INV-002", "INV-003", "INV-004", "INV-005", "INV-006"]
+}
