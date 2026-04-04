@@ -109,7 +109,7 @@ function loadSplitSpec(dirPath: string): { spec: Spec; specHash: string } {
 
   const moduleRefs = (index.module_refs ?? []) as string[];
   const modules: SpecModule[] = [];
-  const hashParts: Buffer[] = [indexBytes];
+  const moduleEntries: { ref: string; bytes: Buffer; mod: SpecModule }[] = [];
 
   for (const ref of moduleRefs) {
     const modPath = join(abs, ref);
@@ -117,9 +117,15 @@ function loadSplitSpec(dirPath: string): { spec: Spec; specHash: string } {
       throw new Error(`[MODULE_FILE_MISSING] Referenced module file not found (path: ${modPath})`);
     }
     const modBytes = readFileSync(modPath);
-    hashParts.push(modBytes);
     const mod: SpecModule = parseJson(modBytes.toString('utf8'), modPath);
-    modules.push(mod);
+    moduleEntries.push({ ref, bytes: modBytes, mod });
+  }
+
+  // Sort by filename for deterministic hash regardless of module_refs order
+  const sortedEntries = [...moduleEntries].sort((a, b) => a.ref.localeCompare(b.ref));
+  const hashParts: Buffer[] = [indexBytes, ...sortedEntries.map((e) => e.bytes)];
+  for (const entry of moduleEntries) {
+    modules.push(entry.mod);
   }
 
   // Validate dependency_graph references
