@@ -3,6 +3,6 @@ import { VERSION } from '../src/lash/index';
 
 describe('Lash', () => {
   it('should export version', () => {
-    expect(VERSION).toBe('1.0.0');
+    expect(VERSION).toBe('0.0.1');
   });
 });
