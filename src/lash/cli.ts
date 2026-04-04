@@ -129,9 +129,10 @@ program
   ) => {
     const { generatePackage } = await import('./task-packager.js');
     const { readFileSync } = await import('node:fs');
+    const { resolveSpec, resolveDiscover } = await import('./spec-resolver.js');
     try {
-      const spec = JSON.parse(readFileSync(opts.spec, 'utf-8'));
-      const discover = JSON.parse(readFileSync(opts.discover, 'utf-8'));
+      const { spec } = resolveSpec(opts.spec) as { spec: Record<string, unknown> };
+      const { discover } = resolveDiscover(opts.discover) as { discover: Record<string, unknown> };
       let tests: Record<string, unknown>;
       if (opts.tests) {
         tests = JSON.parse(readFileSync(opts.tests, 'utf-8'));

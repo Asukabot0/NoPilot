@@ -10,9 +10,9 @@
  * Pure algorithm module — NO subprocess calls, NO I/O beyond JSON parse/stringify.
  * All functions are synchronous.
  */
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { resolveSpec, resolveDiscover } from './spec-resolver.js';
 import type { ExecutionPlan, PlanBatch, PlanModuleNode, TracerConfig } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -63,12 +63,11 @@ interface EdgeEntry {
  *   - invalid_dependency_ref
  */
 export function generatePlan(specPath: string, discoverPath: string): ExecutionPlan {
-  const specBytes = readFileSync(specPath);
-  const specHash = createHash('sha256').update(specBytes).digest('hex');
-  const spec: Spec = JSON.parse(specBytes.toString('utf8'));
+  const { spec: resolvedSpec, specHash } = resolveSpec(specPath);
+  const spec: Spec = resolvedSpec as Spec;
 
-  const discoverText = readFileSync(discoverPath, 'utf8');
-  const discover: Discover = JSON.parse(discoverText);
+  const { discover: resolvedDiscover } = resolveDiscover(discoverPath);
+  const discover: Discover = resolvedDiscover as Discover;
 
   let modules: SpecModule[] = spec.modules ?? [];
   const moduleIds = new Set(modules.map((m) => m.id));
