@@ -20,7 +20,7 @@
     "lint": "tsc --noEmit"
   },
   "engines": {
-    "node": ">=18.19.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "commander": "^13.0.0"
