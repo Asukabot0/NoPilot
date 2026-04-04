@@ -5,6 +5,7 @@
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { existsSync, symlinkSync } from 'node:fs';
 import type { MergeResult, WorktreeInfo, PreserveResult, UnexpectedFilesResult } from './types.js';
 
 const execFileAsync = promisify(execFile);
@@ -92,6 +93,13 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
       throw new Error(`worktree_exists: worktree for ${moduleId} already exists`);
     }
     throw new Error(`git_error: ${stderr}`);
+  }
+
+  // Symlink node_modules from main repo — worktrees lack it (gitignored). (#37)
+  const srcModules = join(projectRoot, 'node_modules');
+  const destModules = join(path, 'node_modules');
+  if (existsSync(srcModules) && !existsSync(destModules)) {
+    symlinkSync(srcModules, destModules, 'dir');
   }
 
   return { worktree_path: path, branch_name: branch };
@@ -211,6 +219,13 @@ export async function createConflictResolutionWorktree(
   const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
   if (result.returncode !== 0) {
     throw new Error(`git_error: ${result.stderr.trim()}`);
+  }
+
+  // Symlink node_modules from main repo (#37)
+  const srcModules = join(projectRoot, 'node_modules');
+  const destModules = join(path, 'node_modules');
+  if (existsSync(srcModules) && !existsSync(destModules)) {
+    symlinkSync(srcModules, destModules, 'dir');
   }
 
   return { worktree_path: path, branch_name: branch };
