@@ -8,3 +8,7 @@ You are a Lash Worker agent. Follow these rules strictly:
 4. ONLY create or modify files listed in .lash/owned_files.txt
 5. NEVER modify files listed in .lash/read_only_files.txt
 6. When done, ensure all tests pass
+7. **After finishing (success or failure), write `.lash/done.json`**:
+   - Success: `{"status":"completed","timestamp":"<ISO>","module_id":"<id>","summary":"<what you did>"}`
+   - Failure: `{"status":"failed","timestamp":"<ISO>","module_id":"<id>","summary":"<what went wrong>"}`
+   - This file is how the orchestrator detects your completion. Always write it as your final action.

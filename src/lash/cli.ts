@@ -207,15 +207,14 @@ program
   .description('Check worker completion status')
   .requiredOption('--pid <pid>', 'Worker process ID', parseInt)
   .option('--platform <name>', 'Platform name')
+  .option('--started-at <iso>', 'Worker start timestamp (ISO) for timeout detection')
+  .option('--timeout <seconds>', 'Timeout in seconds (default: 300)', parseInt)
   .action(async (
     moduleId: string,
     worktreePath: string,
-    opts: { pid: number; platform?: string },
+    opts: { pid: number; platform?: string; startedAt?: string; timeout?: number },
   ) => {
     const { checkCompletion } = await import('./platform-launcher.js');
-    const { execFile } = await import('node:child_process');
-    const { promisify } = await import('node:util');
-    const execFileAsync = promisify(execFile);
 
     const handle = {
       platform: (opts.platform ?? 'claude-code') as 'claude-code' | 'codex' | 'opencode',
@@ -223,29 +222,22 @@ program
       session_id: '',
       worktree_path: worktreePath,
       module_id: moduleId,
-      started_at: '',
+      started_at: opts.startedAt ?? '',
     };
+
+    const completionOpts = opts.startedAt
+      ? { startedAt: opts.startedAt, timeoutSeconds: opts.timeout }
+      : undefined;
 
     try {
       let result;
       try {
         process.kill(opts.pid, 0);
-        // Process exists — returns running status
-        result = await checkCompletion(handle, undefined);
+        // Process alive — checkCompletion handles done.json + timeout + running
+        result = await checkCompletion(handle, undefined, completionOpts);
       } catch {
-        // Process is gone — check git diff
-        let hasDiff = false;
-        try {
-          const { stdout } = await execFileAsync('git', ['diff', '--stat', 'HEAD'], { cwd: worktreePath });
-          hasDiff = Boolean(stdout.trim());
-        } catch {
-          hasDiff = false;
-        }
-        result = {
-          status: hasDiff ? 'completed' : 'completed_empty',
-          exit_code: 0,
-          has_diff: hasDiff,
-        };
+        // Process gone — simulate exit 0, checkCompletion handles done.json + git diff
+        result = await checkCompletion(handle, { exitCode: 0 }, completionOpts);
       }
       out(result);
     } catch (exc) {

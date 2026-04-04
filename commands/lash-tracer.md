@@ -30,12 +30,17 @@ Record the `pid` and `session_id` from the JSON output.
 
 ### 4. Wait for Completion
 
-Poll until the worker finishes:
+Poll until the worker finishes. Pass `--started-at` from the spawn output to enable timeout detection:
 ```
-bash "lash check <module_id> <worktree_path> --pid <pid> --platform <platform>"
+bash "lash check <module_id> <worktree_path> --pid <pid> --platform <platform> --started-at <started_at>"
 ```
 
-If status is `running`, wait 30 seconds and poll again. Repeat until status changes.
+Status values:
+- `running` — wait 30 seconds, poll again
+- `completed` — Worker wrote `.lash/done.json` or process exited with changes; proceed to step 5
+- `completed_empty` — process exited cleanly but no changes detected
+- `failed` — Worker signaled failure via `.lash/done.json` or non-zero exit
+- `timeout` — Worker exceeded timeout (default 300s); cancel with `lash cancel --pid <pid>`, then retry or escalate
 
 ### 5. Run External Tests
 

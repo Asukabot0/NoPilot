@@ -17,7 +17,11 @@ import type {
   CompletionStatus,
   HeartbeatResult,
   CancelResult,
+  DoneSignal,
 } from './types.js';
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Platform CLI command templates
@@ -50,9 +54,9 @@ function workerEnv(): NodeJS.ProcessEnv {
   return { ...process.env, DISABLE_OMC: 'true' };
 }
 
-/** Current timestamp in ISO-like format matching Python's time.strftime("%Y-%m-%dT%H:%M:%S"). */
+/** Current UTC timestamp in ISO format (with Z suffix for unambiguous cross-process parsing). */
 function nowTimestamp(): string {
-  return new Date().toISOString().slice(0, 19);
+  return new Date().toISOString();
 }
 
 /** Generate a UUID (mirrors Python uuid.uuid4()). */
@@ -68,10 +72,11 @@ function newSessionId(): string {
 async function runCommand(
   cmd: string[],
   timeoutMs: number = 10_000,
+  cwd?: string,
 ): Promise<{ returncode: number; stdout: string; stderr: string }> {
   const [bin, ...args] = cmd;
   return new Promise((resolve) => {
-    execFile(bin, args, { timeout: timeoutMs }, (err, stdout, stderr) => {
+    execFile(bin, args, { timeout: timeoutMs, cwd }, (err, stdout, stderr) => {
       if (!err) {
         resolve({ returncode: 0, stdout: stdout ?? '', stderr: stderr ?? '' });
       } else {
@@ -100,6 +105,30 @@ function isProcessAlive(pid: number): boolean {
 /** Sleep for N milliseconds. */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
+// done signal
+// ---------------------------------------------------------------------------
+
+/**
+ * Read .lash/done.json from a worktree. Returns null if missing or malformed.
+ */
+export function readDoneSignal(worktreePath: string): DoneSignal | null {
+  try {
+    const raw = readFileSync(join(worktreePath, '.lash', 'done.json'), 'utf-8');
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (
+      (parsed.status === 'completed' || parsed.status === 'failed') &&
+      typeof parsed.timestamp === 'string' &&
+      typeof parsed.module_id === 'string'
+    ) {
+      return parsed as unknown as DoneSignal;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -392,14 +421,46 @@ export interface CheckableProcess {
   exitCode: number | null;
 }
 
+/** Options for timeout detection in checkCompletion. */
+export interface CheckCompletionOptions {
+  startedAt?: string;
+  timeoutSeconds?: number;
+}
+
 /**
  * Check completion status of a worker process.
- * Mirrors Python check_completion().
+ * Priority: done.json signal > timeout > process exit code > git diff fallback.
  */
 export async function checkCompletion(
   handle: WorkerHandle,
   proc?: CheckableProcess,
+  options?: CheckCompletionOptions,
 ): Promise<CompletionStatus> {
+  // Priority 1: explicit done signal file
+  const signal = readDoneSignal(handle.worktree_path);
+  if (signal !== null) {
+    if (signal.status === 'failed') {
+      return { status: 'failed', exit_code: 1, has_diff: null };
+    }
+    // Check git diff to distinguish completed vs completed_empty
+    const hasDiff = await checkWorktreeDiff(handle.worktree_path);
+    return {
+      status: hasDiff ? 'completed' : 'completed_empty',
+      exit_code: 0,
+      has_diff: hasDiff,
+    };
+  }
+
+  // Priority 2: timeout detection
+  if (options?.startedAt) {
+    const startedMs = new Date(options.startedAt).getTime();
+    const timeoutMs = (options.timeoutSeconds ?? 300) * 1000;
+    if (Date.now() - startedMs > timeoutMs) {
+      return { status: 'timeout', exit_code: null, has_diff: null };
+    }
+  }
+
+  // Priority 3: process exit code (only available when called with proc handle)
   if (proc === undefined) {
     return { status: 'running', exit_code: null, has_diff: null };
   }
@@ -414,22 +475,26 @@ export async function checkCompletion(
     return { status: 'failed', exit_code: exitCode, has_diff: null };
   }
 
-  // exit_code === 0: check for git diff
-  let hasDiff = false;
-  try {
-    const diffResult = await runCommand(
-      ['git', 'diff', '--stat', 'HEAD'],
-      30_000,
-    );
-    hasDiff = diffResult.stdout.trim().length > 0;
-  } catch {
-    hasDiff = false;
-  }
-
+  // Priority 4: git diff fallback (exit_code === 0 but no done.json)
+  const hasDiff = await checkWorktreeDiff(handle.worktree_path);
   if (hasDiff) {
     return { status: 'completed', exit_code: 0, has_diff: true };
   } else {
     return { status: 'completed_empty', exit_code: 0, has_diff: false };
+  }
+}
+
+/** Check whether a worktree has uncommitted changes. */
+async function checkWorktreeDiff(worktreePath: string): Promise<boolean> {
+  try {
+    const diffResult = await runCommand(
+      ['git', 'diff', '--stat', 'HEAD'],
+      30_000,
+      worktreePath,
+    );
+    return diffResult.stdout.trim().length > 0;
+  } catch {
+    return false;
   }
 }
 
