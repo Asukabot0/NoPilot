@@ -257,7 +257,6 @@ export interface MergeResult {
 export interface WorktreeInfo {
   worktree_path: string;
   branch_name: string;
-  deps_installed: boolean;
 }
 
 /** Return type of preserve_worktree(). */
@@ -341,7 +340,6 @@ export interface PreflightResult {
   version: string | null;
   auth_ok: boolean;
   error: string | null;
-  fix_suggestion: string | null;
 }
 
 /** JSON output of `lash preflight` — map of platform name → PreflightResult. */
@@ -391,21 +389,3 @@ export interface ResumeOutput {
   sent: boolean;
 }
 
-// ---------------------------------------------------------------------------
-// env_setup.ts — environment readiness types
-// ---------------------------------------------------------------------------
-
-/** A single environment issue found during checkEnv(). */
-export interface EnvIssue {
-  id: string;
-  severity: 'error' | 'warning';
-  message: string;
-  fix_suggestion: string;
-  auto_fixable: boolean;
-}
-
-/** Return type of checkEnv(). */
-export interface EnvCheckResult {
-  ready: boolean;
-  issues: EnvIssue[];
-}

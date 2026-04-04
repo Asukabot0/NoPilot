@@ -56,7 +56,7 @@ program
   .command('init [dir]')
   .description('Initialize a project with NoPilot + Lash')
   .option('--force', 'overwrite existing files', false)
-  .action(async (dir: string | undefined, options: { force: boolean }) => {
+  .action((dir: string | undefined, options: { force: boolean }) => {
     const targetDir = resolve(dir ?? process.cwd());
     const force = options.force;
 
@@ -101,28 +101,6 @@ program
       console.log(`Appended Lash directive to ${filename}`);
     }
 
-    // Environment readiness check — auto-install deps if missing
-    const { checkEnv, installDeps } = await import('./lash/env-setup.js');
-    const envResult = await checkEnv(targetDir);
-    if (!envResult.ready) {
-      console.log('\nEnvironment check:');
-      for (const issue of envResult.issues) {
-        const prefix = issue.severity === 'error' ? '[!]' : '[~]';
-        console.log(`  ${prefix} ${issue.message}`);
-        if (issue.auto_fixable) {
-          console.log(`      Auto-fixing: ${issue.fix_suggestion}`);
-          if (issue.id === 'deps_not_installed') {
-            const installResult = await installDeps(targetDir);
-            console.log(installResult.success ? '      Done.' : `      Failed: ${installResult.stderr}`);
-          }
-        } else {
-          console.log(`      Fix: ${issue.fix_suggestion}`);
-        }
-      }
-    } else {
-      console.log('\nEnvironment: ready');
-    }
-
     console.log(`\nNoPilot initialized in ${targetDir}`);
   });
 
@@ -149,45 +127,6 @@ program
   .description('Print the nopilot package version')
   .action(() => {
     console.log(`nopilot v${getVersion()}`);
-  });
-
-// ─── doctor ────────────────────────────────────────────────────────────────
-
-program
-  .command('doctor')
-  .description('Check environment readiness for NoPilot + Lash builds')
-  .option('--fix', 'Auto-fix resolvable issues', false)
-  .option('--dir <path>', 'Project directory to check (defaults to cwd)')
-  .action(async (opts: { fix?: boolean; dir?: string }) => {
-    const { checkEnv, installDeps } = await import('./lash/env-setup.js');
-    const projectRoot = resolve(opts.dir ?? process.cwd());
-    const result = await checkEnv(projectRoot);
-
-    if (result.ready && !opts.fix) {
-      console.log('Environment: ready');
-      console.log(JSON.stringify(result, null, 2));
-      return;
-    }
-
-    console.log('Environment issues found:\n');
-    for (const issue of result.issues) {
-      const prefix = issue.severity === 'error' ? '[!]' : '[~]';
-      console.log(`  ${prefix} ${issue.message}`);
-      console.log(`      Fix: ${issue.fix_suggestion}`);
-
-      if (opts.fix && issue.auto_fixable && issue.id === 'deps_not_installed') {
-        console.log('      Auto-fixing...');
-        const installResult = await installDeps(projectRoot);
-        console.log(installResult.success ? '      Done.' : `      Failed: ${installResult.stderr}`);
-      }
-    }
-
-    if (!opts.fix) {
-      const fixable = result.issues.filter((i) => i.auto_fixable);
-      if (fixable.length > 0) {
-        console.log(`\n${fixable.length} issue(s) can be auto-fixed with: nopilot doctor --fix`);
-      }
-    }
   });
 
 // ─── validate ───────────────────────────────────────────────────────────────

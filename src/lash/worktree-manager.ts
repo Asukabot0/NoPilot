@@ -5,8 +5,8 @@
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { existsSync, symlinkSync } from 'node:fs';
 import type { MergeResult, WorktreeInfo, PreserveResult, UnexpectedFilesResult } from './types.js';
-import { hasDepsInstalled, installDeps } from './env-setup.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -95,15 +95,14 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
     throw new Error(`git_error: ${stderr}`);
   }
 
-  // Auto-install dependencies — worktrees lack node_modules (gitignored).
-  // Without this, Workers cannot build or test. This is the critical fix for #37.
-  let depsInstalled = hasDepsInstalled(path);
-  if (!depsInstalled) {
-    const installResult = await installDeps(path);
-    depsInstalled = installResult.success;
+  // Symlink node_modules from main repo — worktrees lack it (gitignored). (#37)
+  const srcModules = join(projectRoot, 'node_modules');
+  const destModules = join(path, 'node_modules');
+  if (existsSync(srcModules) && !existsSync(destModules)) {
+    symlinkSync(srcModules, destModules, 'dir');
   }
 
-  return { worktree_path: path, branch_name: branch, deps_installed: depsInstalled };
+  return { worktree_path: path, branch_name: branch };
 }
 
 /**
@@ -222,14 +221,14 @@ export async function createConflictResolutionWorktree(
     throw new Error(`git_error: ${result.stderr.trim()}`);
   }
 
-  // Auto-install dependencies in conflict resolution worktree too
-  let depsInstalled = hasDepsInstalled(path);
-  if (!depsInstalled) {
-    const installResult = await installDeps(path);
-    depsInstalled = installResult.success;
+  // Symlink node_modules from main repo (#37)
+  const srcModules = join(projectRoot, 'node_modules');
+  const destModules = join(path, 'node_modules');
+  if (existsSync(srcModules) && !existsSync(destModules)) {
+    symlinkSync(srcModules, destModules, 'dir');
   }
 
-  return { worktree_path: path, branch_name: branch, deps_installed: depsInstalled };
+  return { worktree_path: path, branch_name: branch };
 }
 
 /**

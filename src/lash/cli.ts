@@ -22,27 +22,9 @@ program
   .description('Check platform availability and auth')
   .option('--platforms <p1,p2>', 'Comma-separated platform names')
   .option('--config <path>', 'Path to lash config JSON (used if --platforms omitted)')
-  .option('--fix', 'Auto-fix resolvable environment issues before checking platforms', false)
-  .action(async (opts: { platforms?: string; config?: string; fix?: boolean }) => {
+  .action(async (opts: { platforms?: string; config?: string }) => {
     const { preflight } = await import('./platform-launcher.js');
     const { loadConfig } = await import('./config.js');
-    const { checkEnv, installDeps } = await import('./env-setup.js');
-
-    // --fix: auto-resolve environment issues first
-    if (opts.fix) {
-      const envResult = await checkEnv(process.cwd());
-      if (!envResult.ready) {
-        for (const issue of envResult.issues) {
-          if (issue.auto_fixable && issue.id === 'deps_not_installed') {
-            const installResult = await installDeps(process.cwd());
-            if (!installResult.success) {
-              err(`auto-fix failed for ${issue.id}: ${installResult.stderr}`);
-            }
-          }
-        }
-      }
-    }
-
     let platforms: string[] = [];
     if (opts.platforms) {
       platforms = opts.platforms.split(',').map((p) => p.trim());
@@ -59,38 +41,6 @@ program
     } catch (exc) {
       err(String(exc));
     }
-  });
-
-// ---------------------------------------------------------------------------
-// doctor
-// ---------------------------------------------------------------------------
-
-program
-  .command('doctor')
-  .description('Check environment readiness and auto-fix what it can')
-  .option('--fix', 'Auto-fix resolvable issues (e.g. install missing deps)', false)
-  .option('--dir <path>', 'Project directory to check (defaults to cwd)')
-  .action(async (opts: { fix?: boolean; dir?: string }) => {
-    const { checkEnv, installDeps } = await import('./env-setup.js');
-    const projectRoot = opts.dir ?? process.cwd();
-    const result = await checkEnv(projectRoot);
-
-    if (opts.fix) {
-      for (const issue of result.issues) {
-        if (issue.auto_fixable && issue.id === 'deps_not_installed') {
-          const installResult = await installDeps(projectRoot);
-          if (!installResult.success) {
-            err(`auto-fix failed for ${issue.id}: ${installResult.stderr}`);
-          }
-        }
-      }
-      // Re-check after fixes to reflect actual state
-      const recheck = await checkEnv(projectRoot);
-      out(recheck);
-      return;
-    }
-
-    out(result);
   });
 
 // ---------------------------------------------------------------------------
