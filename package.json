@@ -4,8 +4,8 @@
   "description": "AI Native development workflow with Lash multi-agent build engine",
   "type": "module",
   "bin": {
-    "nopilot": "./dist/nopilot-cli.js",
-    "lash": "./dist/lash/cli.js"
+    "nopilot": "dist/nopilot-cli.js",
+    "lash": "dist/lash/cli.js"
   },
   "files": [
     "dist",
