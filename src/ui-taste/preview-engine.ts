@@ -37,6 +37,29 @@ export const DEVICE_PRESETS: readonly DevicePreset[] = [
 ] as const;
 
 // ---------------------------------------------------------------------------
+// XSS-safe helpers
+// ---------------------------------------------------------------------------
+
+/** Escape HTML special characters to prevent XSS. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Escape a string for safe embedding inside a JS single-quoted string literal. */
+function escapeJsString(str: string): string {
+  return str
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'")
+    .replace(/</g, '\\x3c')
+    .replace(/>/g, '\\x3e');
+}
+
+// ---------------------------------------------------------------------------
 // State machine
 // ---------------------------------------------------------------------------
 
@@ -339,21 +362,21 @@ export class PreviewEngine {
     const variantTabs = this.currentVariants
       .map(
         (v, i) =>
-          `<button class="tab${i === 0 ? ' active' : ''}" onclick="showVariant('${v.id}', this)">${v.metadata.title}</button>`,
+          `<button class="tab${i === 0 ? ' active' : ''}" onclick="showVariant('${escapeJsString(v.id)}', this)">${escapeHtml(v.metadata.title)}</button>`,
       )
       .join('\n        ');
 
     const variantFrames = this.currentVariants
       .map(
         (v, i) =>
-          `<iframe id="frame-${v.id}" src="/variant/${v.id}" class="variant-frame${i === 0 ? '' : ' hidden'}" sandbox="allow-scripts"></iframe>`,
+          `<iframe id="frame-${escapeHtml(v.id)}" src="/variant/${encodeURIComponent(v.id)}" class="variant-frame${i === 0 ? '' : ' hidden'}" sandbox="allow-scripts"></iframe>`,
       )
       .join('\n      ');
 
     const deviceButtons = DEVICE_PRESETS
       .map(
         (d) =>
-          `<button class="device-btn" onclick="setDevice(${d.width}, ${d.height}, '${d.name}')" title="${d.name}">${d.name}</button>`,
+          `<button class="device-btn" onclick="setDevice(${d.width}, ${d.height}, '${escapeJsString(d.name)}')" title="${escapeHtml(d.name)}">${escapeHtml(d.name)}</button>`,
       )
       .join('\n        ');
 
@@ -366,7 +389,7 @@ export class PreviewEngine {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NoPilot - ${pageSpec.name} Preview</title>
+  <title>NoPilot - ${escapeHtml(pageSpec.name)} Preview</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1a1a2e; color: #eee; }
@@ -407,8 +430,8 @@ export class PreviewEngine {
 </head>
 <body>
   <div class="header">
-    <h1>NoPilot UI Taste - ${pageSpec.name}</h1>
-    <span style="color: #888; font-size: 13px;">${pageSpec.platform} / ${pageSpec.deviceType}</span>
+    <h1>NoPilot UI Taste - ${escapeHtml(pageSpec.name)}</h1>
+    <span style="color: #888; font-size: 13px;">${escapeHtml(pageSpec.platform)} / ${escapeHtml(pageSpec.deviceType)}</span>
     <div class="toggle-group">
       <button class="toggle-btn active" onclick="setTheme('dark')">Dark</button>
       <button class="toggle-btn" onclick="setTheme('light')">Light</button>
@@ -436,7 +459,7 @@ export class PreviewEngine {
     <button class="btn btn-secondary" onclick="regeneratePair()">Regenerate Pair</button>
   </div>
   <script>
-    let currentVariantId = '${this.currentVariants[0]?.id ?? ''}';
+    let currentVariantId = '${escapeJsString(this.currentVariants[0]?.id ?? '')}';
     let currentRound = ${this.currentRound};
     let sideBySide = false;
 
