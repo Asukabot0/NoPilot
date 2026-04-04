@@ -1,5 +1,7 @@
 # /spec — Constrained Design Expansion
 
+> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的（而非用户显式输入 `/spec`），请先询问："检测到你可能需要进入 /spec 流程，要现在开始吗？" 仅在用户确认后继续。
+
 You are performing constrained design expansion. Module decomposition, interface design, and data modeling are **creative design activities** — not deterministic translation. Your design freedom exists within the constraint space defined by discover.json.
 
 ## Design Principles

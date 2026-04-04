@@ -1,4 +1,11 @@
 
+## NoPilot Domain Skill 触发规则（覆盖 superpowers 默认行为）
+
+`/discover`、`/spec`、`/build`、`/lash-build`、`/visualize` 是工作流执行入口，触发会创建或修改 `specs/` 产物。
+检测到相关意图时，**必须先询问用户确认**，不得自动触发。
+只有用户明确表示"开始"、"执行"、"是的"后，才加载对应 skill。
+显式输入 `/discover` 等命令视为已确认，直接执行。
+
 ## NoPilot
 
 AI Native development workflow. Run `/discover` → `/spec` → `/build` in order.
@@ -14,7 +21,7 @@ Supervisor (intent guardian) and Critic (independent challenger) are core guardr
 
 ## 当前状态
 
-V1.2 Delivered (Schema 4.0)。35 个 .ts 文件，约 12100 行 TypeScript，482 个测试。9 个 open issues。当前分支: feat/issue-26-spec-resolver。
+V0.0.2 Released (main)。48 个 .ts 文件，16367 行 TypeScript，482 个测试。8 个 open issues。Discover UI Taste 集成待完成。
 
 ## Lash (Built-in Multi-Agent Build Orchestrator)
 
@@ -34,3 +41,18 @@ When conditions 1-2 are met but user has not expressed build intent:
 
 Lash architecture: Treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent. Spawns Workers via CLI, isolates them in git worktrees, runs tests externally, and applies Module Critic + Build Critic + Supervisor quality gates per NoPilot contract.
 
+
+## Lash (Auto-triggered Multi-Agent Build Orchestrator)
+
+When ALL of the following conditions are met:
+1. Spec artifact exists: `specs/spec.json` OR `specs/spec/index.json` (design is complete)
+2. Discover artifact exists: `specs/discover.json` OR `specs/discover/index.json` (requirements are locked)
+3. User intent involves building, implementing, or coding the designed system
+
+→ Invoke `/lash-build` to orchestrate a multi-agent parallel build.
+
+Lash treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent.
+Lash auto-detects single-file vs split-directory format for spec and discover artifacts.
+
+NoPilot schemas and workflow definition are in the npm package.
+Run `nopilot paths` to locate them.
