@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { MergeResult, WorktreeInfo, PreserveResult, UnexpectedFilesResult } from './types.js';
+import { hasDepsInstalled, installDeps } from './env-setup.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -94,7 +95,15 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
     throw new Error(`git_error: ${stderr}`);
   }
 
-  return { worktree_path: path, branch_name: branch };
+  // Auto-install dependencies — worktrees lack node_modules (gitignored).
+  // Without this, Workers cannot build or test. This is the critical fix for #37.
+  let depsInstalled = hasDepsInstalled(path);
+  if (!depsInstalled) {
+    const installResult = await installDeps(path);
+    depsInstalled = installResult.success;
+  }
+
+  return { worktree_path: path, branch_name: branch, deps_installed: depsInstalled };
 }
 
 /**
@@ -213,7 +222,14 @@ export async function createConflictResolutionWorktree(
     throw new Error(`git_error: ${result.stderr.trim()}`);
   }
 
-  return { worktree_path: path, branch_name: branch };
+  // Auto-install dependencies in conflict resolution worktree too
+  let depsInstalled = hasDepsInstalled(path);
+  if (!depsInstalled) {
+    const installResult = await installDeps(path);
+    depsInstalled = installResult.success;
+  }
+
+  return { worktree_path: path, branch_name: branch, deps_installed: depsInstalled };
 }
 
 /**

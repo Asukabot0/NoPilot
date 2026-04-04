@@ -22,6 +22,7 @@ import type {
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { platformFixSuggestion } from './env-setup.js';
 
 // ---------------------------------------------------------------------------
 // Platform CLI command templates
@@ -150,21 +151,25 @@ export async function preflight(platforms: string[]): Promise<PreflightOutput> {
     try {
       whichResult = await runCommand(['which', binary]);
     } catch (exc) {
+      const errorMsg = `binary check failed: ${exc}`;
       results[platform] = {
         available: false,
         version: null,
         auth_ok: false,
-        error: `binary check failed: ${exc}`,
+        error: errorMsg,
+        fix_suggestion: platformFixSuggestion(platform, errorMsg),
       };
       continue;
     }
 
     if (whichResult.returncode !== 0) {
+      const errorMsg = `binary '${binary}' not found (which returned ${whichResult.returncode})`;
       results[platform] = {
         available: false,
         version: null,
         auth_ok: false,
-        error: `binary '${binary}' not found (which returned ${whichResult.returncode})`,
+        error: errorMsg,
+        fix_suggestion: platformFixSuggestion(platform, errorMsg),
       };
       continue;
     }
@@ -176,20 +181,24 @@ export async function preflight(platforms: string[]): Promise<PreflightOutput> {
       const verResult = await runCommand(versionCmd);
       version = verResult.stdout.trim() || null;
       if (verResult.returncode !== 0) {
+        const errorMsg = `version check returned code ${verResult.returncode}`;
         results[platform] = {
           available: false,
           version: null,
           auth_ok: false,
-          error: `version check returned code ${verResult.returncode}`,
+          error: errorMsg,
+          fix_suggestion: platformFixSuggestion(platform, errorMsg),
         };
         continue;
       }
     } catch (exc) {
+      const errorMsg = `version check failed: ${exc}`;
       results[platform] = {
         available: false,
         version: null,
         auth_ok: false,
-        error: `version check failed: ${exc}`,
+        error: errorMsg,
+        fix_suggestion: platformFixSuggestion(platform, errorMsg),
       };
       continue;
     }
@@ -209,6 +218,7 @@ export async function preflight(platforms: string[]): Promise<PreflightOutput> {
       version,
       auth_ok: authOk,
       error: null,
+      fix_suggestion: null,
     };
   }
 
