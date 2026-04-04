@@ -100,7 +100,7 @@ export class TasteOrchestrator {
       if (!detection) {
         // Tier 3 fallback
         this.notifyUser('tier_switch', 'No providers available. Switching to Tier 3 text-based mode.');
-        const result = await this.runTier3(pagesToProcess);
+        const result = await this.runTier3(pagesToProcess, options.projectRoot);
         return result;
       }
 
@@ -144,7 +144,7 @@ export class TasteOrchestrator {
             const fallback = await this.registry.detectAndSelect();
             if (!fallback) {
               this.notifyUser('tier_switch', 'No fallback provider. Switching to Tier 3.');
-              const tier3Result = await this.runTier3(pagesToProcess.slice(i));
+              const tier3Result = await this.runTier3(pagesToProcess.slice(i), options.projectRoot);
               // Merge already-processed pages with tier3 results
               return {
                 pages: [...pageResults, ...tier3Result.pages],
@@ -243,6 +243,7 @@ export class TasteOrchestrator {
     designSystemRef: DesignSystemRef | null,
     provider: DesignProvider,
     options: TasteOrchestratorOptions,
+    _overrideDepth = 0,
   ): Promise<PageResult> {
     // 1. Generate initial screen
     this.notifyUser('progress', `Generating base screen for ${page.name}...`);
@@ -322,9 +323,9 @@ export class TasteOrchestrator {
         }
 
         // Handle overrideDesignSystem on select action
-        if (selection.action === 'select' && selection.overrideDesignSystem === true) {
+        if (selection.action === 'select' && selection.overrideDesignSystem === true && _overrideDepth < 3) {
           await this.previewEngine.stop();
-          return this.handleOverrideStyle(page, provider, options);
+          return this.handleOverrideStyle(page, provider, options, _overrideDepth);
         }
 
         const outcome: IterationOutcome = await iterationEngine.processSelection(
@@ -431,9 +432,10 @@ export class TasteOrchestrator {
     page: PageSpec,
     provider: DesignProvider,
     options: TasteOrchestratorOptions,
+    depth = 0,
   ): Promise<PageResult> {
     // Process page WITHOUT inherited designSystemRef (REIMAGINE mode)
-    return this.processPage(page, null, provider, options);
+    return this.processPage(page, null, provider, options, depth + 1);
   }
 
   // -------------------------------------------------------------------------
@@ -512,7 +514,7 @@ export class TasteOrchestrator {
 
     // Generate index.html overview
     const indexPath = path.join(baseDir, 'index.html');
-    const indexHtml = this.generateIndexHtml(results);
+    const indexHtml = this.generateIndexHtml(results, tier);
     fs.writeFileSync(indexPath, indexHtml, 'utf-8');
     savedPaths.push(indexPath);
 
@@ -531,7 +533,7 @@ export class TasteOrchestrator {
 
     // Write UITasteConstraint to discover.json if projectRoot provided
     if (projectRoot) {
-      this.saveUITasteConstraint(results, dna, stitchProjectId, projectRoot);
+      this.saveUITasteConstraint(results, dna, stitchProjectId, projectRoot, tier);
     }
 
     return savedPaths;
@@ -541,7 +543,7 @@ export class TasteOrchestrator {
   // 8. runTier3()
   // -------------------------------------------------------------------------
 
-  async runTier3(pages: PageSpec[]): Promise<TasteExplorationResult> {
+  async runTier3(pages: PageSpec[], projectRoot?: string): Promise<TasteExplorationResult> {
     this.state = 'tier3_text';
     this.notifyUser('progress', 'Running Tier 3 text-based taste exploration...');
 
@@ -592,6 +594,8 @@ export class TasteOrchestrator {
     }
 
     this.state = 'saving_results';
+    const dna = pageResults[0]?.dna ?? this.makeEmptyDNA();
+    await this.saveResults(pageResults, dna, null, projectRoot, 3);
 
     return {
       pages: pageResults,
@@ -621,22 +625,39 @@ export class TasteOrchestrator {
   // -------------------------------------------------------------------------
 
   private detectIsDark(html: string): boolean {
-    // Check for dark background indicators
-    const bgMatch = html.match(/--bg:\s*(#[0-9a-fA-F]{3,8})/);
-    if (bgMatch) {
-      const hex = bgMatch[1].replace('#', '');
-      const r = parseInt(hex.slice(0, 2), 16);
-      const g = parseInt(hex.slice(2, 4), 16);
-      const b = parseInt(hex.slice(4, 6), 16);
-      if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
-        const luminance = (r * 0.299 + g * 0.587 + b * 0.114);
-        return luminance < 128;
+    // Check for explicit dark indicators
+    if (/data-theme\s*=\s*["']dark["']/i.test(html)) return true;
+    if (/class\s*=\s*["'][^"']*\bdark\b[^"']*["']/i.test(html)) return true;
+
+    // Try multiple CSS background patterns
+    const bgPatterns = [
+      /--bg:\s*(#[0-9a-fA-F]{3,8})/,
+      /--background:\s*(#[0-9a-fA-F]{3,8})/,
+      /background-color:\s*(#[0-9a-fA-F]{3,8})/,
+      /background:\s*(#[0-9a-fA-F]{3,8})/,
+    ];
+
+    for (const pattern of bgPatterns) {
+      const bgMatch = html.match(pattern);
+      if (bgMatch) {
+        const hex = bgMatch[1].replace('#', '');
+        // Expand shorthand
+        const full = hex.length === 3
+          ? hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2]
+          : hex;
+        const r = parseInt(full.slice(0, 2), 16);
+        const g = parseInt(full.slice(2, 4), 16);
+        const b = parseInt(full.slice(4, 6), 16);
+        if (!isNaN(r) && !isNaN(g) && !isNaN(b)) {
+          const luminance = (r * 0.299 + g * 0.587 + b * 0.114);
+          return luminance < 128;
+        }
       }
     }
     return false;
   }
 
-  private generateIndexHtml(results: PageResult[]): string {
+  private generateIndexHtml(results: PageResult[], tier?: 1 | 2 | 3): string {
     const links = results.map((r) => {
       const pageName = r.page.name.replace(/[^a-zA-Z0-9_-]/g, '-');
       let html = `      <li><a href="${pageName}.html">${r.page.name}</a> (${r.page.platform}, ${r.page.deviceType})`;
@@ -669,7 +690,7 @@ export class TasteOrchestrator {
   <ul>
 ${links}
   </ul>
-  <p><a href="tokens.json">Design Tokens (DTCG)</a></p>
+  <p><a href="${tier === 2 ? 'tokens.css' : 'tokens.json'}">${tier === 2 ? 'Design Tokens (CSS)' : 'Design Tokens (DTCG)'}</a></p>
 </body>
 </html>`;
   }
@@ -698,6 +719,7 @@ ${links}
     dna: DesignDNA,
     stitchProjectId: string | null,
     projectRoot: string,
+    tier?: 1 | 2 | 3,
   ): void {
     const discoverJsonPath = path.join(projectRoot, 'specs', 'discover', 'index.json');
     if (!fs.existsSync(discoverJsonPath)) return;
@@ -711,7 +733,7 @@ ${links}
         tokensPath: 'specs/mockups/tokens.json',
         mockupsDir: 'specs/mockups/',
         stitchProjectId,
-        tier: 1,
+        tier: tier ?? 1,
         selectedPages: results.map((r) => ({
           name: r.page.name,
           mockupFile: `${r.page.name.replace(/[^a-zA-Z0-9_-]/g, '-')}.html`,
