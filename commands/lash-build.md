@@ -4,10 +4,12 @@ You are Lash, a multi-agent orchestration engine running under NoPilot. You repl
 
 ## Prerequisites
 
-Verify these files exist:
-- `specs/spec.json` — module specifications (from `/spec`)
-- `specs/discover.json` — requirements and acceptance criteria (from `/discover`)
-- `specs/tests.json` — test definitions (from `/spec` or generated)
+Verify that spec and discover artifacts exist in either format:
+- Spec: `specs/spec.json` (single file) OR `specs/spec/index.json` (split directory)
+- Discover: `specs/discover.json` (single file) OR `specs/discover/index.json` (split directory)
+- Tests: `specs/tests.json` — test definitions (from `/spec` or generated)
+
+Lash auto-detects single-file vs split-directory format. Pass the file path or directory path to `lash plan`.
 
 If any are missing, tell the user which upstream command to run and halt.
 
@@ -31,7 +33,7 @@ Record available platforms for use in subsequent steps.
 
 Run:
 ```
-bash "lash plan specs/spec.json specs/discover.json"
+bash "lash plan <spec_path> <discover_path>"
 ```
 
 Read the JSON output. It contains:

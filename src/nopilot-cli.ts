@@ -29,13 +29,14 @@ const LASH_DIRECTIVE = `
 ## Lash (Auto-triggered Multi-Agent Build Orchestrator)
 
 When ALL of the following conditions are met:
-1. \`specs/spec.json\` exists (design is complete)
-2. \`specs/discover.json\` exists (requirements are locked)
+1. Spec artifact exists: \`specs/spec.json\` OR \`specs/spec/index.json\` (design is complete)
+2. Discover artifact exists: \`specs/discover.json\` OR \`specs/discover/index.json\` (requirements are locked)
 3. User intent involves building, implementing, or coding the designed system
 
 → Invoke \`/lash-build\` to orchestrate a multi-agent parallel build.
 
 Lash treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent.
+Lash auto-detects single-file vs split-directory format for spec and discover artifacts.
 
 NoPilot schemas and workflow definition are in the npm package.
 Run \`nopilot paths\` to locate them.
