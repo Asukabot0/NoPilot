@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 /**
  * NoPilot CLI — framework-level operations for initializing projects with NoPilot + Lash.
+ *
+ * Distribution model (OMC-style):
+ * - Commands install to ~/.claude/commands/ (global, shared across projects)
+ * - Schemas and workflow.json stay in the npm package (accessed via `nopilot paths`)
+ * - `init` injects Lash directive into project CLAUDE.md/AGENTS.md
+ * - Runtime artifacts (specs/) are local and gitignored
  */
 import { Command } from 'commander';
 import {
@@ -10,8 +16,9 @@ import {
   readFileSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
 
 // Resolve package root relative to this compiled file (dist/nopilot-cli.js → package root)
 const __filename = fileURLToPath(import.meta.url);
@@ -22,14 +29,16 @@ const LASH_DIRECTIVE = `
 ## Lash (Auto-triggered Multi-Agent Build Orchestrator)
 
 When ALL of the following conditions are met:
-1. \`lash/\` directory exists in this project
-2. \`specs/spec.json\` exists (design is complete)
-3. \`specs/discover.json\` exists (requirements are locked)
-4. User intent involves building, implementing, or coding the designed system
+1. \`specs/spec.json\` exists (design is complete)
+2. \`specs/discover.json\` exists (requirements are locked)
+3. User intent involves building, implementing, or coding the designed system
 
-→ Automatically follow \`commands/lash-build.md\` to orchestrate a multi-agent parallel build.
+→ Invoke \`/lash-build\` to orchestrate a multi-agent parallel build.
 
 Lash treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent.
+
+NoPilot schemas and workflow definition are in the npm package.
+Run \`nopilot paths\` to locate them.
 `;
 
 const LASH_DIRECTIVE_MARKER = '## Lash (Auto-triggered Multi-Agent Build Orchestrator)';
@@ -51,35 +60,21 @@ program
     const targetDir = resolve(dir ?? process.cwd());
     const force = options.force;
 
-    // Copy commands/*.md → <dir>/.claude/commands/
+    // Install commands to ~/.claude/commands/ (global, always overwrite)
     const srcCommands = resolve(PACKAGE_ROOT, 'commands');
-    const destCommands = resolve(targetDir, '.claude', 'commands');
+    const destCommands = join(homedir(), '.claude', 'commands');
     if (existsSync(srcCommands)) {
       mkdirSync(destCommands, { recursive: true });
-      cpSync(srcCommands, destCommands, { recursive: true, force });
-      console.log(`Copied commands/ → ${destCommands}`);
+      cpSync(srcCommands, destCommands, { recursive: true, force: true });
+      console.log(`Installed commands → ${destCommands}`);
     }
 
-    // Copy schemas/*.json → <dir>/schemas/
-    const srcSchemas = resolve(PACKAGE_ROOT, 'schemas');
-    const destSchemas = resolve(targetDir, 'schemas');
-    if (existsSync(srcSchemas)) {
-      mkdirSync(destSchemas, { recursive: true });
-      cpSync(srcSchemas, destSchemas, { recursive: true, force });
-      console.log(`Copied schemas/ → ${destSchemas}`);
-    }
-
-    // Copy workflow.json → <dir>/workflow.json
-    const srcWorkflow = resolve(PACKAGE_ROOT, 'workflow.json');
-    const destWorkflow = resolve(targetDir, 'workflow.json');
-    if (existsSync(srcWorkflow)) {
-      if (force || !existsSync(destWorkflow)) {
-        const content = readFileSync(srcWorkflow, 'utf-8');
-        writeFileSync(destWorkflow, content, 'utf-8');
-        console.log(`Copied workflow.json → ${destWorkflow}`);
-      } else {
-        console.log(`Skipped workflow.json (already exists, use --force to overwrite)`);
-      }
+    // Create specs/ directory with .gitkeep
+    const specsDir = resolve(targetDir, 'specs');
+    if (!existsSync(specsDir)) {
+      mkdirSync(specsDir, { recursive: true });
+      writeFileSync(resolve(specsDir, '.gitkeep'), '', 'utf-8');
+      console.log(`Created specs/ directory`);
     }
 
     // Append Lash directive to agent instruction files (idempotent)
@@ -91,7 +86,15 @@ program
       }
       const existing = readFileSync(filePath, 'utf-8');
       if (existing.includes(LASH_DIRECTIVE_MARKER)) {
-        console.log(`Skipped Lash directive in ${filename} (already present)`);
+        if (force) {
+          // Replace old directive with new one
+          const markerIdx = existing.indexOf(LASH_DIRECTIVE_MARKER);
+          const updated = existing.substring(0, markerIdx).trimEnd() + '\n' + LASH_DIRECTIVE;
+          writeFileSync(filePath, updated, 'utf-8');
+          console.log(`Updated Lash directive in ${filename}`);
+        } else {
+          console.log(`Skipped Lash directive in ${filename} (already present)`);
+        }
         continue;
       }
       writeFileSync(filePath, existing + LASH_DIRECTIVE, 'utf-8');
@@ -99,6 +102,22 @@ program
     }
 
     console.log(`\nNoPilot initialized in ${targetDir}`);
+  });
+
+// ─── paths ─────────────────────────────────────────────────────────────────
+
+program
+  .command('paths')
+  .description('Print locations of NoPilot package assets')
+  .action(() => {
+    const paths = {
+      package_root: PACKAGE_ROOT,
+      commands: resolve(PACKAGE_ROOT, 'commands'),
+      schemas: resolve(PACKAGE_ROOT, 'schemas'),
+      workflow: resolve(PACKAGE_ROOT, 'workflow.json'),
+      installed_commands: join(homedir(), '.claude', 'commands'),
+    };
+    console.log(JSON.stringify(paths, null, 2));
   });
 
 // ─── version ────────────────────────────────────────────────────────────────

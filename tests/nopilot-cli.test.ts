@@ -1,5 +1,5 @@
 /**
- * Tests for src/nopilot-cli.ts — init command and version command.
+ * Tests for src/nopilot-cli.ts — init, paths, and version commands.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
@@ -12,7 +12,7 @@ import {
   readdirSync,
 } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+import { tmpdir, homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -59,35 +59,36 @@ describe('nopilot init', () => {
     }
   });
 
-  it('creates .claude/commands/ with md files', () => {
+  it('installs commands to ~/.claude/commands/', () => {
     runCli(['init', tmpDir]);
 
-    const destCommands = join(tmpDir, '.claude', 'commands');
-    expect(existsSync(destCommands)).toBe(true);
+    const globalCommands = join(homedir(), '.claude', 'commands');
+    expect(existsSync(globalCommands)).toBe(true);
 
-    const files = readdirSync(destCommands);
+    const files = readdirSync(globalCommands);
     expect(files.some((f) => f.endsWith('.md'))).toBe(true);
   });
 
-  it('creates schemas/ with json files', () => {
+  it('does NOT copy schemas to project', () => {
     runCli(['init', tmpDir]);
 
     const destSchemas = join(tmpDir, 'schemas');
-    expect(existsSync(destSchemas)).toBe(true);
-
-    const files = readdirSync(destSchemas);
-    expect(files.some((f) => f.endsWith('.json'))).toBe(true);
+    expect(existsSync(destSchemas)).toBe(false);
   });
 
-  it('copies workflow.json', () => {
+  it('does NOT copy workflow.json to project', () => {
     runCli(['init', tmpDir]);
 
     const destWorkflow = join(tmpDir, 'workflow.json');
-    expect(existsSync(destWorkflow)).toBe(true);
+    expect(existsSync(destWorkflow)).toBe(false);
+  });
 
-    const src = readFileSync(resolve(PACKAGE_ROOT, 'workflow.json'), 'utf-8');
-    const dest = readFileSync(destWorkflow, 'utf-8');
-    expect(dest).toBe(src);
+  it('creates specs/ directory with .gitkeep', () => {
+    runCli(['init', tmpDir]);
+
+    const specsDir = join(tmpDir, 'specs');
+    expect(existsSync(specsDir)).toBe(true);
+    expect(existsSync(join(specsDir, '.gitkeep'))).toBe(true);
   });
 
   it('appends Lash directive to CLAUDE.md', () => {
@@ -98,7 +99,7 @@ describe('nopilot init', () => {
 
     const content = readFileSync(claudeMd, 'utf-8');
     expect(content).toContain('## Lash (Auto-triggered Multi-Agent Build Orchestrator)');
-    expect(content).toContain('commands/lash-build.md');
+    expect(content).toContain('nopilot paths');
   });
 
   it('is idempotent — running init twice does not duplicate the directive', () => {
@@ -113,27 +114,40 @@ describe('nopilot init', () => {
     expect(occurrences).toBe(1);
   });
 
-  it('--force overwrites existing files', () => {
-    // Place an old workflow.json
-    const destWorkflow = join(tmpDir, 'workflow.json');
-    writeFileSync(destWorkflow, '{"old":true}', 'utf-8');
+  it('--force updates existing Lash directive', () => {
+    const claudeMd = join(tmpDir, 'CLAUDE.md');
+    writeFileSync(claudeMd, '# My Project\n\n## Lash (Auto-triggered Multi-Agent Build Orchestrator)\nOld content here.\n', 'utf-8');
 
     runCli(['init', '--force', tmpDir]);
 
-    const content = readFileSync(destWorkflow, 'utf-8');
-    const src = readFileSync(resolve(PACKAGE_ROOT, 'workflow.json'), 'utf-8');
-    expect(content).toBe(src);
+    const content = readFileSync(claudeMd, 'utf-8');
+    expect(content).toContain('nopilot paths');
+    const occurrences = (content.match(/## Lash \(Auto-triggered Multi-Agent Build Orchestrator\)/g) ?? []).length;
+    expect(occurrences).toBe(1);
+  });
+});
+
+describe('nopilot paths', () => {
+  it('outputs JSON with package asset locations', () => {
+    const output = runCli(['paths']);
+    const paths = JSON.parse(output);
+    expect(paths).toHaveProperty('package_root');
+    expect(paths).toHaveProperty('commands');
+    expect(paths).toHaveProperty('schemas');
+    expect(paths).toHaveProperty('workflow');
+    expect(paths).toHaveProperty('installed_commands');
   });
 
-  it('without --force skips existing workflow.json', () => {
-    const destWorkflow = join(tmpDir, 'workflow.json');
-    const original = '{"old":true}';
-    writeFileSync(destWorkflow, original, 'utf-8');
+  it('schemas path points to existing directory', () => {
+    const output = runCli(['paths']);
+    const paths = JSON.parse(output);
+    expect(existsSync(paths.schemas)).toBe(true);
+  });
 
-    runCli(['init', tmpDir]);
-
-    const content = readFileSync(destWorkflow, 'utf-8');
-    expect(content).toBe(original);
+  it('workflow path points to existing file', () => {
+    const output = runCli(['paths']);
+    const paths = JSON.parse(output);
+    expect(existsSync(paths.workflow)).toBe(true);
   });
 });
 
