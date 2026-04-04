@@ -119,7 +119,7 @@ describe('PreviewEngine', () => {
     const session = await engine.start(variants, testPageSpec);
 
     expect(session.port).toBeGreaterThan(0);
-    expect(session.url).toContain('http://localhost');
+    expect(session.url).toContain('http://127.0.0.1');
     expect(session.id).toBeTruthy();
     expect(session.currentRound).toBe(1);
     expect(session.timeoutMs).toBe(1800000);

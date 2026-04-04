@@ -98,7 +98,7 @@ export class PreviewEngine {
 
     this.state = 'serving';
 
-    const url = `http://localhost:${actualPort}`;
+    const url = `http://127.0.0.1:${actualPort}`;
     const timeoutMs = options?.timeout ?? DEFAULT_TIMEOUT_MS;
 
     return {
