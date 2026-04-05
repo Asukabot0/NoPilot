@@ -25,10 +25,11 @@ const PACKAGE_ROOT = resolve(__dirname, '..');
 const CLI = resolve(PACKAGE_ROOT, 'dist', 'nopilot-cli.js');
 
 /** Run the compiled CLI synchronously and return stdout. */
-function runCli(args: string[], cwd?: string): string {
+function runCli(args: string[], cwd?: string, env?: NodeJS.ProcessEnv): string {
   return execFileSync(process.execPath, [CLI, ...args], {
     cwd: cwd ?? PACKAGE_ROOT,
     encoding: 'utf-8',
+    env: { ...process.env, ...env },
   });
 }
 
@@ -45,9 +46,12 @@ function seedPackageAssets(): void {
 
 describe('nopilot init', () => {
   let tmpDir: string;
+  let tmpHome: string;
 
   beforeEach(() => {
     tmpDir = mkdtempSync(join(tmpdir(), 'nopilot-test-'));
+    tmpHome = join(tmpDir, 'home');
+    mkdirSync(tmpHome, { recursive: true });
     seedPackageAssets();
   });
 
@@ -59,32 +63,37 @@ describe('nopilot init', () => {
     }
   });
 
-  it('installs commands to ~/.claude/commands/', () => {
-    runCli(['init', tmpDir]);
+  it('installs commands to Claude and Codex global prompt directories', () => {
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
-    const globalCommands = join(homedir(), '.claude', 'commands');
-    expect(existsSync(globalCommands)).toBe(true);
+    const claudeCommands = join(tmpHome, '.claude', 'commands');
+    const codexPrompts = join(tmpHome, '.codex', 'prompts');
+    const srcDiscover = readFileSync(join(PACKAGE_ROOT, 'commands', 'discover.md'), 'utf-8');
 
-    const files = readdirSync(globalCommands);
-    expect(files.some((f) => f.endsWith('.md'))).toBe(true);
+    expect(existsSync(claudeCommands)).toBe(true);
+    expect(existsSync(codexPrompts)).toBe(true);
+    expect(readdirSync(claudeCommands).some((f) => f.endsWith('.md'))).toBe(true);
+    expect(readdirSync(codexPrompts).some((f) => f.endsWith('.md'))).toBe(true);
+    expect(readFileSync(join(claudeCommands, 'discover.md'), 'utf-8')).toBe(srcDiscover);
+    expect(readFileSync(join(codexPrompts, 'discover.md'), 'utf-8')).toBe(srcDiscover);
   });
 
   it('does NOT copy schemas to project', () => {
-    runCli(['init', tmpDir]);
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const destSchemas = join(tmpDir, 'schemas');
     expect(existsSync(destSchemas)).toBe(false);
   });
 
   it('does NOT copy workflow.json to project', () => {
-    runCli(['init', tmpDir]);
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const destWorkflow = join(tmpDir, 'workflow.json');
     expect(existsSync(destWorkflow)).toBe(false);
   });
 
   it('creates specs/ directory with .gitkeep', () => {
-    runCli(['init', tmpDir]);
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const specsDir = join(tmpDir, 'specs');
     expect(existsSync(specsDir)).toBe(true);
@@ -95,7 +104,7 @@ describe('nopilot init', () => {
     const claudeMd = join(tmpDir, 'CLAUDE.md');
     writeFileSync(claudeMd, '# My Project\n', 'utf-8');
 
-    runCli(['init', tmpDir]);
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const content = readFileSync(claudeMd, 'utf-8');
     expect(content).toContain('## Lash (Auto-triggered Multi-Agent Build Orchestrator)');
@@ -106,8 +115,8 @@ describe('nopilot init', () => {
     const claudeMd = join(tmpDir, 'CLAUDE.md');
     writeFileSync(claudeMd, '# My Project\n', 'utf-8');
 
-    runCli(['init', tmpDir]);
-    runCli(['init', tmpDir]);
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const content = readFileSync(claudeMd, 'utf-8');
     const occurrences = (content.match(/## Lash \(Auto-triggered Multi-Agent Build Orchestrator\)/g) ?? []).length;
@@ -118,7 +127,7 @@ describe('nopilot init', () => {
     const claudeMd = join(tmpDir, 'CLAUDE.md');
     writeFileSync(claudeMd, '# My Project\n\n## Lash (Auto-triggered Multi-Agent Build Orchestrator)\nOld content here.\n', 'utf-8');
 
-    runCli(['init', '--force', tmpDir]);
+    runCli(['init', '--force', tmpDir], undefined, { HOME: tmpHome });
 
     const content = readFileSync(claudeMd, 'utf-8');
     expect(content).toContain('nopilot paths');
@@ -136,6 +145,7 @@ describe('nopilot paths', () => {
     expect(paths).toHaveProperty('schemas');
     expect(paths).toHaveProperty('workflow');
     expect(paths).toHaveProperty('installed_commands');
+    expect(paths).toHaveProperty('installed_command_locations');
   });
 
   it('schemas path points to existing directory', () => {
@@ -148,6 +158,15 @@ describe('nopilot paths', () => {
     const output = runCli(['paths']);
     const paths = JSON.parse(output);
     expect(existsSync(paths.workflow)).toBe(true);
+  });
+
+  it('reports Claude and Codex install locations', () => {
+    const output = runCli(['paths']);
+    const paths = JSON.parse(output);
+    expect(paths.installed_command_locations).toEqual({
+      claude: join(homedir(), '.claude', 'commands'),
+      codex: join(homedir(), '.codex', 'prompts'),
+    });
   });
 });
 

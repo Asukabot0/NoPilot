@@ -40,7 +40,7 @@ cd your-project
 nopilot init
 ```
 
-This installs slash commands to `~/.claude/commands/` (global), creates `specs/` directory, and appends Lash auto-trigger context to your `CLAUDE.md`. Schemas and `workflow.json` stay in the npm package — run `nopilot paths` to locate them.
+This installs the workflow prompt files to `~/.claude/commands/` and `~/.codex/prompts/` (global), creates `specs/` directory, and appends Lash auto-trigger context to any existing `CLAUDE.md`, `AGENTS.md`, or `opencode.md`. Schemas and `workflow.json` stay in the npm package — run `nopilot paths` to locate them.
 
 ### Start using
 
@@ -148,6 +148,15 @@ Global files installed by `nopilot init`:
 ├── supervisor.md            # Supervisor agent
 ├── critic.md                # Critic agent
 └── lash-*.md                # 7 Lash orchestration prompts
+
+~/.codex/prompts/            # Codex prompt files (global, shared across projects)
+├── discover.md
+├── spec.md
+├── build.md
+├── visualize.md
+├── supervisor.md
+├── critic.md
+└── lash-*.md
 ```
 
 Schemas (14 JSON Schema files) and `workflow.json` stay in the npm package. Run `nopilot paths` to locate them.

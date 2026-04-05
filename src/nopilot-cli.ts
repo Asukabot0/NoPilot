@@ -3,7 +3,7 @@
  * NoPilot CLI — framework-level operations for initializing projects with NoPilot + Lash.
  *
  * Distribution model (OMC-style):
- * - Commands install to ~/.claude/commands/ (global, shared across projects)
+ * - Commands install to host prompt directories (global, shared across projects)
  * - Schemas and workflow.json stay in the npm package (accessed via `nopilot paths`)
  * - `init` injects Lash directive into project CLAUDE.md/AGENTS.md
  * - Runtime artifacts (specs/) are local and gitignored
@@ -43,6 +43,10 @@ Run \`nopilot paths\` to locate them.
 `;
 
 const LASH_DIRECTIVE_MARKER = '## Lash (Auto-triggered Multi-Agent Build Orchestrator)';
+const INSTALL_TARGETS = {
+  claude: join(homedir(), '.claude', 'commands'),
+  codex: join(homedir(), '.codex', 'prompts'),
+} as const;
 
 const program = new Command();
 
@@ -61,13 +65,14 @@ program
     const targetDir = resolve(dir ?? process.cwd());
     const force = options.force;
 
-    // Install commands to ~/.claude/commands/ (global, always overwrite)
+    // Install commands to host prompt directories (global, always overwrite)
     const srcCommands = resolve(PACKAGE_ROOT, 'commands');
-    const destCommands = join(homedir(), '.claude', 'commands');
     if (existsSync(srcCommands)) {
-      mkdirSync(destCommands, { recursive: true });
-      cpSync(srcCommands, destCommands, { recursive: true, force: true });
-      console.log(`Installed commands → ${destCommands}`);
+      for (const [host, destCommands] of Object.entries(INSTALL_TARGETS)) {
+        mkdirSync(destCommands, { recursive: true });
+        cpSync(srcCommands, destCommands, { recursive: true, force: true });
+        console.log(`Installed commands for ${host} → ${destCommands}`);
+      }
     }
 
     // Create specs/ directory with .gitkeep
@@ -116,7 +121,8 @@ program
       commands: resolve(PACKAGE_ROOT, 'commands'),
       schemas: resolve(PACKAGE_ROOT, 'schemas'),
       workflow: resolve(PACKAGE_ROOT, 'workflow.json'),
-      installed_commands: join(homedir(), '.claude', 'commands'),
+      installed_commands: INSTALL_TARGETS.claude,
+      installed_command_locations: INSTALL_TARGETS,
     };
     console.log(JSON.stringify(paths, null, 2));
   });

@@ -39,7 +39,7 @@ cd your-project
 nopilot init
 ```
 
-自动完成：安装 slash commands 到 `~/.claude/commands/`（全局），创建 `specs/` 目录，并将 Lash 自动触发指令追加到 `CLAUDE.md`。
+自动完成：安装 prompts 到 `~/.claude/commands/` 和 `~/.codex/prompts/`（全局），创建 `specs/` 目录，并将 Lash 自动触发指令追加到已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md`。
 
 Schema 和 workflow.json 保留在 npm 包内，通过 `nopilot paths` 查看位置。
 
@@ -137,6 +137,15 @@ your-project/
 ├── supervisor.md        # Supervisor agent
 ├── critic.md            # Critic agent
 └── lash-*.md            # 7 个 Lash 编排命令
+
+~/.codex/prompts/        # 全局 Codex prompts（由 nopilot init 安装）
+├── discover.md
+├── spec.md
+├── build.md
+├── visualize.md
+├── supervisor.md
+├── critic.md
+└── lash-*.md
 ```
 
 ## 当前范围 (V1.2, Schema 4.0)

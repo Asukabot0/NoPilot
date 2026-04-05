@@ -168,7 +168,7 @@ nopilot init
 
 `nopilot init` 采用 OMC 风格分发模型，会完成以下操作：
 
-1. 安装 `commands/*.md` 到 `~/.claude/commands/`（全局，13 个 slash command 文件）
+1. 安装 `commands/*.md` 到 `~/.claude/commands/` 和 `~/.codex/prompts/`（全局，始终覆盖）
 2. 创建 `specs/` 目录（含 `.gitkeep`）
 3. 向已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
@@ -204,6 +204,21 @@ my-project/
 ├── lash-tracer.md           # Lash tracer bullet
 ├── lash-batch.md            # Lash 批次执行
 ├── lash-verify.md           # Lash 最终验证
+├── lash-conflict-resolver.md
+├── lash-orchestrator.md
+└── lash-worker-instructions.md
+
+~/.codex/prompts/            # Codex prompts（全局共享）
+├── discover.md
+├── spec.md
+├── build.md
+├── visualize.md
+├── supervisor.md
+├── critic.md
+├── lash-build.md
+├── lash-tracer.md
+├── lash-batch.md
+├── lash-verify.md
 ├── lash-conflict-resolver.md
 ├── lash-orchestrator.md
 └── lash-worker-instructions.md
@@ -1266,7 +1281,7 @@ nopilot init --force
 ```
 
 **执行动作：**
-1. 安装 `commands/*.md` → `~/.claude/commands/`（全局，始终覆盖）
+1. 安装 `commands/*.md` → `~/.claude/commands/` 和 `~/.codex/prompts/`（全局，始终覆盖）
 2. 创建 `<dir>/specs/` 目录（含 `.gitkeep`）
 3. 向 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
@@ -1290,7 +1305,11 @@ nopilot paths
   "commands": "/usr/lib/node_modules/nopilot/commands",
   "schemas": "/usr/lib/node_modules/nopilot/schemas",
   "workflow": "/usr/lib/node_modules/nopilot/workflow.json",
-  "installed_commands": "/home/user/.claude/commands"
+  "installed_commands": "/home/user/.claude/commands",
+  "installed_command_locations": {
+    "claude": "/home/user/.claude/commands",
+    "codex": "/home/user/.codex/prompts"
+  }
 }
 ```
 
@@ -2019,6 +2038,21 @@ your-project/                        # 项目目录
 ├── lash-tracer.md                   # Lash tracer bullet 阶段
 ├── lash-batch.md                    # Lash 批次执行阶段
 ├── lash-verify.md                   # Lash 最终验证阶段
+├── lash-conflict-resolver.md
+├── lash-orchestrator.md
+└── lash-worker-instructions.md
+
+~/.codex/prompts/                    # 全局 Codex prompts（由 nopilot init 安装）
+├── discover.md
+├── spec.md
+├── build.md
+├── visualize.md
+├── supervisor.md
+├── critic.md
+├── lash-build.md
+├── lash-tracer.md
+├── lash-batch.md
+├── lash-verify.md
 ├── lash-conflict-resolver.md
 ├── lash-orchestrator.md
 └── lash-worker-instructions.md
