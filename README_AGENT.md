@@ -1,6 +1,6 @@
 # NoPilot — Agent Reference
 
-NoPilot is an AI Native three-stage development workflow (`/discover` → `/spec` → `/build`) running as Claude Code slash commands.
+NoPilot is an AI Native three-stage development workflow (`discover` → `spec` → `build`) running as Claude Code slash commands or Codex prompt files.
 
 ## Installation
 
@@ -11,6 +11,8 @@ cp -r .claude/commands/ /path/to/project/.claude/commands/
 cp workflow.json /path/to/project/
 mkdir -p /path/to/project/specs
 ```
+
+For Codex, copy `prompts/codex/` to `~/.codex/prompts/` instead of `.claude/commands/`.
 
 Result:
 
@@ -63,7 +65,7 @@ No dependencies. No build step. No config beyond the above.
 | `/build` | `specs/spec.json` or `specs/spec/index.json`, `specs/discover.json` or `specs/discover/index.json` | `specs/tests.json` or `specs/tests/index.json`, `specs/tests_review.json`, `specs/build_report.json` or `specs/build/index.json`, `specs/build_review.json` |
 | `/visualize` | Runtime artifacts in `specs/` | `specs/views/dashboard.html` plus phase pages |
 
-Each command is defined in `.claude/commands/<name>.md`. Read the command file for full behavior.
+Claude command files live in `commands/<name>.md`. Codex prompt files live in `prompts/codex/<name>.md`. Read the relevant file for full behavior.
 
 ### Workflow Definition
 
@@ -80,8 +82,8 @@ Two sub-agents spawned by commands. Both **core guardrails** (cannot be disabled
 
 | Agent | Prompt | Role | Spawned By |
 |-------|--------|------|------------|
-| Supervisor | `.claude/commands/supervisor.md` | Global coherence (forest) | /discover, /spec, /build |
-| Critic | `.claude/commands/critic.md` | Independent quality verification (trees) | /discover, /spec, /build |
+| Supervisor | `commands/supervisor.md` or `prompts/codex/supervisor.md` | Global coherence (forest) | discover, spec, build |
+| Critic | `commands/critic.md` or `prompts/codex/critic.md` | Independent quality verification (trees) | discover, spec, build |
 
 **Supervisor input:** discover artifact anchor (`constraints` + `selected_direction` + `tech_direction`) + current stage output.
 

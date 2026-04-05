@@ -20,7 +20,7 @@ NoPilot is a three-stage workflow that takes you from requirement exploration to
 
 ### Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or Codex CLI installed and configured
 - Node.js >= 20.0.0
 
 ### Install
@@ -40,15 +40,14 @@ cd your-project
 nopilot init
 ```
 
-This installs slash commands to `~/.claude/commands/` (global), creates `specs/` directory, and appends Lash auto-trigger context to your `CLAUDE.md`. Schemas and `workflow.json` stay in the npm package — run `nopilot paths` to locate them.
+This installs Claude command files from `commands/` to `~/.claude/commands/` and Codex prompt files from `prompts/codex/` to `~/.codex/prompts/`, creates `specs/` directory, and appends Lash auto-trigger context to any existing `CLAUDE.md`, `AGENTS.md`, or `opencode.md`. Schemas and `workflow.json` stay in the npm package — run `nopilot paths` to locate them.
 
 ### Start using
 
 ```bash
-claude   # Open Claude Code
+claude   # Claude Code: then run /discover
+codex    # Codex: then run /prompts:discover
 ```
-
-Then type `/discover` to begin exploring your project space.
 
 ## Why This Approach
 
@@ -148,13 +147,24 @@ Global files installed by `nopilot init`:
 ├── supervisor.md            # Supervisor agent
 ├── critic.md                # Critic agent
 └── lash-*.md                # 7 Lash orchestration prompts
+
+~/.codex/prompts/            # Codex prompt files (global, shared across projects)
+├── discover.md
+├── spec.md
+├── build.md
+├── visualize.md
+├── supervisor.md
+├── critic.md
+└── lash-*.md
 ```
+
+Claude installs from package `commands/`. Codex installs from package `prompts/codex/`.
 
 Schemas (14 JSON Schema files) and `workflow.json` stay in the npm package. Run `nopilot paths` to locate them.
 
 ## Current Scope (V1.2, Schema 4.0)
 
-**Included:** Three-stage workflow on Claude Code, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor with drift detection, Critic with AI bias catalog), generation-review separation, progressive idea collection, design philosophy extraction, completeness tracking, domain model and NFR outputs, artifact visualization, directory-split support for large projects, integrated Lash multi-agent build engine (TypeScript), dual CLI (`nopilot` + `lash`), npm distribution.
+**Included:** Three-stage workflow on Claude Code and Codex, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor with drift detection, Critic with AI bias catalog), generation-review separation, progressive idea collection, design philosophy extraction, completeness tracking, domain model and NFR outputs, artifact visualization, directory-split support for large projects, integrated Lash multi-agent build engine (TypeScript), dual CLI (`nopilot` + `lash`), npm distribution.
 
 **Not included:** Brownfield/incremental iteration, agent consensus (declared, not yet wired), iOS remote agent, multi-model routing.
 
