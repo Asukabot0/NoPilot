@@ -47,10 +47,25 @@ export interface ProfileL2Decisions {
 export interface ProfileL3Status {
   updated_at: string;
   test_coverage: { total_tests: number; framework: string };
-  domain_model: { entities: object[]; relationships: object[] };
+  domain_model: {
+    entities: Record<string, unknown>[];
+    relationships: Record<string, unknown>[];
+  };
   tech_debt: string[];
   change_hotspots: string[];
   recent_features: string[];
+  ui_taste?: {
+    designDNA: Record<string, unknown>;
+    tokensPath: string;
+    mockupsDir: string;
+    stitchProjectId: string | null;
+    tier: 1 | 2 | 3;
+    selectedPages: Array<{
+      name: string;
+      mockupFile: string;
+      darkMockupFile: string | null;
+    }>;
+  } | null;
 }
 
 /** On-disk config shape (.nopilot/config.json) */

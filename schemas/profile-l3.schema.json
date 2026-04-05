@@ -40,6 +40,40 @@
     "recent_features": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "ui_taste": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["designDNA", "tokensPath", "mockupsDir", "stitchProjectId", "tier", "selectedPages"],
+          "properties": {
+            "designDNA": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "tokensPath": { "type": "string" },
+            "mockupsDir": { "type": "string" },
+            "stitchProjectId": { "type": ["string", "null"] },
+            "tier": {
+              "type": "number",
+              "enum": [1, 2, 3]
+            },
+            "selectedPages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "mockupFile", "darkMockupFile"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "mockupFile": { "type": "string" },
+                  "darkMockupFile": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        { "type": "null" }
+      ]
     }
   },
   "additionalProperties": true

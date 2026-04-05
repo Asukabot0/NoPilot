@@ -22,6 +22,14 @@ export interface WriteProfileResult {
   };
 }
 
+function mergeStringLists(existing: string[] = [], incoming: string[] = []): string[] {
+  const merged = new Set<string>(existing);
+  for (const entry of incoming) {
+    if (entry) merged.add(entry);
+  }
+  return [...merged];
+}
+
 // ---------------------------------------------------------------------------
 // Artifact loading helpers
 // ---------------------------------------------------------------------------
@@ -94,13 +102,19 @@ export async function writeProfileFromArtifacts(
   let entitiesAdded = 0;
   let conflictsSkipped = 0;
 
-  if (existsResult.exists && existsResult.layers.l3) {
+  if (existsResult.layers.l3) {
     const existingL3Result = readLayer(rootDir, 'l3');
     if (existingL3Result.data) {
       const existingL3 = existingL3Result.data as ProfileL3Status;
       const existingDomain = existingL3.domain_model ?? { entities: [], relationships: [] };
-      const incomingDomain = (l3Partial.domain_model as { entities: object[]; relationships: object[] }) ??
-        { entities: [], relationships: [] };
+      const incomingDomain =
+        (l3Partial.domain_model as {
+          entities: Record<string, unknown>[];
+          relationships: Record<string, unknown>[];
+        }) ?? {
+          entities: [],
+          relationships: [],
+        };
 
       const mergeResult = mergeDomainModel(
         { entities: existingDomain.entities ?? [], relationships: existingDomain.relationships ?? [] },
@@ -108,16 +122,23 @@ export async function writeProfileFromArtifacts(
       );
 
       l3Partial.domain_model = mergeResult.merged;
+      l3Partial.recent_features = mergeStringLists(
+        existingL3.recent_features ?? [],
+        l3Partial.recent_features ?? []
+      );
+      if (l3Partial.ui_taste === undefined && existingL3.ui_taste !== undefined) {
+        l3Partial.ui_taste = existingL3.ui_taste;
+      }
       entitiesAdded = mergeResult.added.length;
       conflictsSkipped = mergeResult.conflicts.length;
     } else {
       // Count new entities
-      const domain = l3Partial.domain_model as { entities: object[] } | undefined;
+      const domain = l3Partial.domain_model as { entities: Record<string, unknown>[] } | undefined;
       entitiesAdded = domain?.entities?.length ?? 0;
     }
   } else {
     // Fresh profile — all entities are "added"
-    const domain = l3Partial.domain_model as { entities: object[] } | undefined;
+    const domain = l3Partial.domain_model as { entities: Record<string, unknown>[] } | undefined;
     entitiesAdded = domain?.entities?.length ?? 0;
   }
 

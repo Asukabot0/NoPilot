@@ -89,7 +89,7 @@ When `discover.json.mode == "lite"` (or `discover/index.json.mode == "lite"`), s
 
 Command pattern: `git worktree add -b feat/{featureSlug}/{module} ../.worktree-{module} HEAD`
 
-Workers must read the profile's `codebase_snapshot` to understand which existing modules their work touches. Regression guard test cases must be executed against the inherited existing code.
+Workers must read the profile L1 layer (`.nopilot/profile/l1-arch.json`) to understand which existing modules and directories their work touches. Regression guard test cases must be executed against the inherited existing code.
 
 **If `mode=greenfield`**: Continue with existing worktree strategy (branch from empty/initial state).
 

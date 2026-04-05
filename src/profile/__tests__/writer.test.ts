@@ -140,6 +140,36 @@ describe('extractL2', () => {
 });
 
 // ---------------------------------------------------------------------------
+// extractL3
+// ---------------------------------------------------------------------------
+
+describe('extractL3', () => {
+  it('extracts feature history and UI taste metadata when present', () => {
+    const discover = makeDiscover({
+      ui_taste: {
+        designDNA: { colorPalette: { brand: '#123456' } },
+        tokensPath: 'specs/mockups/tokens.json',
+        mockupsDir: 'specs/mockups/',
+        stitchProjectId: 'proj-123',
+        tier: 2,
+        selectedPages: [{ name: 'home', mockupFile: 'home.html', darkMockupFile: null }],
+      },
+    });
+
+    const result = extractL3(discover, makeBuildReport(), 'feat-xxx');
+    expect(result.recent_features).toEqual(['feat-xxx']);
+    expect(result.ui_taste).toEqual({
+      designDNA: { colorPalette: { brand: '#123456' } },
+      tokensPath: 'specs/mockups/tokens.json',
+      mockupsDir: 'specs/mockups/',
+      stitchProjectId: 'proj-123',
+      tier: 2,
+      selectedPages: [{ name: 'home', mockupFile: 'home.html', darkMockupFile: null }],
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // TEST-025 / TEST-026: mergeDomainModel
 // ---------------------------------------------------------------------------
 
@@ -279,6 +309,14 @@ describe('writeProfileFromArtifacts', () => {
           entities: [{ name: 'FeatureEntity', description: 'from feature' }],
           relationships: [],
         },
+        ui_taste: {
+          designDNA: { colorPalette: { brand: '#123456' } },
+          tokensPath: 'specs/mockups/tokens.json',
+          mockupsDir: 'specs/mockups/',
+          stitchProjectId: null,
+          tier: 1,
+          selectedPages: [{ name: 'home', mockupFile: 'home.html', darkMockupFile: null }],
+        },
       })),
       'specs/features/feat-xxx/spec.json': JSON.stringify(makeSpec()),
     });
@@ -291,6 +329,58 @@ describe('writeProfileFromArtifacts', () => {
 
     expect(result.layersWritten).toContain('l0');
     expect(result.layersWritten).toContain('l3');
+
+    const l3 = readLayer(root, 'l3');
+    const data = l3.data as Record<string, unknown>;
+    expect(data.recent_features).toEqual(['feat-xxx']);
+    expect((data.ui_taste as { designDNA: Record<string, unknown> }).designDNA).toEqual({
+      colorPalette: { brand: '#123456' },
+    });
+  });
+
+  it('merges feature history with existing profile state', async () => {
+    const root = setup({
+      '.nopilot/config.json': JSON.stringify({ l2_enabled: false }),
+      '.nopilot/profile/l3-status.json': JSON.stringify({
+        updated_at: new Date().toISOString(),
+        test_coverage: { total_tests: 5, framework: 'vitest' },
+        domain_model: {
+          entities: [{ name: 'ExistingEntity', description: 'already there' }],
+          relationships: [],
+        },
+        tech_debt: [],
+        change_hotspots: [],
+        recent_features: ['feat-existing'],
+        ui_taste: {
+          designDNA: { colorPalette: { brand: '#111111' } },
+          tokensPath: 'specs/mockups/tokens.json',
+          mockupsDir: 'specs/mockups/',
+          stitchProjectId: null,
+          tier: 1,
+          selectedPages: [{ name: 'home', mockupFile: 'home.html', darkMockupFile: null }],
+        },
+      }),
+      'specs/features/feat-new/discover.json': JSON.stringify(makeDiscover({
+        domain_model: {
+          entities: [{ name: 'FeatureEntity', description: 'from feature' }],
+          relationships: [],
+        },
+      })),
+      'specs/features/feat-new/spec.json': JSON.stringify(makeSpec()),
+    });
+
+    await writeProfileFromArtifacts(
+      root,
+      path.join(root, 'specs', 'features', 'feat-new'),
+      'feature'
+    );
+
+    const l3 = readLayer(root, 'l3');
+    const data = l3.data as Record<string, unknown>;
+    expect(data.recent_features).toEqual(['feat-existing', 'feat-new']);
+    expect((data.ui_taste as { designDNA: Record<string, unknown> }).designDNA).toEqual({
+      colorPalette: { brand: '#111111' },
+    });
   });
 
   it('TEST-027: handles missing optional artifacts gracefully', async () => {

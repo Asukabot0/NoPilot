@@ -23,6 +23,17 @@ function asString(val: unknown): string {
   return '';
 }
 
+function asObjectArray(val: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(val)) return [];
+  return val.filter(
+    (item): item is Record<string, unknown> => typeof item === 'object' && item !== null
+  );
+}
+
+function asTier(val: unknown): 1 | 2 | 3 {
+  return val === 1 || val === 2 || val === 3 ? val : 1;
+}
+
 // ---------------------------------------------------------------------------
 // extractL0 — tech stack / infra from discover.json (+spec.json)
 // ---------------------------------------------------------------------------
@@ -181,17 +192,47 @@ export function extractL2(
 export function extractL3(
   discoverArtifact: Record<string, unknown>,
   buildReport: Record<string, unknown> | null,
-  _featureSlug: string | null
+  featureSlug: string | null
 ): Partial<ProfileL3Status> {
   // Domain model from discover
   const rawDomainModel = (discoverArtifact['domain_model'] as Record<string, unknown>) ?? {};
-  const entities = asArray(rawDomainModel['entities']);
-  const relationships = asArray(rawDomainModel['relationships']);
+  const entities = asObjectArray(rawDomainModel['entities']);
+  const relationships = asObjectArray(rawDomainModel['relationships']);
 
   const domain_model: ProfileL3Status['domain_model'] = {
     entities,
     relationships,
   };
+
+  let ui_taste: ProfileL3Status['ui_taste'];
+  const rawUITaste = discoverArtifact['ui_taste'];
+  if (typeof rawUITaste === 'object' && rawUITaste !== null) {
+    const constraint = rawUITaste as Record<string, unknown>;
+    const designDNA =
+      typeof constraint['designDNA'] === 'object' && constraint['designDNA'] !== null
+        ? (constraint['designDNA'] as Record<string, unknown>)
+        : {};
+    const selectedPages = asObjectArray(constraint['selectedPages'])
+      .map((page) => ({
+        name: asString(page['name']),
+        mockupFile: asString(page['mockupFile']),
+        darkMockupFile:
+          typeof page['darkMockupFile'] === 'string' ? page['darkMockupFile'] : null,
+      }))
+      .filter((page) => page.name && page.mockupFile);
+
+    ui_taste = {
+      designDNA,
+      tokensPath: asString(constraint['tokensPath']),
+      mockupsDir: asString(constraint['mockupsDir']),
+      stitchProjectId:
+        typeof constraint['stitchProjectId'] === 'string' ? constraint['stitchProjectId'] : null,
+      tier: asTier(constraint['tier']),
+      selectedPages,
+    };
+  } else if (rawUITaste === null) {
+    ui_taste = null;
+  }
 
   // Test coverage from build report
   let test_coverage: ProfileL3Status['test_coverage'] = { total_tests: 0, framework: 'unknown' };
@@ -208,7 +249,8 @@ export function extractL3(
     test_coverage,
     tech_debt: [],
     change_hotspots: [],
-    recent_features: [],
+    recent_features: featureSlug ? [featureSlug] : [],
+    ui_taste,
   };
 }
 
@@ -217,14 +259,23 @@ export function extractL3(
 // ---------------------------------------------------------------------------
 
 export interface MergeDomainModelResult {
-  merged: { entities: object[]; relationships: object[] };
+  merged: {
+    entities: Record<string, unknown>[];
+    relationships: Record<string, unknown>[];
+  };
   added: string[];
   conflicts: string[];
 }
 
 export function mergeDomainModel(
-  existing: { entities: object[]; relationships: object[] },
-  incoming: { entities: object[]; relationships: object[] }
+  existing: {
+    entities: Record<string, unknown>[];
+    relationships: Record<string, unknown>[];
+  },
+  incoming: {
+    entities: Record<string, unknown>[];
+    relationships: Record<string, unknown>[];
+  }
 ): MergeDomainModelResult {
   const existingEntities = existing.entities ?? [];
   const incomingEntities = incoming.entities ?? [];

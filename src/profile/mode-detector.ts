@@ -4,7 +4,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { profileExists, writeLayer } from './storage.js';
+import { profileExists, readLayer, writeLayer } from './storage.js';
 import { hasExistingCode, scanCodebase } from './scanner.js';
 import type { StalenessResult } from './types.js';
 
@@ -32,6 +32,23 @@ export interface HandleStalenessResult {
   action: 'regenerated' | 'acknowledged';
   layersUpdated: string[];
   stalenessAcknowledged: boolean;
+}
+
+function mergeLayerData(
+  rootDir: string,
+  layer: 'l0' | 'l1' | 'l3',
+  incoming: Record<string, unknown>
+): Record<string, unknown> {
+  const existing = readLayer(rootDir, layer);
+  const existingData =
+    existing.data && typeof existing.data === 'object'
+      ? (existing.data as unknown as Record<string, unknown>)
+      : {};
+
+  return {
+    ...existingData,
+    ...incoming,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -135,15 +152,15 @@ export function handleStalenessResponse(
     const scanResult = scanCodebase(rootDir);
 
     if (scanResult.l0Partial && Object.keys(scanResult.l0Partial).length > 0) {
-      writeLayer(rootDir, 'l0', scanResult.l0Partial as Record<string, unknown>);
+      writeLayer(rootDir, 'l0', mergeLayerData(rootDir, 'l0', scanResult.l0Partial as Record<string, unknown>));
       layersUpdated.push('l0');
     }
     if (scanResult.l1Partial && Object.keys(scanResult.l1Partial).length > 0) {
-      writeLayer(rootDir, 'l1', scanResult.l1Partial as Record<string, unknown>);
+      writeLayer(rootDir, 'l1', mergeLayerData(rootDir, 'l1', scanResult.l1Partial as Record<string, unknown>));
       layersUpdated.push('l1');
     }
     if (scanResult.l3Partial && Object.keys(scanResult.l3Partial).length > 0) {
-      writeLayer(rootDir, 'l3', scanResult.l3Partial as Record<string, unknown>);
+      writeLayer(rootDir, 'l3', mergeLayerData(rootDir, 'l3', scanResult.l3Partial as Record<string, unknown>));
       layersUpdated.push('l3');
     }
   } catch (e) {

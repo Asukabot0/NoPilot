@@ -324,8 +324,9 @@ Wait for user confirmation. The confirmed design philosophy is written to `disco
 
 **If `mode=feature` AND the product has a frontend**:
 - Use `creativeRange: REFINE` instead of `REIMAGINE` for all variant generation (Tier 1 and Tier 2).
-- Read the existing `designDNA` from the profile (`ui_taste.designDNA`) and pass it as the `designConstraint` for variant generation.
-- Skip Phase 2 (Existing Style Detection) — the profile already contains the style profile.
+- Read the existing `designDNA` from profile L3 (`.nopilot/profile/l3-status.json` → `ui_taste.designDNA`) when available, and pass it as the `designConstraint` for variant generation.
+- If profile L3 has no `ui_taste`, fall back to scanning the existing codebase for CSS/Tailwind/design-tokens before generating variants.
+- Skip Phase 2 (Existing Style Detection) only when profile L3 already contains `ui_taste`.
 - Goal: new UI elements must visually integrate with the existing product, not reinvent it.
 
 **If `mode=greenfield`**: Continue with UI Taste Exploration as defined below (using `creativeRange: REIMAGINE`).
@@ -450,7 +451,7 @@ After completing UI Taste Exploration, proceed to Layer 3 (Requirement Lock). Th
 **If `mode=feature`**: After generating EARS acceptance criteria for each requirement, auto-generate `regression_guard` EARS criteria for any requirement that touches an existing module identified in the profile (REQ-009).
 
 For each such requirement:
-- Identify which existing modules it modifies or calls (from profile's `codebase_snapshot.modules`)
+- Identify which existing modules it modifies or calls (from profile L1 `modules[]`)
 - Generate 1-2 regression guard ACs per module touched:
   - Format: `THE SYSTEM SHALL continue to [specific existing behavior of that module] when [the new feature change is applied]`
   - Each guard references the specific existing behavior by name (e.g., "THE SYSTEM SHALL continue to process existing user authentication flows when the new notification module is integrated")

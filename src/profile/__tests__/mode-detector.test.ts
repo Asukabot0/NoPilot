@@ -9,6 +9,7 @@ import * as os from 'node:os';
 import * as child_process from 'node:child_process';
 
 import { detectMode, resolveFlowMode, handleStalenessResponse } from '../mode-detector.js';
+import { readLayer } from '../storage.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -36,6 +37,29 @@ function validL0(overrides: Record<string, unknown> = {}): Record<string, unknow
     build_tools: [],
     ci: null,
     test_framework: null,
+    ...overrides,
+  };
+}
+
+function validL3(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    updated_at: new Date().toISOString(),
+    test_coverage: { total_tests: 10, framework: 'vitest' },
+    domain_model: {
+      entities: [{ name: 'User', description: 'Existing entity' }],
+      relationships: [],
+    },
+    tech_debt: ['cleanup auth flow'],
+    change_hotspots: ['src/auth'],
+    recent_features: ['feat-auth'],
+    ui_taste: {
+      designDNA: { colorPalette: { brand: '#123456' } },
+      tokensPath: 'specs/mockups/tokens.json',
+      mockupsDir: 'specs/mockups/',
+      stitchProjectId: null,
+      tier: 1,
+      selectedPages: [{ name: 'home', mockupFile: 'home.html', darkMockupFile: null }],
+    },
     ...overrides,
   };
 }
@@ -162,7 +186,10 @@ describe('handleStalenessResponse', () => {
   it('TEST-042: regenerate triggers scan and returns regenerated action', () => {
     const root = setup({
       '.nopilot/profile/l0-infra.json': JSON.stringify(validL0()),
+      '.nopilot/profile/l3-status.json': JSON.stringify(validL3()),
       'package.json': JSON.stringify({ name: 'test' }),
+      'src/index.ts': 'export const value = 1;\n',
+      'src/index.test.ts': 'import { expect, it } from "vitest"; it("works", () => expect(1).toBe(1));\n',
     });
     child_process.execSync('git init', { cwd: root, stdio: 'pipe' });
 
@@ -171,7 +198,18 @@ describe('handleStalenessResponse', () => {
 
     expect(result.action).toBe('regenerated');
     expect(result.layersUpdated).toContain('l0');
+    expect(result.layersUpdated).toContain('l3');
     expect(result.stalenessAcknowledged).toBe(false);
+
+    const l3 = readLayer(root, 'l3');
+    const data = l3.data as Record<string, unknown>;
+    const domainModel = data.domain_model as { entities: Array<Record<string, unknown>> };
+    expect(domainModel.entities[0].name).toBe('User');
+    expect(data.recent_features).toEqual(['feat-auth']);
+    expect((data.ui_taste as { designDNA: Record<string, unknown> }).designDNA).toEqual({
+      colorPalette: { brand: '#123456' },
+    });
+    expect((data.test_coverage as { total_tests: number }).total_tests).toBe(1);
   });
 
   it('TEST-043: proceed records acknowledgment', () => {
