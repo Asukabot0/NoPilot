@@ -1,0 +1,86 @@
+{
+  "id": "MOD-006",
+  "name": "discover-feature-mode",
+  "responsibility": "Modifications to discover.md for feature mode. Implements per-stage conditional behavior: mode detection at entry, Layer 1 skip, Layer 2 inheritance, philosophy skip + conflict detection, regression guard generation, UI Taste adherence mode, and feature artifact isolation.",
+  "source_root": "commands/",
+  "owned_files": [
+    "commands/discover.md (modifications, not replacement)"
+  ],
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "discoverEntryWithModeDetection",
+      "input_schema": {
+        "type": "object",
+        "description": "Prompt-level: discover.md Step 0 is extended with mode detection before idea collection"
+      },
+      "output_schema": {
+        "type": "object",
+        "description": "ModeContext written to conversation context, driving all subsequent stage behavior"
+      },
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-004"],
+      "acceptance_criteria_refs": ["REQ-004-AC-1", "REQ-004-AC-2", "REQ-004-AC-3", "REQ-004-AC-4", "REQ-004-AC-5"]
+    },
+    {
+      "type": "internal",
+      "name": "featureModeLayer1",
+      "input_schema": {"type": "object", "description": "mode=feature context"},
+      "output_schema": {"type": "object", "description": "Layer 1 is skipped entirely. Direction is implicitly 'extend existing project'."},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-005"],
+      "acceptance_criteria_refs": ["REQ-005-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "featureModeLayer2",
+      "input_schema": {"type": "object", "description": "mode=feature context + profile layers"},
+      "output_schema": {"type": "object", "description": "Layer 2 with inherited tech stack, NFR, philosophy from profile. Only feature-incremental definitions collected. Domain model presented alongside existing (REQ-008-AC-1)."},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-005", "REQ-008"],
+      "acceptance_criteria_refs": ["REQ-005-AC-2", "REQ-005-AC-3", "REQ-008-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "featureModeLayer3",
+      "input_schema": {"type": "object", "description": "mode=feature context + feature requirements"},
+      "output_schema": {"type": "object", "description": "Layer 3 with regression guard ACs auto-generated for requirements touching existing modules."},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-005", "REQ-009"],
+      "acceptance_criteria_refs": ["REQ-005-AC-4", "REQ-009-AC-1", "REQ-009-AC-2", "REQ-009-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "featureModeUITaste",
+      "input_schema": {"type": "object", "description": "mode=feature context + profile ui_taste / existing design system"},
+      "output_schema": {"type": "object", "description": "UI Taste in adherence mode (creativeRange: REFINE) reading existing design DNA."},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-010"],
+      "acceptance_criteria_refs": ["REQ-010-AC-1", "REQ-010-AC-2", "REQ-010-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "featureArtifactOutput",
+      "input_schema": {"type": "object", "description": "mode=feature context + feature slug"},
+      "output_schema": {"type": "object", "description": "All artifacts written to specs/features/feat-xxx/ instead of specs/. References profile by path."},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-012"],
+      "acceptance_criteria_refs": ["REQ-012-AC-1", "REQ-012-AC-2", "REQ-012-AC-3", "REQ-012-AC-4"]
+    }
+  ],
+  "data_models": [],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": null,
+    "security": null,
+    "other": "Greenfield mode must remain identical to current behavior (INV-001). Feature mode branches are additive, not replacements. discover.md is already 30K — mode branches should be concise to avoid Agent execution instability (pre-mortem #3)."
+  },
+  "requirement_refs": ["REQ-004", "REQ-005", "REQ-008", "REQ-009", "REQ-010", "REQ-012"],
+  "invariant_refs": ["INV-001", "INV-003"]
+}

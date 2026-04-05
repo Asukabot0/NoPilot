@@ -1,0 +1,72 @@
+{
+  "explored_directions": [
+    {
+      "description": "Profile-as-Memory — persistent multi-layered project profile that auto-captures from NoPilot workflow outputs",
+      "differentiator": "Auto-captures intent from structured workflow, no manual curation",
+      "risk": "Profile quality depends on Agent summarization ability",
+      "status": "merged",
+      "abandonment_reason": null
+    },
+    {
+      "description": "Scan-on-Demand — no persistent profile, scan codebase fresh each time",
+      "differentiator": "Zero maintenance, always current",
+      "risk": "High per-scan cost, cannot capture 'why', only 'what'",
+      "status": "abandoned",
+      "abandonment_reason": "Cannot capture architectural intent; high repeated cost for medium/large projects"
+    },
+    {
+      "description": "Hybrid — lightweight profile for intent + on-demand scanning for structure",
+      "differentiator": "Profile stores only hard-to-infer info, structure is always real-time",
+      "risk": "Boundary between 'what to persist' and 'what to scan' may be unclear",
+      "status": "selected",
+      "abandonment_reason": null
+    }
+  ],
+  "pruned_features": [],
+  "decision_log": [
+    {"layer": "direction", "action": "SELECT", "detail": "Selected Hybrid direction: intent persisted in profile (experimental L2), code structure scanned on-demand. Combined from Direction 1 (Profile-as-Memory) and Direction 3 (Hybrid), with user's clarification that intent and structure should be stored separately.", "timestamp": "2026-04-05T12:00:00Z"},
+    {"layer": "direction", "action": "MERGE", "detail": "User refined direction: intent capture as experimental feature flag, code structure as stable feature. Not two separate flows but one flow with per-stage triggers.", "timestamp": "2026-04-05T12:10:00Z"},
+    {"layer": "mvp", "action": "APPROVE", "detail": "All 14 features (F1-F14) kept. No cuts or deferrals. User accepted all correctness challenges (REQ-005 complexity, REQ-007 LLM imprecision, REQ-013 intent quality uncertainty) as ACCEPT_COST.", "timestamp": "2026-04-05T12:30:00Z"},
+    {"layer": "mvp", "action": "REVISE", "detail": "User corrected SCENARIO-003: first-time onboarding of existing codebase must not treat feature-level philosophy as project-level. Added two-dimensional intent detection (profile × code).", "timestamp": "2026-04-05T12:25:00Z"},
+    {"layer": "mvp", "action": "REVISE", "detail": "User rejected dual-flow architecture. Greenfield and brownfield share one flow with per-stage trigger/mode branching. discover.json retained as working artifact per flow run, profile is long-term memory updated after build.", "timestamp": "2026-04-05T12:20:00Z"},
+    {"layer": "lock", "action": "APPROVE", "detail": "15 requirements (REQ-001 through REQ-015), 5 invariants (INV-001 through INV-005), 3 scenarios approved. All completeness dimensions >= 70%.", "timestamp": "2026-04-05T12:40:00Z"}
+  ],
+  "completeness_snapshots": [
+    {
+      "layer": "1",
+      "dimensions": {
+        "core_feature_definition": 70,
+        "user_scenario_coverage": 50,
+        "technical_constraints": 40,
+        "boundary_conditions": 20,
+        "non_functional_requirements": 10
+      },
+      "gaps_noted": ["Technical path not yet defined", "Boundary conditions not discussed", "NFRs not specified"],
+      "timestamp": "2026-04-05T11:50:00Z"
+    },
+    {
+      "layer": "2",
+      "dimensions": {
+        "core_feature_definition": 90,
+        "user_scenario_coverage": 80,
+        "technical_constraints": 80,
+        "boundary_conditions": 70,
+        "non_functional_requirements": 70
+      },
+      "gaps_noted": ["Profile staleness handling added after initial assessment", "Large codebase scanning threshold added after initial assessment"],
+      "timestamp": "2026-04-05T12:30:00Z"
+    },
+    {
+      "layer": "3",
+      "dimensions": {
+        "core_feature_definition": 95,
+        "user_scenario_coverage": 90,
+        "technical_constraints": 85,
+        "boundary_conditions": 75,
+        "non_functional_requirements": 80
+      },
+      "gaps_noted": [],
+      "timestamp": "2026-04-05T12:40:00Z"
+    }
+  ]
+}

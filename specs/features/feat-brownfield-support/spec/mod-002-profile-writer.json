@@ -1,0 +1,141 @@
+{
+  "id": "MOD-002",
+  "name": "profile-writer",
+  "responsibility": "Extracts information from stage artifacts (discover.json, spec.json, build_report.json, decisions.json) and writes to profile layers via MOD-001 storage API. Handles incremental merge, L2 feature flag, and domain model merge.",
+  "source_root": "src/profile/",
+  "owned_files": [
+    "src/profile/writer.ts",
+    "src/profile/extractors.ts"
+  ],
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "writeProfileFromArtifacts",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rootDir": {"type": "string"},
+          "artifactsDir": {"type": "string", "description": "specs/ or specs/features/feat-xxx/"},
+          "mode": {"type": "string", "enum": ["greenfield", "feature"]}
+        },
+        "required": ["rootDir", "artifactsDir", "mode"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "layersWritten": {"type": "array", "items": {"type": "string"}, "description": "Which layers were updated: ['l0', 'l1', 'l3'] or ['l0', 'l1', 'l2', 'l3']"},
+          "mergeReport": {
+            "type": "object",
+            "properties": {
+              "entitiesAdded": {"type": "integer"},
+              "entitiesUpdated": {"type": "integer"},
+              "conflictsSkipped": {"type": "integer"}
+            }
+          }
+        }
+      },
+      "errors": ["ARTIFACT_NOT_FOUND", "EXTRACTION_FAILED", "WRITE_ERROR"],
+      "api_detail": null,
+      "requirement_refs": ["REQ-002", "REQ-013"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1", "REQ-002-AC-2", "REQ-002-AC-3", "REQ-002-AC-4", "REQ-002-AC-5", "REQ-013-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "extractL0",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "discoverArtifact": {"type": "object"},
+          "specArtifact": {"type": "object", "nullable": true}
+        }
+      },
+      "output_schema": {"type": "object", "description": "ProfileL0Infra partial (tech stack, frameworks, etc.)"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-002"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "extractL1",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "specArtifact": {"type": "object"},
+          "buildReport": {"type": "object", "nullable": true}
+        }
+      },
+      "output_schema": {"type": "object", "description": "ProfileL1Arch partial (modules, dependencies, patterns)"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-002"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "extractL2",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "discoverArtifact": {"type": "object"},
+          "decisionsArtifact": {"type": "object", "nullable": true},
+          "buildReport": {"type": "object", "nullable": true}
+        }
+      },
+      "output_schema": {"type": "object", "description": "ProfileL2Decisions partial (philosophy, decisions, constraints)"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-013"],
+      "acceptance_criteria_refs": ["REQ-013-AC-1", "REQ-013-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "extractL3",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "discoverArtifact": {"type": "object"},
+          "buildReport": {"type": "object", "nullable": true},
+          "featureSlug": {"type": "string", "nullable": true}
+        }
+      },
+      "output_schema": {"type": "object", "description": "ProfileL3Status partial (test coverage, domain model, feature list)"},
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-002", "REQ-008"],
+      "acceptance_criteria_refs": ["REQ-002-AC-1", "REQ-008-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "mergeDomainModel",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "existing": {"type": "object", "description": "Current domain model from profile L3"},
+          "incoming": {"type": "object", "description": "New domain model from feature discover"}
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "merged": {"type": "object", "description": "Merged domain model"},
+          "added": {"type": "array", "items": {"type": "string"}, "description": "New entity names"},
+          "conflicts": {"type": "array", "items": {"type": "string"}, "description": "Entity names that collided (skipped)"}
+        }
+      },
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-008"],
+      "acceptance_criteria_refs": ["REQ-008-AC-2", "REQ-008-AC-3"]
+    }
+  ],
+  "data_models": [],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": null,
+    "security": null,
+    "other": "Writer must never modify specs/ artifacts (INV-004). L2 extraction skipped when l2_enabled=false (INV-002)."
+  },
+  "requirement_refs": ["REQ-002", "REQ-008", "REQ-013"],
+  "invariant_refs": ["INV-002", "INV-004"]
+}

@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile L3 Status",
+  "type": "object",
+  "required": ["updated_at"],
+  "properties": {
+    "updated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp, auto-set on write"
+    },
+    "test_coverage": {
+      "type": "object",
+      "required": ["total_tests", "framework"],
+      "properties": {
+        "total_tests": { "type": "number" },
+        "framework": { "type": "string" }
+      }
+    },
+    "domain_model": {
+      "type": "object",
+      "properties": {
+        "entities": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "relationships": {
+          "type": "array",
+          "items": { "type": "object" }
+        }
+      }
+    },
+    "tech_debt": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "change_hotspots": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "recent_features": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ui_taste": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["designDNA", "tokensPath", "mockupsDir", "stitchProjectId", "tier", "selectedPages"],
+          "properties": {
+            "designDNA": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "tokensPath": { "type": "string" },
+            "mockupsDir": { "type": "string" },
+            "stitchProjectId": { "type": ["string", "null"] },
+            "tier": {
+              "type": "number",
+              "enum": [1, 2, 3]
+            },
+            "selectedPages": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "mockupFile", "darkMockupFile"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "mockupFile": { "type": "string" },
+                  "darkMockupFile": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "additionalProperties": true
+}
