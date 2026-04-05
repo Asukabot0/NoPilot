@@ -1,0 +1,22 @@
+{
+  "core_scenarios": [
+    {
+      "id": "SCENARIO-001",
+      "description": "Greenfield complete flow + profile deposition. User runs discover→spec→build on a new project. After build completes, profile writer extracts information from all stage artifacts and writes to .nopilot/profile/ (L0-L3). If L2 intent capture is enabled, design philosophy and decision rationale are also captured. Profile is available for subsequent feature additions.",
+      "requirement_refs": ["REQ-001", "REQ-002", "REQ-004", "REQ-005", "REQ-013"],
+      "priority": "highest"
+    },
+    {
+      "id": "SCENARIO-002",
+      "description": "Add feature to existing project with profile. User runs /discover, system detects profile, prompts greenfield/feature choice. User selects feature mode. System reads profile for context + scans code structure. User describes feature. System does lightweight requirement convergence: inherits philosophy/constraints/tech from profile, skips direction selection and philosophy extraction, detects conflicts with existing decisions, generates regression guard ACs. Produces specs/features/feat-xxx/discover.json. Continues through spec (with code awareness + Critic impact audit) → build (worktree from existing code) → profile update.",
+      "requirement_refs": ["REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-009", "REQ-010", "REQ-011", "REQ-012", "REQ-014", "REQ-015"],
+      "priority": "highest"
+    },
+    {
+      "id": "SCENARIO-003",
+      "description": "First-time onboarding of existing codebase (no profile). User runs /discover in a project with existing code but no profile. System detects code exists + no profile → triggers first-time onboarding: scans codebase to generate L0/L1/L3 profile, then asks user to choose greenfield (full project-level discover) or feature mode. This prevents treating a single feature's design philosophy as the entire project's philosophy.",
+      "requirement_refs": ["REQ-004", "REQ-006"],
+      "priority": "highest"
+    }
+  ]
+}

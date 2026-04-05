@@ -44,3 +44,29 @@
   - v0.0.1 release 准备
 - Issues: 9 个 open (之前 2 个), 新增 #23/#24/#29/#30/#31/#33/#35/#37
 - 基线对比: 上次快照 2026-04-04 01:00 | .ts 文件 13→35, 行数 3835→12133, 测试 202→482
+
+## Progress Snapshot: 2026-04-05 14:00
+- 触发方式: brownfield discover + spec 完成后自动更新
+- 代码统计: 48 个 .ts 文件, 16367 行 TypeScript, 482 个测试 (无新代码, 本次为设计阶段)
+- 当前版本: V0.0.2 Released (main)
+- 当前分支: fix/issue-24-domain-skill-confirm
+- 本次工作: Brownfield Support feature 设计 (discover + spec 阶段完成)
+  - **Discover 阶段**:
+    - 识别 10 大痛点 (discover 太重、设计哲学不应重生成、必须读现有代码等)
+    - 竞品调研: Cursor/Windsurf/Copilot/Devin/Factory/Augment 的 brownfield 方案
+    - 方向选择: Hybrid (意图持久化 + 结构按需扫描), 意图捕获作为实验性功能
+    - 核心创新: 多层级项目画像 (L0 基础设施、L1 架构、L2 决策/实验性、L3 状态)
+    - 设计哲学: 一条流程条件分支、流程产出即记忆来源、意图与结构分离、为拆除而设计、上下文不能以偏概全
+    - 15 个 REQ, 5 个 INV, 3 个核心场景
+    - Critic: 3 个 block 已修复 (阈值具体化 + updated_at 字段)
+    - Supervisor: aligned, 无漂移
+  - **Spec 阶段**:
+    - 8 个模块: 5 个 TypeScript 新组件 (profile-storage, writer, scanner, mode-detector, conflict-detector) + 3 个命令修改 (discover/spec/build feature mode)
+    - 新增文件: src/profile/ (5 个 .ts), schemas/profile-l{0-3}.schema.json (4 个)
+    - 3 个 auto_decisions (Ajv 验证、TS 工具函数模式、.nopilot/config.json)
+    - Critic: ACCEPT, 52/52 AC 覆盖 (修复 REQ-015 过期响应缺口后)
+    - Supervisor: aligned, drift score 8/100
+  - 产出位置: specs/features/feat-brownfield-support/ (discover/ + spec/ + reviews)
+- 下一步: /build 执行, 或先 review spec 产出
+- Issues: 8 个 open
+- 基线对比: 上次快照 2026-04-04 20:50 | 无代码变更, 新增 brownfield feature 设计制品

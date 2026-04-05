@@ -14,6 +14,15 @@ You are an autonomous TDD executor. Follow industry best practices. Human involv
 
 ## Input
 
+### Feature Mode: Input Paths (mode=feature only)
+
+**If `mode=feature`** (check context for `mode` and `featureSlug`): Read artifacts from `specs/features/feat-{featureSlug}/` instead of `specs/`. Specifically:
+- Spec artifact: `specs/features/feat-{featureSlug}/spec.json` (or `specs/features/feat-{featureSlug}/spec/index.json`)
+- Discover artifact: `specs/features/feat-{featureSlug}/discover.json` (or `specs/features/feat-{featureSlug}/discover/index.json`)
+- Also read the project profile at `.nopilot/profile/` for inherited context (tech stack, existing modules, design philosophy).
+
+**If `mode=greenfield`**: Read artifacts from `specs/` as defined below.
+
 Verify that a spec artifact exists (`specs/spec.json` or `specs/spec/index.json`) and a discover artifact exists (`specs/discover.json` or `specs/discover/index.json`). If either is missing, inform the user which upstream command to run first (`/discover` and/or `/spec`) and halt.
 
 Read the spec artifact and discover artifact. When the artifact is split, read the index file first, then load only the referenced module or child files needed for the current step.
@@ -73,6 +82,16 @@ The Critic uses the floating iteration cap (see critic.md Step 4). Each re-revie
 Review priority hint: property tests (skip quickly) → direct_from_ears (verify mapping) → ai_supplemented (review carefully).
 
 When `discover.json.mode == "lite"` (or `discover/index.json.mode == "lite"`), skip the independent test review and emit `TESTS_GENERATED_AUTO` → proceed directly to Step 3.
+
+### Feature Mode: Worktree Strategy (mode=feature only)
+
+**If `mode=feature`**: When creating worktrees for parallel module implementation, branch from the current `HEAD` (existing code) instead of empty branches. This ensures Workers receive the full existing codebase as their starting point and can integrate the new feature against real existing code.
+
+Command pattern: `git worktree add -b feat/{featureSlug}/{module} ../.worktree-{module} HEAD`
+
+Workers must read the profile's `codebase_snapshot` to understand which existing modules their work touches. Regression guard test cases must be executed against the inherited existing code.
+
+**If `mode=greenfield`**: Continue with existing worktree strategy (branch from empty/initial state).
 
 ### Step 3: Tracer Bullet (if enabled)
 
@@ -221,6 +240,30 @@ After writing the build report artifact (`specs/build_report.json` or `specs/bui
 - Write the Supervisor's assessment into the build report artifact's `global_coherence_check` field
 - **If drift detected:** Pause, present to user, wait for resolution
 - **If aligned:** Report completion
+
+### Profile Write Step (ALL modes — greenfield AND feature)
+
+After the Supervisor check completes and build is confirmed aligned, trigger MOD-002 `writeProfileFromArtifacts`:
+
+1. Read config (`.nopilot/config.json`) to check `l2_enabled` flag.
+2. Call `writeProfileFromArtifacts` with:
+   - `artifactsDir`: `specs/features/feat-{featureSlug}/` if `mode=feature`, otherwise `specs/`
+   - `mode`: current mode (`"greenfield"` or `"feature"`)
+3. Report to user what was written:
+   > "Profile updated: [list of profile layers written — e.g., L0 identity, L1 stack, L3 requirements]"
+4. If `PROFILE_WRITE_FAILED`: log the error and warn the user, but do not block build completion. The build is still considered complete.
+
+This step fires for both greenfield and feature mode builds. It is the only modification to the greenfield flow.
+
+### Feature Mode: Build Artifact Output Paths (mode=feature only)
+
+**If `mode=feature`**: Write all build artifacts to `specs/features/feat-{featureSlug}/` instead of `specs/`:
+- `specs/features/feat-{featureSlug}/build_report.json` (or split: `specs/features/feat-{featureSlug}/build/index.json`)
+- `specs/features/feat-{featureSlug}/build_review.json`
+- `specs/features/feat-{featureSlug}/tests.json` (or split: `specs/features/feat-{featureSlug}/tests/index.json`)
+- `specs/features/feat-{featureSlug}/tests_review.json`
+
+**If `mode=greenfield`**: Write artifacts to `specs/` as defined above.
 
 ### Decision Ledger
 

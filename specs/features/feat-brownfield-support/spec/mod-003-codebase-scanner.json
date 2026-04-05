@@ -1,0 +1,120 @@
+{
+  "id": "MOD-003",
+  "name": "codebase-scanner",
+  "responsibility": "Scans an existing codebase to extract structural information: tech stack, directory structure, module dependencies, test coverage. Supports sub-agent parallelization for large codebases. Output supplements (not replaces) profile L0/L1.",
+  "source_root": "src/profile/",
+  "owned_files": [
+    "src/profile/scanner.ts"
+  ],
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "scanCodebase",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rootDir": {"type": "string"},
+          "config": {
+            "type": "object",
+            "properties": {
+              "scanThresholdFiles": {"type": "integer", "default": 500}
+            }
+          }
+        },
+        "required": ["rootDir"]
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "fileCount": {"type": "integer"},
+          "parallelized": {"type": "boolean", "description": "True if sub-agents were used"},
+          "l0Partial": {"type": "object", "description": "Detected tech stack, frameworks, test framework, etc."},
+          "l1Partial": {"type": "object", "description": "Directory structure, detected modules, dependency hints"},
+          "l3Partial": {"type": "object", "description": "Test count, change hotspots from git log"}
+        }
+      },
+      "errors": ["SCAN_ERROR", "THRESHOLD_EXCEEDED_PARALLEL_FAILED"],
+      "api_detail": null,
+      "requirement_refs": ["REQ-006"],
+      "acceptance_criteria_refs": ["REQ-006-AC-1", "REQ-006-AC-2", "REQ-006-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "detectTechStack",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rootDir": {"type": "string"}
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "description": "ProfileL0Infra partial: languages, frameworks, package_manager, runtime, build_tools, test_framework, ci"
+      },
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-006"],
+      "acceptance_criteria_refs": ["REQ-006-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "detectStructure",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rootDir": {"type": "string"}
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "description": "ProfileL1Arch partial: directory_structure, modules (detected from directory naming + entry points), dependency_directions (from import analysis)"
+      },
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-006"],
+      "acceptance_criteria_refs": ["REQ-006-AC-1"]
+    },
+    {
+      "type": "internal",
+      "name": "hasExistingCode",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "rootDir": {"type": "string"}
+        }
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "hasCode": {"type": "boolean", "description": "True if directory has git history or recognized dependency files (package.json, go.mod, Cargo.toml, etc.)"},
+          "indicators": {"type": "array", "items": {"type": "string"}, "description": "What was detected: 'git_history', 'package.json', etc."}
+        }
+      },
+      "errors": [],
+      "api_detail": null,
+      "requirement_refs": ["REQ-004"],
+      "acceptance_criteria_refs": ["REQ-004-AC-1"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "ScanResult",
+      "fields": [
+        {"name": "fileCount", "type": "integer", "constraints": "total source files scanned"},
+        {"name": "parallelized", "type": "boolean", "constraints": "true if sub-agent split was used"},
+        {"name": "l0Partial", "type": "Partial<ProfileL0Infra>", "constraints": "detected infra fields"},
+        {"name": "l1Partial", "type": "Partial<ProfileL1Arch>", "constraints": "detected arch fields"},
+        {"name": "l3Partial", "type": "Partial<ProfileL3Status>", "constraints": "detected status fields"}
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": "Full scan of a 500-file project should complete within 30 seconds. Sub-agent parallelization for larger codebases.",
+    "security": null,
+    "other": "Scan results supplement, never replace, existing profile data (REQ-006-AC-3)."
+  },
+  "requirement_refs": ["REQ-004", "REQ-006"],
+  "invariant_refs": ["INV-005"]
+}

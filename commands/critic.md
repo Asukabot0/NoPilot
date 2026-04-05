@@ -390,6 +390,37 @@ Write to `specs/spec_review.json`:
 
 Note: `global_coherence_check` is filled by the Supervisor agent, not by you. Leave it as empty object.
 
+### Feature Mode: Impact Audit
+
+When the spec artifact's discover source is a feature-scoped artifact (i.e., at `specs/features/feat-xxx/discover.json`) AND the project profile L1 is available at `.nopilot/profile/l1-arch.json`:
+
+Perform an additional **Impact Audit** after the standard backward verification:
+
+1. **Touched Modules**: Identify existing modules (from L1 `modules[]`) that the new spec modules call, extend, or depend on.
+2. **Changed Interfaces**: For each touched module, identify any existing interfaces that are modified or extended by the new spec. Flag interface signature changes as `warn`; breaking changes (removed fields, changed types) as `block`.
+3. **Dependency Direction Changes**: Check whether any new `dependency_graph` edges in the spec introduce direction reversals (A→B where B→A already exists in L1) or new cross-layer dependencies.
+4. **Breaking Changes**: Any change that would require callers of an existing interface to be updated is a breaking change.
+
+Record the impact audit result in `specs/features/feat-xxx/spec_review.json` under the `impact_audit` field:
+
+```json
+{
+  "impact_audit": {
+    "touchedModules": ["<existing module name>"],
+    "changedInterfaces": ["<interface name: change description>"],
+    "dependencyDirectionChanges": ["<from→to: description>"],
+    "breakingChanges": [
+      { "description": "<what breaks>", "severity": "block | warn" }
+    ],
+    "overallSeverity": "block | warn | pass"
+  }
+}
+```
+
+`overallSeverity` is `block` if any breaking change has severity `block`, `warn` if any has severity `warn` with no blocks, and `pass` otherwise.
+
+This step applies only when `mode=feature` and L1 profile is available. In greenfield mode, skip impact audit entirely (INV-001). If L1 is unavailable, record `impact_audit: { skipped: true, reason: "L1 profile not available" }`.
+
 ### On Issue
 
 1. Attempt to fix the spec artifact to align with the discover artifact.
