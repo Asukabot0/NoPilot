@@ -10,6 +10,7 @@
   "files": [
     "dist",
     "commands",
+    "prompts",
     "schemas",
     "workflow.json"
   ],

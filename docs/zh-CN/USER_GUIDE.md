@@ -135,7 +135,7 @@ NoPilot 的下游参与度递减模型：
 
 ### 2.1 前置条件
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 已安装并配置
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 或 Codex CLI 已安装并配置
 - Node.js >= 20.0.0
 - (可选) [Google Stitch MCP](https://stitch.withgoogle.com) — 用于 Discover 阶段的高保真 UI mockup 生成。未配置时系统自动降级到 AI 生成的 HTML 或文字问答模式
 
@@ -168,7 +168,7 @@ nopilot init
 
 `nopilot init` 采用 OMC 风格分发模型，会完成以下操作：
 
-1. 安装 `commands/*.md` 到 `~/.claude/commands/` 和 `~/.codex/prompts/`（全局，始终覆盖）
+1. 安装包内 `commands/*.md` 到 `~/.claude/commands/`，并安装包内 `prompts/codex/*.md` 到 `~/.codex/prompts/`（全局，始终覆盖）
 2. 创建 `specs/` 目录（含 `.gitkeep`）
 3. 向已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
@@ -228,15 +228,8 @@ my-project/
 
 ```bash
 cd my-project
-claude                       # 打开 Claude Code
-```
-
-在 Claude Code 中依次执行：
-
-```
-/discover                    # 第一步：探索需求空间，锁定需求
-/spec                        # 第二步：将需求展开为模块级设计
-/build                       # 第三步：自主 TDD 实现
+claude                       # Claude Code 中运行 /discover
+codex                        # Codex 中运行 /prompts:discover
 ```
 
 每个阶段从 `specs/` 读取上游制品，写入自己的产出。所有制品都是 JSON 格式的机器可读契约。
@@ -1281,7 +1274,7 @@ nopilot init --force
 ```
 
 **执行动作：**
-1. 安装 `commands/*.md` → `~/.claude/commands/` 和 `~/.codex/prompts/`（全局，始终覆盖）
+1. 安装 `commands/*.md` → `~/.claude/commands/`，安装 `prompts/codex/*.md` → `~/.codex/prompts/`（全局，始终覆盖）
 2. 创建 `<dir>/specs/` 目录（含 `.gitkeep`）
 3. 向 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
@@ -1291,7 +1284,7 @@ nopilot init --force
 
 #### `nopilot paths`
 
-打印 NoPilot 包资产的位置（schemas、commands、workflow.json）。
+打印 NoPilot 包资产的位置（schemas、Claude commands、Codex prompts、workflow.json）。
 
 ```bash
 nopilot paths
@@ -1303,6 +1296,11 @@ nopilot paths
 {
   "package_root": "/usr/lib/node_modules/nopilot",
   "commands": "/usr/lib/node_modules/nopilot/commands",
+  "codex_prompts": "/usr/lib/node_modules/nopilot/prompts/codex",
+  "source_prompt_locations": {
+    "claude": "/usr/lib/node_modules/nopilot/commands",
+    "codex": "/usr/lib/node_modules/nopilot/prompts/codex"
+  },
   "schemas": "/usr/lib/node_modules/nopilot/schemas",
   "workflow": "/usr/lib/node_modules/nopilot/workflow.json",
   "installed_commands": "/home/user/.claude/commands",
@@ -2112,7 +2110,11 @@ Lash 的 Worktree Manager 在合并前会运行 `checkUnexpectedFiles` 范围检
 
 ### Q: NoPilot 必须和 Claude Code 一起使用吗？
 
-NoPilot 的三阶段工作流（`/discover`、`/spec`、`/build`）目前设计为 Claude Code 的 slash commands。Lash 构建编排器同时支持 Claude Code、Codex 和 OpenCode 作为 Worker 平台。
+NoPilot 的三阶段工作流同时支持 Claude Code 和 Codex：
+- Claude Code：使用 `/discover` → `/spec` → `/build`
+- Codex：使用 `/prompts:discover` → `/prompts:spec` → `/prompts:build`
+
+Lash 构建编排器同时支持 Claude Code、Codex 和 OpenCode 作为 Worker 平台。
 
 ### Q: 如何在团队中使用 NoPilot？
 

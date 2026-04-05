@@ -42,6 +42,14 @@ function seedPackageAssets(): void {
     writeFileSync(join(cmdDir, 'lash-build.md'), '# lash-build', 'utf-8');
     writeFileSync(join(cmdDir, 'discover.md'), '# discover', 'utf-8');
   }
+
+  // prompts/codex/*.md
+  const codexDir = resolve(PACKAGE_ROOT, 'prompts', 'codex');
+  if (!existsSync(codexDir)) {
+    mkdirSync(codexDir, { recursive: true });
+    writeFileSync(join(codexDir, 'lash-build.md'), '# lash-build codex', 'utf-8');
+    writeFileSync(join(codexDir, 'discover.md'), '# discover codex', 'utf-8');
+  }
 }
 
 describe('nopilot init', () => {
@@ -69,13 +77,14 @@ describe('nopilot init', () => {
     const claudeCommands = join(tmpHome, '.claude', 'commands');
     const codexPrompts = join(tmpHome, '.codex', 'prompts');
     const srcDiscover = readFileSync(join(PACKAGE_ROOT, 'commands', 'discover.md'), 'utf-8');
+    const srcCodexDiscover = readFileSync(join(PACKAGE_ROOT, 'prompts', 'codex', 'discover.md'), 'utf-8');
 
     expect(existsSync(claudeCommands)).toBe(true);
     expect(existsSync(codexPrompts)).toBe(true);
     expect(readdirSync(claudeCommands).some((f) => f.endsWith('.md'))).toBe(true);
     expect(readdirSync(codexPrompts).some((f) => f.endsWith('.md'))).toBe(true);
     expect(readFileSync(join(claudeCommands, 'discover.md'), 'utf-8')).toBe(srcDiscover);
-    expect(readFileSync(join(codexPrompts, 'discover.md'), 'utf-8')).toBe(srcDiscover);
+    expect(readFileSync(join(codexPrompts, 'discover.md'), 'utf-8')).toBe(srcCodexDiscover);
   });
 
   it('does NOT copy schemas to project', () => {
@@ -142,6 +151,8 @@ describe('nopilot paths', () => {
     const paths = JSON.parse(output);
     expect(paths).toHaveProperty('package_root');
     expect(paths).toHaveProperty('commands');
+    expect(paths).toHaveProperty('codex_prompts');
+    expect(paths).toHaveProperty('source_prompt_locations');
     expect(paths).toHaveProperty('schemas');
     expect(paths).toHaveProperty('workflow');
     expect(paths).toHaveProperty('installed_commands');
@@ -163,10 +174,28 @@ describe('nopilot paths', () => {
   it('reports Claude and Codex install locations', () => {
     const output = runCli(['paths']);
     const paths = JSON.parse(output);
+    expect(paths.source_prompt_locations).toEqual({
+      claude: resolve(PACKAGE_ROOT, 'commands'),
+      codex: resolve(PACKAGE_ROOT, 'prompts', 'codex'),
+    });
     expect(paths.installed_command_locations).toEqual({
       claude: join(homedir(), '.claude', 'commands'),
       codex: join(homedir(), '.codex', 'prompts'),
     });
+  });
+
+  it('ships a Codex prompt mirror without Claude-only references', () => {
+    const claudeFiles = readdirSync(resolve(PACKAGE_ROOT, 'commands')).filter((f) => f.endsWith('.md')).sort();
+    const codexFiles = readdirSync(resolve(PACKAGE_ROOT, 'prompts', 'codex')).filter((f) => f.endsWith('.md')).sort();
+
+    expect(codexFiles).toEqual(claudeFiles);
+
+    for (const file of codexFiles) {
+      const content = readFileSync(resolve(PACKAGE_ROOT, 'prompts', 'codex', file), 'utf-8');
+      expect(content).not.toContain('.claude/commands');
+      expect(content).not.toContain('Agent(');
+      expect(content).not.toMatch(/commands\/[A-Za-z0-9._/-]+\.md/);
+    }
   });
 });
 
