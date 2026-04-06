@@ -1,0 +1,75 @@
+{
+  "id": "MOD-006",
+  "name": "DiffValidator",
+  "responsibility": "开发时验证工具：对比 TemplateEngine 为 Codex 生成的输出与现有 prompts/codex/ 文件，确保差异仅限占位符替换行。用于迁移回归验证，prompts/codex/ 删除后此模块退役。",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "validateMigrationEquivalence",
+      "input_schema": {
+        "generatedDir": "string — TemplateEngine 生成的 Codex skill 临时输出目录",
+        "legacyDir": "string — 现有 prompts/codex/ 目录路径"
+      },
+      "output_schema": {
+        "passed": "boolean — 所有文件是否通过等价验证",
+        "results": "FileCompareResult[] — 每个文件的对比结果"
+      },
+      "errors": [
+        {
+          "code": "LEGACY_DIR_NOT_FOUND",
+          "condition": "prompts/codex/ 目录不存在",
+          "behavior": "报错并提示：该验证仅在 prompts/codex/ 删除前有意义"
+        }
+      ],
+      "requirement_refs": ["REQ-007"],
+      "acceptance_criteria_refs": ["REQ-007-AC-2"]
+    },
+    {
+      "type": "internal",
+      "name": "deleteLegacyAfterValidation",
+      "input_schema": {
+        "legacyDir": "string — prompts/codex/ 目录路径",
+        "validationResult": "{ passed: boolean } — validateMigrationEquivalence 的返回值"
+      },
+      "output_schema": {
+        "deleted": "boolean — 是否成功删除",
+        "filesRemoved": "number — 删除的文件数"
+      },
+      "errors": [
+        {
+          "code": "VALIDATION_NOT_PASSED",
+          "condition": "validationResult.passed === false",
+          "behavior": "拒绝删除，报错：回归验证未通过，prompts/codex/ 保留"
+        },
+        {
+          "code": "DELETE_FAILED",
+          "condition": "文件系统删除失败（权限等）",
+          "behavior": "报错并列出未能删除的文件"
+        }
+      ],
+      "requirement_refs": ["REQ-007"],
+      "acceptance_criteria_refs": ["REQ-007-AC-1"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "FileCompareResult",
+      "fields": [
+        { "name": "fileName", "type": "string", "constraints": "文件名" },
+        { "name": "passed", "type": "boolean", "constraints": "" },
+        { "name": "totalDiffLines", "type": "number", "constraints": "差异行数" },
+        { "name": "placeholderDiffLines", "type": "number", "constraints": "其中属于占位符替换的差异行数" },
+        { "name": "unexpectedDiffs", "type": "Array<{ line: number, expected: string, actual: string }>", "constraints": "非占位符行的差异（为空时 passed=true）" }
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": null,
+    "security": null,
+    "other": "临时模块，在 prompts/codex/ 删除且 REQ-007-AC-2 验证通过后退役"
+  },
+  "requirement_refs": ["REQ-007"],
+  "invariant_refs": []
+}

@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # /visualize — Artifact Visualization Generator
 
 You are a visualization generator for NoPilot artifacts. Your role is to read JSON artifacts from `specs/` and generate self-contained HTML visualization pages in `specs/views/`.

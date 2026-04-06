@@ -1,0 +1,105 @@
+{
+  "module_ref": "MOD-002",
+  "example_cases": [
+    {
+      "id": "TEST-011",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "getActivePlatforms 仅返回 active 状态的平台",
+      "category": "normal",
+      "ears_ref": "REQ-002-AC-3",
+      "derivation": "direct_from_ears",
+      "input": {},
+      "expected_output": { "platforms_names": ["claude", "codex"], "excludes": ["gemini", "opencode"] },
+      "setup": ""
+    },
+    {
+      "id": "TEST-012",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "getPlatform 返回 claude 平台完整配置",
+      "category": "normal",
+      "ears_ref": "REQ-002-AC-1",
+      "derivation": "direct_from_ears",
+      "input": { "name": "claude" },
+      "expected_output": { "platform.name": "claude", "platform.status": "active", "platform.skillsDir_contains": ".claude/skills", "platform.placeholderMap_has_keys": ["CRITIC_PATH", "SUPERVISOR_PATH"] },
+      "setup": ""
+    },
+    {
+      "id": "TEST-013",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "getPlatform 返回 codex 平台配置，安装路径为 ~/.agents/skills/",
+      "category": "normal",
+      "ears_ref": "REQ-002-AC-1",
+      "derivation": "direct_from_ears",
+      "input": { "name": "codex" },
+      "expected_output": { "platform.name": "codex", "platform.status": "active", "platform.skillsDir_contains": ".agents/skills" },
+      "setup": ""
+    },
+    {
+      "id": "TEST-014",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "getPlatform 返回 gemini 预留条目，状态为 experimental",
+      "category": "boundary",
+      "ears_ref": "REQ-002-AC-2",
+      "derivation": "direct_from_ears",
+      "input": { "name": "gemini" },
+      "expected_output": { "platform.status": "experimental" },
+      "setup": ""
+    },
+    {
+      "id": "TEST-015",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "getPlatform 不存在的平台 → 返回 undefined",
+      "category": "error",
+      "ears_ref": "REQ-002-AC-1",
+      "derivation": "ai_supplemented",
+      "input": { "name": "nonexistent" },
+      "expected_output": { "platform": "undefined" },
+      "setup": ""
+    },
+    {
+      "id": "TEST-016",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "validateMappingCompleteness 所有变量均有映射 → valid=true",
+      "category": "normal",
+      "ears_ref": "REQ-002-AC-4",
+      "derivation": "direct_from_ears",
+      "input": { "platform": "claude", "requiredVariables": ["CRITIC_PATH", "SUPERVISOR_PATH"] },
+      "expected_output": { "valid": true, "missingKeys": [] },
+      "setup": ""
+    },
+    {
+      "id": "TEST-017",
+      "suite_type": "unit",
+      "module_ref": "MOD-002",
+      "requirement_refs": ["REQ-002"],
+      "description": "validateMappingCompleteness 缺失映射键 → valid=false + 列出缺失键",
+      "category": "error",
+      "ears_ref": "REQ-002-AC-4",
+      "derivation": "direct_from_ears",
+      "input": { "platform": "claude", "requiredVariables": ["CRITIC_PATH", "NONEXISTENT_VAR"] },
+      "expected_output": { "valid": false, "missingKeys": ["NONEXISTENT_VAR"] },
+      "setup": ""
+    }
+  ],
+  "property_cases": [
+    {
+      "id": "PROP-002",
+      "module_ref": "MOD-002",
+      "invariant_ref": "INV-001",
+      "property": "注册表中每个 active 平台的 placeholderMap 包含所有 commands/ 源文件中使用的变量名（无遗漏）",
+      "requirement_refs": ["REQ-002"]
+    }
+  ]
+}

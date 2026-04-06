@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # Conflict Resolution Instructions
 
 You are resolving merge conflicts. Both branches' changes are marked with standard git conflict markers.

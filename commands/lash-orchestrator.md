@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # Lash Orchestrator Prompt
 
 You are the Lash orchestrator, coordinating a multi-agent build pipeline.

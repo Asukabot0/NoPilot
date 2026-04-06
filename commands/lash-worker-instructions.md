@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # Worker Instructions
 
 You are a Lash Worker agent. Follow these rules strictly:

@@ -1,0 +1,456 @@
+{
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "user_story": "As a NoPilot maintainer, I want skill source files to use platform-agnostic placeholders, so that I only maintain one copy of each skill.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-001-AC-1",
+          "type": "state",
+          "ears": "commands/*.md 中所有平台特定路径 SHALL 使用 <%...%> 占位符替代硬编码路径",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-001-AC-2",
+          "type": "state",
+          "ears": "每个含占位符的 skill 文件顶部 SHALL 包含注释说明占位符语法和可用变量列表",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-001-AC-3",
+          "type": "event_driven",
+          "ears": "WHEN nopilot init 执行, THE SYSTEM SHALL 读取 commands/*.md 并将 <%...%> 占位符替换为目标平台的实际值",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-001-AC-4",
+          "type": "state",
+          "ears": "占位符语法采用 eta 模板引擎原生语法（<%=VAR%> 输出、<% if () { %> 条件），SHALL 通过词法不重叠保证与 Jinja ({{...}})、Handlebars ({{...}})、Mustache ({{...}}) 模板语法不冲突。与 EJS/ERB 语法兼容（eta 本身是 EJS 兼容引擎，不存在冲突）。markdown 代码块中的占位符视为需要替换的内容（非冲突）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-001-AC-5",
+          "type": "event_driven",
+          "ears": "WHEN 占位符变量在目标平台的 PlatformAdapter 中没有对应映射值, THE SYSTEM SHALL 报错停止并列出缺失的变量名和所在文件",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-001-AC-6",
+          "type": "event_driven",
+          "ears": "WHEN init 过程中检测到替换后的输出文件仍包含未解析的 <%...%> 模式, THE SYSTEM SHALL 报错停止并列出残留占位符的位置",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "需要实现简单的模板替换引擎，处理文件读取/写入，含错误路径处理",
+        "test_complexity": "medium",
+        "effort_estimate": "3-5 days"
+      }
+    },
+    {
+      "id": "REQ-002",
+      "user_story": "As a NoPilot maintainer, I want a centralized platform registry, so that adding a new AI platform only requires one configuration entry.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-002-AC-1",
+          "type": "state",
+          "ears": "THE SYSTEM SHALL 维护一个 PlatformAdapter 注册表，每个条目包含：平台名、状态（active | experimental）、源目录、目标目录、占位符映射（key-value 对，key 为占位符变量名，value 为该平台的实际值）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-002-AC-2",
+          "type": "state",
+          "ears": "注册表 SHALL 包含 claude、codex 的完整配置（状态为 active），以及 gemini、opencode 的预留条目（状态为 experimental）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-002-AC-3",
+          "type": "event_driven",
+          "ears": "WHEN nopilot init 执行, THE SYSTEM SHALL 仅为状态为 active 的平台生成 prompt 文件；experimental 平台不生成、不执行占位符映射验证（AC-4 仅适用于 active 平台），仅在注册表中预留配置结构",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-002-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN 新平台条目的占位符映射缺少 skill 文件中使用的某个变量, THE SYSTEM SHALL 在 init 时报错并列出缺失的映射键，而非静默跳过或使用默认值",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "扩展现有 PROMPT_ASSETS，PlatformAdapter 取代硬编码结构，新增 active/experimental 状态区分",
+        "test_complexity": "low",
+        "effort_estimate": "2-3 days"
+      }
+    },
+    {
+      "id": "REQ-003",
+      "user_story": "As a NoPilot user, I want discover skill to load only the current phase's instructions, so that my main agent context is not bloated with 809 lines.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-003-AC-1",
+          "type": "state",
+          "ears": "discover 主 skill SHALL 不超过 250 行，仅包含流程路由和 dispatch 逻辑",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-003-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN 用户进入 UI Taste 阶段, THE SYSTEM SHALL 通过 Skill tool 按需加载 discover-ui-taste 子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-003-AC-3",
+          "type": "event_driven",
+          "ears": "WHEN Critic 评审阶段触发, THE SYSTEM SHALL dispatch 给 subagent 执行，主 context 仅接收 discover_review.json 的 pass/fail 摘要",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-003-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN Supervisor 检查阶段触发, THE SYSTEM SHALL dispatch 给 subagent 执行，主 context 仅接收 drift 评估摘要",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-003-AC-5",
+          "type": "state",
+          "ears": "每个子 skill 入口处 SHALL 标注 Feature Mode 分支指令（不依赖主 skill 的上下文传递）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-003-AC-6",
+          "type": "event_driven",
+          "ears": "WHEN Skill tool 加载子 skill 时文件不存在, THE SYSTEM SHALL 报错停止当前流程并输出：缺失文件名、预期路径、修复命令 nopilot doctor。用户修复后需重新触发 /discover（不支持断点续传）",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "809 行拆为主 skill (~220 行) + 6 个子 skill，需 Golden Path 端到端全分支覆盖测试",
+        "test_complexity": "high",
+        "effort_estimate": "5-7 days"
+      }
+    },
+    {
+      "id": "REQ-004",
+      "user_story": "As a NoPilot user, I want critic to only load the evaluation rules for the current phase, not all 670 lines for every phase.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-004-AC-1",
+          "type": "state",
+          "ears": "critic 主 skill SHALL 不超过 50 行，仅包含角色定义 + 阶段路由",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN critic 被调用于 /discover 评审, THE SYSTEM SHALL 仅加载 critic-framework + critic-discover 子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-3",
+          "type": "event_driven",
+          "ears": "WHEN critic 被调用于 /spec 评审, THE SYSTEM SHALL 仅加载 critic-framework + critic-spec 子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN critic 被调用于 /build test 评审, THE SYSTEM SHALL 仅加载 critic-framework + critic-tests 子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-5",
+          "type": "event_driven",
+          "ears": "WHEN critic 被调用于 /build acceptance 评审, THE SYSTEM SHALL 仅加载 critic-framework + critic-acceptance 子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-6",
+          "type": "state",
+          "ears": "critic-framework（通用框架 Step 1-6 + Severity/Confidence/AI Bias 表）SHALL 作为共享子 skill，由主 skill 在路由时通过 Skill tool 与阶段子 skill 一起加载",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-7",
+          "type": "event_driven",
+          "ears": "WHEN 自修复循环触发, THE SYSTEM SHALL dispatch 给独立 subagent（fresh instance），通过文件传递 self_fix_log",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "670 行拆为路由层 (~40 行) + 5 个阶段子 skill (discover/spec/tests/acceptance) + 1 个共享 framework",
+        "test_complexity": "high",
+        "effort_estimate": "4-6 days"
+      }
+    },
+    {
+      "id": "REQ-005",
+      "user_story": "As a NoPilot user, I want build skill phases to load independently and heavy steps to run in subagents.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-005-AC-1",
+          "type": "state",
+          "ears": "build 主 skill SHALL 不超过 100 行",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN test generation 阶段触发, THE SYSTEM SHALL 加载 build-test-gen 子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-3",
+          "type": "event_driven",
+          "ears": "WHEN Auto-Acceptance 阶段触发, THE SYSTEM SHALL dispatch 给独立 subagent（设计上禁止共享 build context）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN per-module TDD 循环执行, THE SYSTEM SHALL 加载 build-tdd-cycle 子 skill，各模块可并行 dispatch",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-5",
+          "type": "event_driven",
+          "ears": "WHEN build report 生成阶段触发, THE SYSTEM SHALL 加载 build-report 子 skill（含 build_report.json schema、Supervisor spawn、Profile 写入、decision ledger）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-6",
+          "type": "state",
+          "ears": "Artifact Directory Split 规则（单文件 vs 分目录格式判断）SHALL 提取为独立的 build-artifact-split 子 skill",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "352 行拆为主 skill (~90 行) + 5 个子 skill (test-gen, tdd-cycle, acceptance, report, artifact-split)",
+        "test_complexity": "high",
+        "effort_estimate": "5-7 days"
+      }
+    },
+    {
+      "id": "REQ-006",
+      "user_story": "As a NoPilot maintainer, I want each subagent dispatch point to have a clearly defined input/output contract, so that the behavior is predictable and debuggable.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-006-AC-1",
+          "type": "state",
+          "ears": "每个 dispatch 点 SHALL 在 skill 文件中以标准格式标注：输入参数（哪些文件/state）、输出（写入哪个文件、返回什么摘要）、错误处理（失败时的行为）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-006-AC-2",
+          "type": "state",
+          "ears": "dispatch 契约 SHALL 规定 subagent 返回的摘要不超过 20 个逻辑条目（非字符行数），仅包含决策结果（pass/fail/drift score 等），不包含执行细节。超出时由 dispatch 指令中的 prompt 约束截断",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-006-AC-3",
+          "type": "state",
+          "ears": "dispatch 契约 SHOULD 标注 subagent 的最终输出文件路径作为主 agent 的唯一读取点，并在契约注释中注明'主 agent 在 subagent 完成前不应读取中间文件'（此为行为建议，不作为测试验收条件）",
+          "source_refs": []
+        }
+      ],
+      "source": "ai_inferred",
+      "downstream_impact": {
+        "tech_implications": "定义标准化契约格式，每个 dispatch 点需声明 IO 规范",
+        "test_complexity": "medium",
+        "effort_estimate": "3-4 days"
+      }
+    },
+    {
+      "id": "REQ-007",
+      "user_story": "As a NoPilot maintainer, I want the duplicated prompts/codex/ directory removed, so that all skills are generated from the single source.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-007-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN feature 完成后, prompts/codex/ 目录 SHALL 被删除，所有 Codex prompt 由 nopilot init 从 commands/ 生成。删除操作 SHALL 在 REQ-007-AC-2 的 diff 回归验证通过之后执行",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-007-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN nopilot init 为 codex 平台生成 prompt 文件后, THE SYSTEM SHALL 对每个生成文件与当前 prompts/codex/ 对应文件执行文本 diff，差异 SHALL 仅出现在已知占位符替换位置（由 PlatformAdapter 映射定义的变量行）；任何非占位符行的差异视为回归失败",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "删除 ~2800 行重复文件，依赖 REQ-001 和 REQ-002 先完成。需要回归测试用 diff 验证",
+        "test_complexity": "medium",
+        "effort_estimate": "1-2 days"
+      }
+    },
+    {
+      "id": "REQ-008",
+      "user_story": "As a NoPilot user upgrading from old versions, I want nopilot init to clean up my old ~/.claude/commands/ files, so that I don't have stale prompts.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-008-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN nopilot init 检测到 ~/.claude/commands/ 中存在带 <!-- nopilot-managed --> 文件头标记的旧版 NoPilot 文件, THE SYSTEM SHALL 列出这些文件并提示用户确认删除",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-008-AC-2",
+          "type": "state",
+          "ears": "迁移逻辑 SHALL 包含版本标记（MIGRATION_SINCE_VERSION，定义在 src/nopilot-cli.ts 常量中），在当前版本 +5 个 minor 版本后由维护者手动移除迁移代码（通过 TODO 注释标注移除版本号）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-008-AC-3",
+          "type": "condition",
+          "ears": "WHILE 迁移窗口内, THE SYSTEM SHALL 在 init 输出中显示 deprecation warning",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-008-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN 检测到 ~/.claude/commands/ 中存在与 NoPilot skill 同名但无 <!-- nopilot-managed --> 标记的文件, THE SYSTEM SHALL 警告用户该文件可能已被手动修改并要求显式确认（y/N，默认不删除）后才删除",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-008-AC-5",
+          "type": "event_driven",
+          "ears": "WHEN 用户拒绝删除确认（输入 N 或 Ctrl+C）, THE SYSTEM SHALL 跳过该文件的删除并继续 init 流程的其余步骤（不中止整个 init）",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-008-AC-6",
+          "type": "event_driven",
+          "ears": "WHEN 删除操作因权限不足或文件系统错误失败, THE SYSTEM SHALL 输出警告（列出失败文件和错误原因）并继续 init 流程（不中止），最终在 init 完成时汇总所有失败项",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "需在所有现有 skill 文件中添加 nopilot-managed 标记，init 增加检测+清理逻辑，含完整错误路径",
+        "test_complexity": "medium",
+        "effort_estimate": "2-3 days"
+      }
+    },
+    {
+      "id": "REQ-009",
+      "user_story": "As a NoPilot user, I want medium-sized skills (visualize/supervisor/spec) to also benefit from progressive disclosure.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-009-AC-1",
+          "type": "state",
+          "ears": "visualize 主 skill SHALL 不超过 70 行，仅包含 artifact 检测 + dispatch 逻辑 + dashboard 生成",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-009-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN visualize 生成 discover/spec/build 三个页面时, THE SYSTEM SHALL 将三个页面生成分别 dispatch 给独立 subagent 并行执行",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-009-AC-3",
+          "type": "state",
+          "ears": "supervisor 主 skill SHALL 不超过 40 行，drift patterns/scoring/stage strategy/philosophy/decision chain/output schema 拆为按需加载的子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-009-AC-4",
+          "type": "state",
+          "ears": "spec 主 skill SHALL 不超过 100 行，JSON schema 定义/Critic+Supervisor 评审/Checkpoint 决策/decisions.json 逻辑拆为子 skill",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "三个中等文件各自拆分为主 skill + 子 skill",
+        "test_complexity": "medium",
+        "effort_estimate": "4-6 days"
+      }
+    },
+    {
+      "id": "REQ-010",
+      "user_story": "As a NoPilot user, I want lash subsystem skills to also load incrementally.",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-010-AC-1",
+          "type": "state",
+          "ears": "lash-tracer 主 skill SHALL 不超过 40 行（保留循环框架 + 轮询逻辑），Module Setup/Test Handler/Module Critic/Module Merge 拆为子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-010-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN lash-tracer 的 Module Critic 步骤触发, THE SYSTEM SHALL dispatch 给独立 subagent 执行",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-010-AC-3",
+          "type": "state",
+          "ears": "lash-verify 主 skill SHALL 不超过 30 行（保留测试 gate + dispatch 逻辑），Auto-Acceptance/Build Critic/Supervisor 拆为子 skill",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-010-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN lash-verify 的 Build Critic 和 Supervisor 步骤触发, THE SYSTEM SHALL 分别 dispatch 给独立 subagent 执行",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-010-AC-5",
+          "type": "state",
+          "ears": "lash-tracer 和 lash-verify 的子 skill SHALL 由 lash-build（主编排器）通过 lash-orchestrator 定义的阶段顺序调用，不独立触发",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "两个 lash 子系统 skill 各自拆分，保持与 lash-orchestrator 的调用关系",
+        "test_complexity": "medium",
+        "effort_estimate": "3-4 days"
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "id": "INV-001",
+      "statement": "commands/ 目录是所有 skill 的唯一真相源，任何平台的安装文件都从此目录生成",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-001", "REQ-002", "REQ-007"]
+    },
+    {
+      "id": "INV-002",
+      "statement": "主 skill 文件不包含可独立执行的业务逻辑，只包含路由、dispatch、状态判断",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-003", "REQ-004", "REQ-005", "REQ-009", "REQ-010"]
+    },
+    {
+      "id": "INV-003",
+      "statement": "subagent dispatch 的输入/输出通过文件系统（specs/ 或 state）传递，不通过主 context",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-006"]
+    },
+    {
+      "id": "INV-004",
+      "statement": "每个子 skill 自包含其 Feature Mode 分支指令，不依赖主 skill context 传递",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-003", "REQ-004", "REQ-005"]
+    },
+    {
+      "id": "INV-005",
+      "statement": "≤35 行的 skill 文件不拆分",
+      "scope": "system-wide",
+      "requirement_refs": []
+    },
+    {
+      "id": "INV-006",
+      "statement": "nopilot init 是幂等操作：对同一平台注册表配置和同一 commands/ 源文件，多次运行 init 产生的目标文件内容完全相同",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-001", "REQ-002"]
+    }
+  ]
+}

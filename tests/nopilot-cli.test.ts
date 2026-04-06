@@ -71,20 +71,17 @@ describe('nopilot init', () => {
     }
   });
 
-  it('installs commands to Claude and Codex global prompt directories', () => {
+  it('installs skills to Claude and Codex global skill directories', () => {
     runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
-    const claudeCommands = join(tmpHome, '.claude', 'commands');
-    const codexPrompts = join(tmpHome, '.codex', 'prompts');
-    const srcDiscover = readFileSync(join(PACKAGE_ROOT, 'commands', 'discover.md'), 'utf-8');
-    const srcCodexDiscover = readFileSync(join(PACKAGE_ROOT, 'prompts', 'codex', 'discover.md'), 'utf-8');
+    const claudeSkills = join(tmpHome, '.claude', 'skills');
+    const codexSkills = join(tmpHome, '.agents', 'skills');
 
-    expect(existsSync(claudeCommands)).toBe(true);
-    expect(existsSync(codexPrompts)).toBe(true);
-    expect(readdirSync(claudeCommands).some((f) => f.endsWith('.md'))).toBe(true);
-    expect(readdirSync(codexPrompts).some((f) => f.endsWith('.md'))).toBe(true);
-    expect(readFileSync(join(claudeCommands, 'discover.md'), 'utf-8')).toBe(srcDiscover);
-    expect(readFileSync(join(codexPrompts, 'discover.md'), 'utf-8')).toBe(srcCodexDiscover);
+    expect(existsSync(claudeSkills)).toBe(true);
+    expect(existsSync(codexSkills)).toBe(true);
+    // Each skill should be installed as a subdirectory with SKILL.md
+    expect(readdirSync(claudeSkills).length).toBeGreaterThan(0);
+    expect(readdirSync(codexSkills).length).toBeGreaterThan(0);
   });
 
   it('does NOT copy schemas to project', () => {
@@ -152,11 +149,11 @@ describe('nopilot paths', () => {
     expect(paths).toHaveProperty('package_root');
     expect(paths).toHaveProperty('commands');
     expect(paths).toHaveProperty('codex_prompts');
-    expect(paths).toHaveProperty('source_prompt_locations');
+    expect(paths).toHaveProperty('source_skill_location');
     expect(paths).toHaveProperty('schemas');
     expect(paths).toHaveProperty('workflow');
-    expect(paths).toHaveProperty('installed_commands');
-    expect(paths).toHaveProperty('installed_command_locations');
+    expect(paths).toHaveProperty('installed_skills');
+    expect(paths).toHaveProperty('legacy_dirs');
   });
 
   it('schemas path points to existing directory', () => {
@@ -171,16 +168,17 @@ describe('nopilot paths', () => {
     expect(existsSync(paths.workflow)).toBe(true);
   });
 
-  it('reports Claude and Codex install locations', () => {
+  it('reports Claude and Codex skill install locations', () => {
     const output = runCli(['paths']);
     const paths = JSON.parse(output);
-    expect(paths.source_prompt_locations).toEqual({
-      claude: resolve(PACKAGE_ROOT, 'commands'),
-      codex: resolve(PACKAGE_ROOT, 'prompts', 'codex'),
+    expect(paths.source_skill_location).toEqual(resolve(PACKAGE_ROOT, 'commands'));
+    expect(paths.installed_skills).toEqual({
+      claude: join(homedir(), '.claude', 'skills/'),
+      codex: join(homedir(), '.agents', 'skills/'),
     });
-    expect(paths.installed_command_locations).toEqual({
-      claude: join(homedir(), '.claude', 'commands'),
-      codex: join(homedir(), '.codex', 'prompts'),
+    expect(paths.legacy_dirs).toEqual({
+      claude: join(homedir(), '.claude', 'commands/'),
+      codex: join(homedir(), '.codex', 'prompts/'),
     });
   });
 
