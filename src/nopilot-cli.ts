@@ -3,14 +3,13 @@
  * NoPilot CLI — framework-level operations for initializing projects with NoPilot + Lash.
  *
  * Distribution model (OMC-style):
- * - Commands install to host prompt directories (global, shared across projects)
+ * - Skills install to host skill directories (global, shared across projects)
  * - Schemas and workflow.json stay in the npm package (accessed via `nopilot paths`)
  * - `init` injects Lash directive into project CLAUDE.md/AGENTS.md
  * - Runtime artifacts (specs/) are local and gitignored
  */
 import { Command } from 'commander';
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -19,6 +18,15 @@ import {
 import { dirname, resolve, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
+
+import { installAllPlatforms, scanSourceSkills } from './skill-engine/skill-installer.js';
+import {
+  detectLegacyFiles,
+  promptAndClean,
+  isWithinMigrationWindow,
+  MIGRATION_SINCE_VERSION,
+} from './skill-engine/legacy-migrator.js';
+import { getActivePlatforms } from './skill-engine/platform-registry.js';
 
 // Resolve package root relative to this compiled file (dist/nopilot-cli.js → package root)
 const __filename = fileURLToPath(import.meta.url);
@@ -45,16 +53,6 @@ Run \`nopilot paths\` to locate them.
 `;
 
 const LASH_DIRECTIVE_MARKER = '## Lash (Auto-triggered Multi-Agent Build Orchestrator)';
-const PROMPT_ASSETS = {
-  claude: {
-    sourceDir: resolve(PACKAGE_ROOT, 'commands'),
-    destDir: join(homedir(), '.claude', 'commands'),
-  },
-  codex: {
-    sourceDir: resolve(PACKAGE_ROOT, 'prompts', 'codex'),
-    destDir: join(homedir(), '.codex', 'prompts'),
-  },
-} as const;
 
 const program = new Command();
 
@@ -69,16 +67,51 @@ program
   .command('init [dir]')
   .description('Initialize a project with NoPilot + Lash')
   .option('--force', 'overwrite existing files', false)
-  .action((dir: string | undefined, options: { force: boolean }) => {
+  .action(async (dir: string | undefined, options: { force: boolean }) => {
     const targetDir = resolve(dir ?? process.cwd());
     const force = options.force;
+    const sourceDir = resolve(PACKAGE_ROOT, 'commands');
 
-    // Install commands to host prompt directories (global, always overwrite)
-    for (const [host, asset] of Object.entries(PROMPT_ASSETS)) {
-      if (existsSync(asset.sourceDir)) {
-        mkdirSync(asset.destDir, { recursive: true });
-        cpSync(asset.sourceDir, asset.destDir, { recursive: true, force: true });
-        console.log(`Installed prompt files for ${host} → ${asset.destDir}`);
+    // Deprecation warning if within migration window
+    const currentVersion = getVersion();
+    const { active, versionsRemaining } = isWithinMigrationWindow(currentVersion, MIGRATION_SINCE_VERSION);
+    if (active) {
+      console.warn(
+        `[nopilot] Deprecation notice: Legacy skill locations (e.g. ~/.claude/commands/) are being replaced ` +
+        `by unified skill directories. Migration window closes in ${versionsRemaining} minor version(s). ` +
+        `Run \`nopilot init\` to migrate now.`,
+      );
+    }
+
+    // For each active platform: detect and prompt to clean legacy files before installing
+    const activePlatforms = getActivePlatforms();
+    const knownSkillNames = existsSync(sourceDir)
+      ? scanSourceSkills(sourceDir).map((s) => s.name)
+      : [];
+
+    for (const platform of activePlatforms) {
+      if (!platform.legacyDir) continue;
+      const { managed, modified } = detectLegacyFiles(platform.legacyDir, knownSkillNames);
+      if (managed.length > 0 || modified.length > 0) {
+        await promptAndClean(managed, modified, process.stdin);
+      }
+    }
+
+    // Install skills to each active platform's skillsDir
+    // Inject VERSION into each platform's placeholderMap so templates can render it
+    const platformsWithVersion = activePlatforms.map((p) => ({
+      ...p,
+      placeholderMap: { ...p.placeholderMap, VERSION: currentVersion },
+    }));
+
+    if (existsSync(sourceDir)) {
+      const results = installAllPlatforms(sourceDir, force, platformsWithVersion);
+      for (const result of results) {
+        if (result.success) {
+          console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
+        } else {
+          console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+        }
       }
     }
 
@@ -123,18 +156,19 @@ program
   .command('paths')
   .description('Print locations of NoPilot package assets')
   .action(() => {
+    const activePlatforms = getActivePlatforms();
     const paths = {
       package_root: PACKAGE_ROOT,
       commands: resolve(PACKAGE_ROOT, 'commands'),
       codex_prompts: resolve(PACKAGE_ROOT, 'prompts', 'codex'),
-      source_prompt_locations: Object.fromEntries(
-        Object.entries(PROMPT_ASSETS).map(([host, asset]) => [host, asset.sourceDir]),
-      ),
+      source_skill_location: resolve(PACKAGE_ROOT, 'commands'),
       schemas: resolve(PACKAGE_ROOT, 'schemas'),
       workflow: resolve(PACKAGE_ROOT, 'workflow.json'),
-      installed_commands: PROMPT_ASSETS.claude.destDir,
-      installed_command_locations: Object.fromEntries(
-        Object.entries(PROMPT_ASSETS).map(([host, asset]) => [host, asset.destDir]),
+      installed_skills: Object.fromEntries(
+        activePlatforms.map((p) => [p.name, p.skillsDir]),
+      ),
+      legacy_dirs: Object.fromEntries(
+        activePlatforms.filter((p) => p.legacyDir).map((p) => [p.name, p.legacyDir]),
       ),
     };
     console.log(JSON.stringify(paths, null, 2));

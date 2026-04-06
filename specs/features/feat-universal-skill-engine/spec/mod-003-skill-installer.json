@@ -1,0 +1,75 @@
+{
+  "id": "MOD-003",
+  "name": "SkillInstaller",
+  "responsibility": "编排 nopilot init 的 skill 安装流程：遍历 active 平台 → 扫描源文件 → 模板渲染 → 写入目标目录。处理目录型 skill（含 SKILL.md）和单文件 skill。保证幂等性。",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "installAllPlatforms",
+      "input_schema": {
+        "sourceDir": "string — skill 源目录路径（package root/commands/）",
+        "force": "boolean — 是否强制覆盖"
+      },
+      "output_schema": {
+        "results": "InstallResult[] — 每个平台的安装结果"
+      },
+      "errors": [
+        {
+          "code": "TEMPLATE_ERROR",
+          "condition": "TemplateEngine 报告占位符缺失或语法错误",
+          "behavior": "立即停止该平台的安装，报告错误，不继续处理后续平台"
+        },
+        {
+          "code": "RESIDUAL_PLACEHOLDER",
+          "condition": "validateOutput 发现输出中有未替换的占位符",
+          "behavior": "立即停止，报告残留占位符位置"
+        }
+      ],
+      "requirement_refs": ["REQ-001", "REQ-002", "REQ-003"],
+      "acceptance_criteria_refs": ["REQ-001-AC-3", "REQ-002-AC-3"]
+    },
+    {
+      "type": "internal",
+      "name": "scanSourceSkills",
+      "input_schema": {
+        "sourceDir": "string — commands/ 目录路径"
+      },
+      "output_schema": {
+        "skills": "SourceSkill[] — 发现的 skill 列表（含类型：directory | single-file）"
+      },
+      "errors": [],
+      "requirement_refs": ["REQ-001"],
+      "acceptance_criteria_refs": []
+    }
+  ],
+  "data_models": [
+    {
+      "name": "SourceSkill",
+      "fields": [
+        { "name": "name", "type": "string", "constraints": "skill 名称（目录名或文件名去掉 .md）" },
+        { "name": "type", "type": "'directory' | 'single-file'", "constraints": "directory: 含 SKILL.md 的目录；single-file: 独立 .md 文件" },
+        { "name": "sourcePath", "type": "string", "constraints": "源目录/文件的绝对路径" },
+        { "name": "files", "type": "string[]", "constraints": "包含的所有 .md 文件相对路径列表" }
+      ],
+      "relationships": []
+    },
+    {
+      "name": "InstallResult",
+      "fields": [
+        { "name": "platform", "type": "string", "constraints": "平台名" },
+        { "name": "success", "type": "boolean", "constraints": "" },
+        { "name": "filesWritten", "type": "number", "constraints": "成功写入的文件数" },
+        { "name": "errors", "type": "string[]", "constraints": "错误信息列表" }
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": null,
+    "security": null,
+    "other": "幂等性：同一输入多次运行产生相同输出（INV-006）"
+  },
+  "requirement_refs": ["REQ-001", "REQ-002", "REQ-007"],
+  "invariant_refs": ["INV-001", "INV-006"]
+}

@@ -1,0 +1,71 @@
+{
+  "module_ref": "MOD-006",
+  "example_cases": [
+    {
+      "id": "TEST-044",
+      "suite_type": "integration",
+      "module_ref": "MOD-006",
+      "requirement_refs": ["REQ-007"],
+      "description": "validateMigrationEquivalence 生成文件与 prompts/codex/ 差异仅限占位符行 → passed=true",
+      "category": "normal",
+      "ears_ref": "REQ-007-AC-2",
+      "derivation": "direct_from_ears",
+      "input": { "generatedDir": "tmp/generated-codex/", "legacyDir": "prompts/codex/" },
+      "expected_output": { "passed": true, "results_all_passed": true },
+      "setup": "用 TemplateEngine 为 codex 平台生成输出到临时目录"
+    },
+    {
+      "id": "TEST-045",
+      "suite_type": "integration",
+      "module_ref": "MOD-006",
+      "requirement_refs": ["REQ-007"],
+      "description": "validateMigrationEquivalence 检测到非占位符行差异 → passed=false + 列出差异",
+      "category": "error",
+      "ears_ref": "REQ-007-AC-2",
+      "derivation": "ai_supplemented",
+      "input": { "generatedDir": "tmp/generated-bad/", "legacyDir": "prompts/codex/" },
+      "expected_output": { "passed": false, "results_has_unexpected_diffs": true },
+      "setup": "手动修改生成文件的非占位符行"
+    },
+    {
+      "id": "TEST-046",
+      "suite_type": "unit",
+      "module_ref": "MOD-006",
+      "requirement_refs": ["REQ-007"],
+      "description": "validateMigrationEquivalence prompts/codex/ 不存在 → LEGACY_DIR_NOT_FOUND 错误",
+      "category": "error",
+      "ears_ref": "REQ-007-AC-2",
+      "derivation": "ai_supplemented",
+      "input": { "generatedDir": "tmp/generated/", "legacyDir": "/nonexistent/" },
+      "expected_output": { "error": "LEGACY_DIR_NOT_FOUND" },
+      "setup": ""
+    },
+    {
+      "id": "TEST-047",
+      "suite_type": "unit",
+      "module_ref": "MOD-006",
+      "requirement_refs": ["REQ-007"],
+      "description": "deleteLegacyAfterValidation 验证通过 → 成功删除 prompts/codex/",
+      "category": "normal",
+      "ears_ref": "REQ-007-AC-1",
+      "derivation": "direct_from_ears",
+      "input": { "legacyDir": "tmp/to-delete/", "validationResult": { "passed": true } },
+      "expected_output": { "deleted": true, "filesRemoved_gt": 0 },
+      "setup": "创建临时 prompts/codex/ 副本"
+    },
+    {
+      "id": "TEST-048",
+      "suite_type": "unit",
+      "module_ref": "MOD-006",
+      "requirement_refs": ["REQ-007"],
+      "description": "deleteLegacyAfterValidation 验证未通过 → 拒绝删除 VALIDATION_NOT_PASSED",
+      "category": "error",
+      "ears_ref": "REQ-007-AC-1",
+      "derivation": "direct_from_ears",
+      "input": { "legacyDir": "tmp/to-delete/", "validationResult": { "passed": false } },
+      "expected_output": { "error": "VALIDATION_NOT_PASSED", "deleted": false },
+      "setup": "创建临时目录"
+    }
+  ],
+  "property_cases": []
+}

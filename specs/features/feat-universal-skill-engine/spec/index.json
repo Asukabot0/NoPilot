@@ -1,0 +1,101 @@
+{
+  "phase": "spec",
+  "version": "4.0",
+  "status": "approved",
+  "mode": "feature",
+  "module_refs": [
+    "mod-001-template-engine.json",
+    "mod-002-platform-registry.json",
+    "mod-003-skill-installer.json",
+    "mod-004-legacy-migrator.json",
+    "mod-005-skill-structure.json",
+    "mod-006-diff-validator.json"
+  ],
+  "dependency_graph": {
+    "edges": [
+      { "from": "MOD-003", "to": "MOD-001", "type": "calls", "description": "SkillInstaller 调用 TemplateEngine 处理每个源文件" },
+      { "from": "MOD-003", "to": "MOD-002", "type": "depends", "description": "SkillInstaller 从 PlatformRegistry 读取 active 平台列表和映射" },
+      { "from": "MOD-003", "to": "MOD-004", "type": "calls", "description": "SkillInstaller 在安装前调用 LegacyMigrator 清理旧文件" },
+      { "from": "MOD-006", "to": "MOD-001", "type": "calls", "description": "DiffValidator 调用 TemplateEngine 生成 Codex 输出用于对比" },
+      { "from": "MOD-006", "to": "MOD-002", "type": "depends", "description": "DiffValidator 从 PlatformRegistry 读取 Codex 平台配置" },
+      { "from": "MOD-001", "to": "MOD-005", "type": "depends", "description": "TemplateEngine 依赖 SkillStructure 定义的占位符变量列表和条件语法" }
+    ]
+  },
+  "external_dependencies": [
+    {
+      "name": "eta",
+      "purpose": "轻量模板引擎，原生支持 <% %> 分隔符，用于占位符替换和平台条件渲染",
+      "module_refs": ["MOD-001"],
+      "alternatives": ["handlebars (需自定义分隔符)", "mustache (逻辑能力弱)", "ejs (体积大)"],
+      "test_strategy": "real"
+    },
+    {
+      "name": "commander",
+      "purpose": "CLI 框架（已有依赖）",
+      "module_refs": ["MOD-003"],
+      "alternatives": [],
+      "test_strategy": "real"
+    }
+  ],
+  "global_error_strategy": {
+    "api_error_format": "N/A (CLI tool, not API)",
+    "external_service": "N/A (no external services)",
+    "logging": "所有错误通过 console.error 输出，包含文件名和行号上下文。init 流程遇到 block 级错误（占位符缺失、变量未映射）时立即停止并报告；遇到 warn 级错误（旧文件删除失败）时继续执行并在最终汇总"
+  },
+  "auto_decisions": [
+    {
+      "decision": "选择 eta 作为模板引擎",
+      "alternatives": ["handlebars", "mustache", "ejs", "纯正则替换"],
+      "rationale": "eta 原生使用 <% %> 分隔符，与 REQ-001-AC-4 的占位符语法天然匹配；支持条件渲染（<% if %>）满足平台差异化需求；体积小（~3KB gzipped）；无需配置自定义分隔符",
+      "impact": "新增一个 npm 依赖",
+      "impact_level": "medium"
+    },
+    {
+      "decision": "占位符语法定义为 eta 原生语法：变量用 <%=VAR%>，条件用 <% if (platform === 'claude') { %>...<% } %>",
+      "alternatives": ["自定义 <%VAR%> 语法 + 正则", "Handlebars {{VAR}} + 自定义分隔符"],
+      "rationale": "使用 eta 原生语法避免自建解析器；<%= %> 输出和 <% %> 逻辑的区分清晰；与 EJS 语法兼容（学习成本低）但 eta 本身体积远小于 EJS",
+      "impact": "占位符语法从 discover 阶段的 <%VAR%> 细化为 <%=VAR%>（多一个等号），需同步更新 REQ-001 描述",
+      "impact_level": "low"
+    },
+    {
+      "decision": "PlatformRegistry 使用 TypeScript 常量对象而非外部 JSON 配置文件",
+      "alternatives": ["外部 platforms.json 配置文件", "YAML 配置"],
+      "rationale": "平台数量少（4 个），变更频率低，TypeScript 常量提供编译时类型检查；用户不需要自定义平台（扩展由维护者在代码中添加）",
+      "impact": "新增平台需要修改 TypeScript 代码并发版，不能通过配置文件热更新",
+      "impact_level": "low"
+    },
+    {
+      "decision": "nopilot-managed 标记使用 HTML 注释格式 <!-- nopilot-managed v{version} --> 放在文件第一行",
+      "alternatives": ["YAML frontmatter 中添加字段", "文件末尾追加标记", "外部 manifest 文件记录已安装文件列表"],
+      "rationale": "HTML 注释在 Markdown 中不可见，不影响 skill 内容渲染；包含版本号便于迁移逻辑判断文件来源版本；第一行放置便于快速读取判断（无需解析全文）",
+      "impact": "所有源 skill 文件需添加此标记行",
+      "impact_level": "low"
+    },
+    {
+      "decision": "DiffValidator 作为开发时验证工具（npm run validate:migration），不集成到 nopilot init 运行时",
+      "alternatives": ["集成到 init 流程中", "作为 CI-only 检查"],
+      "rationale": "回归对比仅在 prompts/codex/ 删除前需要，属于一次性迁移验证；集成到 init 会增加运行时复杂度且迁移完成后无用",
+      "impact": "验证只在开发阶段运行，用户侧不可见",
+      "impact_level": "low"
+    }
+  ],
+  "contract_amendments": [
+    {
+      "type": "refinement",
+      "requirement_id": "REQ-001",
+      "description": "占位符语法从 <%VAR%> 细化为 eta 原生语法 <%=VAR%>（变量输出）和 <% if () { %>...<% } %>（条件渲染）。核心语义不变（低冲突分隔符 + 注释说明），仅语法形式适配模板引擎。",
+      "impact_level": "low"
+    },
+    {
+      "type": "addition",
+      "requirement_id": "REQ-002",
+      "description": "Codex 安装路径从 ~/.codex/prompts/（已废弃）改为 ~/.agents/skills/（Codex 新式 skills 机制）。两个平台均使用 SKILL.md 入口 + 目录结构，安装策略统一。",
+      "impact_level": "medium"
+    }
+  ],
+  "context_dependencies": [
+    "specs/features/feat-universal-skill-engine/discover/index.json",
+    "specs/features/feat-universal-skill-engine/discover/requirements.json",
+    "specs/features/feat-universal-skill-engine/discover/scenarios.json"
+  ]
+}

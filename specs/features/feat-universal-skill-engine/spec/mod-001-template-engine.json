@@ -1,0 +1,68 @@
+{
+  "id": "MOD-001",
+  "name": "TemplateEngine",
+  "responsibility": "读取 skill 源文件，使用 eta 模板引擎解析占位符和条件块，按平台映射替换，验证输出无残留占位符",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "renderSkillFile",
+      "input_schema": {
+        "sourcePath": "string — skill 源文件路径",
+        "variables": "Record<string, string> — 占位符变量映射（来自 PlatformAdapter.placeholderMap）",
+        "platform": "string — 当前平台名（用于条件渲染）"
+      },
+      "output_schema": {
+        "content": "string — 替换后的文件内容"
+      },
+      "errors": [
+        {
+          "code": "UNDEFINED_VARIABLE",
+          "condition": "模板中引用的变量在 variables 映射中不存在",
+          "behavior": "抛出错误，包含：变量名、所在文件路径、行号"
+        },
+        {
+          "code": "TEMPLATE_SYNTAX_ERROR",
+          "condition": "eta 解析模板时遇到语法错误（未闭合的 <% %> 块等）",
+          "behavior": "抛出错误，包含：文件路径、eta 原始错误信息"
+        }
+      ],
+      "requirement_refs": ["REQ-001"],
+      "acceptance_criteria_refs": ["REQ-001-AC-1", "REQ-001-AC-3", "REQ-001-AC-5"]
+    },
+    {
+      "type": "internal",
+      "name": "validateOutput",
+      "input_schema": {
+        "content": "string — 渲染后的文件内容",
+        "sourcePath": "string — 原始文件路径（用于错误报告）"
+      },
+      "output_schema": {
+        "valid": "boolean",
+        "residuals": "Array<{ pattern: string, line: number }> — 残留的未解析占位符列表"
+      },
+      "errors": [],
+      "requirement_refs": ["REQ-001"],
+      "acceptance_criteria_refs": ["REQ-001-AC-6"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "RenderContext",
+      "fields": [
+        { "name": "platform", "type": "string", "constraints": "当前目标平台名" },
+        { "name": "variables", "type": "Record<string, string>", "constraints": "所有可用变量的 key-value 映射" }
+      ],
+      "relationships": [
+        { "target": "PlatformAdapter", "type": "belongs_to" }
+      ]
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": null,
+    "security": null,
+    "other": null
+  },
+  "requirement_refs": ["REQ-001"],
+  "invariant_refs": ["INV-001"]
+}

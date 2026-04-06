@@ -1,0 +1,185 @@
+{
+  "phase": "discover",
+  "version": "4.0",
+  "status": "approved",
+  "mode": "feature",
+  "profile_ref": ".nopilot/profile/",
+  "featureSlug": "universal-skill-engine",
+  "feature_description": {
+    "name": "Universal Skill Engine",
+    "problem": [
+      "每新增一个 AI 平台就要手动复制全部 command 文件并微调，导致 N 份几乎相同的副本、维护漂移",
+      "大文件（discover 809 行、critic 670 行、build 352 行）全量注入 context，无渐进式披露",
+      "Skill 内部所有步骤都在主 agent context 中执行，即使可独立运行的步骤也占用主 context"
+    ],
+    "target_users": "NoPilot 用户 + NoPilot 维护者",
+    "scope": "较大模块 — 模板引擎 + 大文件拆分 + subagent 卸载 + 安装机制改造"
+  },
+  "constraints": {
+    "tech_stack": ["TypeScript", "Node.js", "npm package"],
+    "time": null,
+    "platform_active": ["claude_code", "codex"],
+    "platform_experimental": ["gemini", "opencode"],
+    "exclusions": ["不拆分 ≤35 行的 skill 文件"],
+    "budget": null,
+    "existing_assets": ["commands/*.md (13 files)", "prompts/codex/*.md (13 duplicate files)", "src/nopilot-cli.ts"]
+  },
+  "selected_direction": {
+    "description": "extend existing project",
+    "differentiator": "n/a",
+    "rationale": "feature mode — direction inherited from existing codebase",
+    "pre_mortem": [],
+    "grounding": "ai_judgment_only"
+  },
+  "tech_direction": {
+    "stack": ["TypeScript", "Node.js", "commander"],
+    "architecture_style": "CLI tool + template engine + platform registry",
+    "product_impact": "单一源文件维护，init 时按平台生成适配 prompt，skill 按需加载 + subagent 卸载",
+    "rationale": "inherited from existing project"
+  },
+  "domain_model": {
+    "entities": [
+      {
+        "name": "SkillTemplate",
+        "description": "平台无关的通用 skill 源文件，含 <%...%> 占位符"
+      },
+      {
+        "name": "PlatformAdapter",
+        "description": "平台特定的映射配置（路径、占位符值、安装目标目录）"
+      },
+      {
+        "name": "SkillGraph",
+        "description": "主 skill 与子 skill 的依赖/调用关系树"
+      },
+      {
+        "name": "AgentContract",
+        "description": "subagent dispatch 的标准化输入/输出规范，嵌入在 skill 文件中"
+      }
+    ],
+    "relationships": [
+      {
+        "from": "SkillTemplate",
+        "to": "PlatformAdapter",
+        "type": "resolved_by",
+        "description": "SkillTemplate 的占位符由 PlatformAdapter 在 init 时解析替换"
+      },
+      {
+        "from": "SkillTemplate",
+        "to": "SkillGraph",
+        "type": "organized_by",
+        "description": "拆分后的 SkillTemplate 形成主 skill + 子 skill 的树状结构"
+      },
+      {
+        "from": "SkillGraph",
+        "to": "AgentContract",
+        "type": "contains",
+        "description": "SkillGraph 中每个 dispatch 节点包含一个 AgentContract"
+      },
+      {
+        "from": "PlatformAdapter",
+        "to": "PROMPT_ASSETS",
+        "type": "replaces",
+        "description": "PlatformAdapter 取代现有 nopilot-cli.ts 中的 PROMPT_ASSETS 结构"
+      }
+    ]
+  },
+  "non_functional_requirements": [
+    {
+      "category": "compatibility",
+      "description": "旧版 NoPilot 文件迁移兼容窗口",
+      "target": "当前版本 +5 个 minor 版本后移除迁移逻辑",
+      "source": "user_stated",
+      "priority": "must_have"
+    },
+    {
+      "category": "performance",
+      "description": "主 skill context 占用上限",
+      "target": "拆分后主 skill 加载不超过 250 行（discover）、100 行（build/spec）、50 行（critic/supervisor）",
+      "source": "user_stated",
+      "priority": "must_have"
+    }
+  ],
+  "mvp_features": [
+    {
+      "name": "模板占位符引擎",
+      "feasibility": "high",
+      "competitive_notes": "纯文本替换，无复杂依赖",
+      "source_refs": [],
+      "requirement_refs": ["REQ-001"]
+    },
+    {
+      "name": "平台注册表",
+      "feasibility": "high",
+      "competitive_notes": "扩展现有 PROMPT_ASSETS 结构",
+      "source_refs": [],
+      "requirement_refs": ["REQ-002"]
+    },
+    {
+      "name": "discover 拆分 (P0)",
+      "feasibility": "medium",
+      "competitive_notes": "最大文件，809→~220 行主 skill + 6 子 skill",
+      "source_refs": [],
+      "requirement_refs": ["REQ-003"]
+    },
+    {
+      "name": "critic 拆分 (P0)",
+      "feasibility": "medium",
+      "competitive_notes": "670→~40 行主 skill + 5 阶段子 skill",
+      "source_refs": [],
+      "requirement_refs": ["REQ-004"]
+    },
+    {
+      "name": "build 拆分 (P0)",
+      "feasibility": "medium",
+      "competitive_notes": "352→~90 行主 skill + 5 子 skill",
+      "source_refs": [],
+      "requirement_refs": ["REQ-005"]
+    },
+    {
+      "name": "子 agent dispatch 契约",
+      "feasibility": "high",
+      "competitive_notes": "新增标准化格式，每个 dispatch 点声明输入/输出",
+      "source_refs": [],
+      "requirement_refs": ["REQ-006"]
+    },
+    {
+      "name": "prompts/codex/ 清理",
+      "feasibility": "high",
+      "competitive_notes": "删除 ~2800 行重复文件",
+      "source_refs": [],
+      "requirement_refs": ["REQ-007"]
+    },
+    {
+      "name": "旧文件迁移 (5 版本窗口)",
+      "feasibility": "medium",
+      "competitive_notes": "需文件头标记识别 NoPilot 原生文件",
+      "source_refs": [],
+      "requirement_refs": ["REQ-008"]
+    },
+    {
+      "name": "P1 文件拆分 (visualize/supervisor/spec)",
+      "feasibility": "medium",
+      "competitive_notes": "242/237/216 行分别拆分",
+      "source_refs": [],
+      "requirement_refs": ["REQ-009"]
+    },
+    {
+      "name": "P2 文件拆分 (lash-tracer/lash-verify)",
+      "feasibility": "medium",
+      "competitive_notes": "127/105 行分别拆分",
+      "source_refs": [],
+      "requirement_refs": ["REQ-010"]
+    }
+  ],
+  "context_dependencies": [
+    "issue #44 — slash command 渐进式披露",
+    "issue #43 — slash command 与 OMC skill 机制区别",
+    "PR #46 — Codex prompt installation (将被本 feature 取代)"
+  ],
+  "ui_taste": null,
+  "child_files": {
+    "requirements": "requirements.json",
+    "scenarios": "scenarios.json",
+    "history": "history.json"
+  }
+}
