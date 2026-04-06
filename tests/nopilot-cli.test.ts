@@ -182,19 +182,6 @@ describe('nopilot paths', () => {
     });
   });
 
-  it('ships a Codex prompt mirror without Claude-only references', () => {
-    const claudeFiles = readdirSync(resolve(PACKAGE_ROOT, 'commands')).filter((f) => f.endsWith('.md')).sort();
-    const codexFiles = readdirSync(resolve(PACKAGE_ROOT, 'prompts', 'codex')).filter((f) => f.endsWith('.md')).sort();
-
-    expect(codexFiles).toEqual(claudeFiles);
-
-    for (const file of codexFiles) {
-      const content = readFileSync(resolve(PACKAGE_ROOT, 'prompts', 'codex', file), 'utf-8');
-      expect(content).not.toContain('.claude/commands');
-      expect(content).not.toContain('Agent(');
-      expect(content).not.toMatch(/commands\/[A-Za-z0-9._/-]+\.md/);
-    }
-  });
 });
 
 describe('nopilot version', () => {

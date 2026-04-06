@@ -1,4 +1,4 @@
-
+开发时默认合并到dev;仅在发布时合并到main
 ## NoPilot 开发说明
 
 > 用户侧 CLAUDE 模板在 `CLAUDE.dev.md`，供用户安装 NoPilot 后复制到自己项目使用。
@@ -6,4 +6,4 @@
 
 ## 当前状态
 
-V0.0.2 Released (main)。48 个 .ts 文件，16367 行 TypeScript，482 个测试。8 个 open issues。Discover UI Taste 集成待完成。
+V0.0.3 Released (main)。60 个 .ts 文件，17724 行 TypeScript，642 个测试。14 个 open issues。Universal Skill Engine 已上线。
