@@ -14,14 +14,15 @@ import {
 const home = os.homedir();
 
 describe('getActivePlatforms', () => {
-  it('TEST-011: returns only claude and codex (active platforms)', () => {
+  it('TEST-011: returns claude, codex, and opencode (active platforms)', () => {
     const active = getActivePlatforms();
     const names = active.map((p) => p.name);
     expect(names).toContain('claude');
     expect(names).toContain('codex');
+    expect(names).toContain('opencode');
     expect(names).not.toContain('gemini');
-    expect(names).not.toContain('opencode');
     expect(active.every((p) => p.status === 'active')).toBe(true);
+    expect(active).toHaveLength(3);
   });
 });
 
@@ -69,17 +70,32 @@ describe('getPlatform', () => {
     const platform = getPlatform('nonexistent');
     expect(platform).toBeUndefined();
   });
+
+  it('TEST-016: returns correct config for opencode', () => {
+    const platform = getPlatform('opencode');
+    expect(platform).toBeDefined();
+    expect(platform!.name).toBe('opencode');
+    expect(platform!.status).toBe('active');
+    expect(platform!.skillsDir).toBe(`${home}/.agents/skills/`);
+    expect(platform!.legacyDir).toBeNull();
+    expect(platform!.placeholderMap['CRITIC_PATH']).toBe(
+      `${home}/.agents/skills/critic/SKILL.md`,
+    );
+    expect(platform!.placeholderMap['SUPERVISOR_PATH']).toBe(
+      `${home}/.agents/skills/supervisor/SKILL.md`,
+    );
+  });
 });
 
 describe('validateMappingCompleteness', () => {
-  it('TEST-016: valid when all required variables are mapped', () => {
+  it('TEST-017: valid when all required variables are mapped', () => {
     const platform = getPlatform('claude')!;
     const result = validateMappingCompleteness(platform, ['CRITIC_PATH', 'SUPERVISOR_PATH']);
     expect(result.valid).toBe(true);
     expect(result.missingKeys).toEqual([]);
   });
 
-  it('TEST-017: invalid when a required key is missing', () => {
+  it('TEST-018: invalid when a required key is missing', () => {
     const platform = getPlatform('gemini')!;
     const result = validateMappingCompleteness(platform, ['CRITIC_PATH', 'SUPERVISOR_PATH']);
     expect(result.valid).toBe(false);
