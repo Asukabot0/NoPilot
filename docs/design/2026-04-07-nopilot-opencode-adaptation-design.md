@@ -1,11 +1,13 @@
 # NoPilot OpenCode 适配设计方案
 
 **日期**: 2026-04-07
-**状态**: 待审批
+**状态**: 待审批（审阅后修订版）
 
 ## 背景
 
 NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPilot 框架本身（discover/spec/build 等命令）对 OpenCode 的支持仍处于实验性状态。
+
+**关键决策**: 这是一个**规格变更任务**，需要更新 `specs/features/feat-universal-skill-engine/` 中的需求定义，将 opencode 从 experimental 提升为 active。
 
 ## 当前状态
 
@@ -18,6 +20,10 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 - **NoPilot 框架**: `platform-registry.ts` 中 OpenCode 状态为 `experimental`
   - `skillsDir` 指向不存在的 `~/.opencode/skills/`
   - `nopilot init` 不会为 OpenCode 安装技能
+
+### 规格约束
+- `specs/features/feat-universal-skill-engine/discover/requirements.json` 的 REQ-002-AC-2 明确要求：
+  > 注册表 SHALL 包含 claude、codex 的完整配置（状态为 active），以及 gemini、opencode 的预留条目（状态为 experimental）
 
 ## 技术发现
 
@@ -36,6 +42,19 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 - `<%=SUPERVISOR_PATH%>` — spec/review-runner 等
 
 ## 设计方案
+
+### 前置条件：规格变更
+
+**必须先更新以下规格工件**：
+
+1. **`specs/features/feat-universal-skill-engine/discover/requirements.json`**
+   - 修改 REQ-002-AC-2：将 opencode 从 experimental 改为 active
+   
+2. **`specs/features/feat-universal-skill-engine/tests/mod-002-platform-registry.json`**
+   - 更新 TEST-002 的预期输出，包含 opencode 为 active
+
+3. **`specs/features/feat-universal-skill-engine/build_review.json`**
+   - 更新 detail 中关于 experimental 平台的描述
 
 ### 1. 修改 `platform-registry.ts`
 
@@ -56,52 +75,169 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 
 添加去重逻辑，避免 Codex 和 OpenCode 重复安装到同一目录：
 
-```typescript
-// 在 installAllPlatforms 中
-const installedDirs = new Set<string>();
+**返回语义定义**：
+- `installAllPlatforms()` 仍然为每个 `active` 平台返回一条 `InstallResult`
+- 对于跳过的平台（目标目录已被同一批次中的前一个平台安装）：
+  - `success: true`
+  - `filesWritten: 0`
+  - `errors: []`
+  - 不新增字段，通过 `filesWritten === 0 && success === true` 隐式表示跳过
 
-for (const platform of activePlatforms) {
-  // 如果目标目录已安装，跳过
-  if (installedDirs.has(platform.skillsDir)) {
-    // 记录跳过信息
-    continue;
+```typescript
+export function installAllPlatforms(
+  sourceDir: string,
+  force: boolean,
+  platforms?: PlatformAdapter[],
+): InstallResult[] {
+  const activePlatforms = platforms ?? getActivePlatforms();
+  const results: InstallResult[] = [];
+  const installedDirs = new Set<string>(); // 去重跟踪
+
+  for (const platform of activePlatforms) {
+    const result: InstallResult = {
+      platform: platform.name,
+      success: true,
+      filesWritten: 0,
+      errors: [],
+    };
+
+    // 如果目标目录已安装，标记为跳过
+    if (installedDirs.has(platform.skillsDir)) {
+      results.push(result); // success=true, filesWritten=0
+      continue;
+    }
+    
+    try {
+      const skills = scanSourceSkills(sourceDir);
+      // ... 安装逻辑
+      installedDirs.add(platform.skillsDir);
+    } catch (err) {
+      result.success = false;
+      result.errors.push((err as Error).message);
+    }
+
+    results.push(result);
   }
-  
-  // ... 安装逻辑
-  
-  installedDirs.add(platform.skillsDir);
+
+  return results;
 }
 ```
 
-### 3. 测试更新
+### 3. 修改 `nopilot-cli.ts`
 
-- `src/skill-engine/__tests__/platform-registry.test.ts`
-  - 更新 TEST-002: 预期 `getActivePlatforms()` 返回 3 个平台（claude, codex, opencode）
+更新 `init` 命令的输出逻辑，正确处理跳过的平台：
+
+```typescript
+// 当前逻辑（src/nopilot-cli.ts:108-115）
+for (const result of results) {
+  if (result.success) {
+    console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
+  } else {
+    console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+  }
+}
+
+// 更新后：区分"安装成功"和"跳过"
+for (const result of results) {
+  if (!result.success) {
+    console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+  } else if (result.filesWritten === 0) {
+    // 跳过的平台
+    const skippedPlatform = getPlatform(result.platform);
+    const sharedWith = activePlatforms.find(
+      p => p.name !== result.platform && p.skillsDir === skippedPlatform?.skillsDir
+    );
+    console.log(`Skipped ${result.platform} (shares skill directory with ${sharedWith?.name})`);
+  } else {
+    console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
+  }
+}
+```
+
+### 4. 测试更新
+
+#### `src/skill-engine/__tests__/platform-registry.test.ts`
+
+- **TEST-011** (原测试编号): 更新预期，`getActivePlatforms()` 返回 3 个平台
+- **新增 TEST-015**: 验证 `getPlatform('opencode')` 的完整配置
+  ```typescript
+  it('TEST-015: getPlatform opencode returns correct config', () => {
+    const platform = getPlatform('opencode');
+    expect(platform).toBeDefined();
+    expect(platform?.name).toBe('opencode');
+    expect(platform?.status).toBe('active');
+    expect(platform?.skillsDir).toBe(`${home}/.agents/skills/`);
+    expect(platform?.placeholderMap).toEqual({
+      CRITIC_PATH: `${home}/.agents/skills/critic/SKILL.md`,
+      SUPERVISOR_PATH: `${home}/.agents/skills/supervisor/SKILL.md`,
+    });
+  });
+  ```
+
+#### `src/skill-engine/__tests__/skill-installer.test.ts`
+
+- **新增 TEST-020**: 验证共享目录去重
+  ```typescript
+  it('TEST-020: skips installation for platforms sharing skillsDir', () => {
+    const platforms = [
+      { name: 'codex', status: 'active', skillsDir: '/tmp/skills', legacyDir: null, placeholderMap: {} },
+      { name: 'opencode', status: 'active', skillsDir: '/tmp/skills', legacyDir: null, placeholderMap: {} },
+    ];
+    const results = installAllPlatforms('/tmp/commands', false, platforms);
+    
+    expect(results).toHaveLength(2);
+    expect(results[0].success).toBe(true);
+    expect(results[0].filesWritten).toBeGreaterThan(0);
+    expect(results[1].success).toBe(true);
+    expect(results[1].filesWritten).toBe(0); // 跳过
+  });
+  ```
+
+#### `tests/nopilot-cli.test.ts`
+
+- **更新测试 "installs skills to Claude and Codex global skill directories"**
+  - 重命名为 "installs skills to Claude, Codex, and OpenCode (shared)"
+  - 验证 OpenCode 的技能目录存在（与 Codex 共享）
   
-- `src/skill-engine/__tests__/skill-installer.test.ts`
-  - 添加测试：验证 Codex 和 OpenCode 共享目录时只安装一次
+- **新增测试**: 验证 `nopilot paths` 输出包含 opencode
 
-## 影响范围
+## 完整影响范围
 
-| 文件 | 修改类型 |
-|------|---------|
-| `src/skill-engine/platform-registry.ts` | 配置修改 |
-| `src/skill-engine/skill-installer.ts` | 逻辑修改（去重） |
-| `src/skill-engine/__tests__/platform-registry.test.ts` | 测试更新 |
-| `src/skill-engine/__tests__/skill-installer.test.ts` | 测试新增 |
+| 文件 | 修改类型 | 说明 |
+|------|---------|------|
+| **规格工件** | | |
+| `specs/features/feat-universal-skill-engine/discover/requirements.json` | 需求变更 | REQ-002-AC-2: opencode experimental → active |
+| `specs/features/feat-universal-skill-engine/tests/mod-002-platform-registry.json` | 测试契约更新 | 更新预期输出 |
+| `specs/features/feat-universal-skill-engine/build_review.json` | 文档更新 | 更新 detail 描述 |
+| **源代码** | | |
+| `src/skill-engine/platform-registry.ts` | 配置修改 | opencode 状态和路径 |
+| `src/skill-engine/skill-installer.ts` | 逻辑修改 | 添加去重逻辑 |
+| `src/nopilot-cli.ts` | 输出修改 | 正确处理跳过平台的输出 |
+| **测试** | | |
+| `src/skill-engine/__tests__/platform-registry.test.ts` | 测试更新 | TEST-011, 新增 TEST-015 |
+| `src/skill-engine/__tests__/skill-installer.test.ts` | 测试新增 | TEST-020 |
+| `tests/nopilot-cli.test.ts` | 测试更新 | 更新 init 测试，新增 paths 测试 |
 
 ## 验证步骤
 
-1. 运行 `pnpm test` 确保所有测试通过
-2. 运行 `nopilot init` 验证技能安装
-3. 在 OpenCode 中运行 `/discover` 验证技能可用
+1. **单元测试**: `pnpm test src/skill-engine/__tests__/platform-registry.test.ts`
+2. **集成测试**: `pnpm test tests/nopilot-cli.test.ts`
+3. **全量测试**: `pnpm test` 确保所有测试通过
+4. **手动验证**:
+   - 运行 `nopilot init` 验证技能安装输出
+   - 验证 `~/.agents/skills/` 中包含 NoPilot 技能
+   - 运行 `nopilot paths` 验证输出包含 opencode
+
+**注意**: 当前 `nopilot init` 注入的指引（`src/nopilot-cli.ts:44-47`）只写了 Claude 和 Codex 的触发方式，没有 OpenCode。因此"在 OpenCode 中运行 `/discover`"不是当前可执行的验证步骤。如需支持，需要额外修改 `LASH_DIRECTIVE` 常量。
 
 ## 风险
 
-- **低风险**: OpenCode 和 Codex 共享技能目录是预期行为，不会导致冲突
-- **测试覆盖**: 需要确保去重逻辑有充分测试
+- **规格同步风险**: 如果只修改代码不更新规格工件，会导致代码与"唯一真相源"脱节
+- **测试覆盖**: 需要确保去重逻辑和 CLI 输出有充分测试
+- **向后兼容**: OpenCode 和 Codex 共享目录是预期行为，不会导致冲突
 
 ## 后续工作
 
 - 考虑在 `nopilot init` 输出中明确说明 OpenCode 复用 Codex 的技能目录
 - 文档更新：README.md 中说明 OpenCode 支持情况
+- 可选：更新 `LASH_DIRECTIVE` 添加 OpenCode 触发方式（`/prompts:discover` 或类似）
