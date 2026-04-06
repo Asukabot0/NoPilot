@@ -1,13 +1,13 @@
 # NoPilot OpenCode 适配设计方案
 
 **日期**: 2026-04-07
-**状态**: 待审批（审阅后修订版）
+**状态**: 待审批（审阅后修订版 v2）
 
 ## 背景
 
 NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPilot 框架本身（discover/spec/build 等命令）对 OpenCode 的支持仍处于实验性状态。
 
-**关键决策**: 这是一个**规格变更任务**，需要更新 `specs/features/feat-universal-skill-engine/` 中的需求定义，将 opencode 从 experimental 提升为 active。
+**注意**: `specs/features/feat-universal-skill-engine/` 是已弃用的 spec，本次适配**不需要**修改规格工件。
 
 ## 当前状态
 
@@ -20,10 +20,6 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 - **NoPilot 框架**: `platform-registry.ts` 中 OpenCode 状态为 `experimental`
   - `skillsDir` 指向不存在的 `~/.opencode/skills/`
   - `nopilot init` 不会为 OpenCode 安装技能
-
-### 规格约束
-- `specs/features/feat-universal-skill-engine/discover/requirements.json` 的 REQ-002-AC-2 明确要求：
-  > 注册表 SHALL 包含 claude、codex 的完整配置（状态为 active），以及 gemini、opencode 的预留条目（状态为 experimental）
 
 ## 技术发现
 
@@ -42,19 +38,6 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 - `<%=SUPERVISOR_PATH%>` — spec/review-runner 等
 
 ## 设计方案
-
-### 前置条件：规格变更
-
-**必须先更新以下规格工件**：
-
-1. **`specs/features/feat-universal-skill-engine/discover/requirements.json`**
-   - 修改 REQ-002-AC-2：将 opencode 从 experimental 改为 active
-   
-2. **`specs/features/feat-universal-skill-engine/tests/mod-002-platform-registry.json`**
-   - 更新 TEST-002 的预期输出，包含 opencode 为 active
-
-3. **`specs/features/feat-universal-skill-engine/build_review.json`**
-   - 更新 detail 中关于 experimental 平台的描述
 
 ### 1. 修改 `platform-registry.ts`
 
@@ -205,10 +188,6 @@ for (const result of results) {
 
 | 文件 | 修改类型 | 说明 |
 |------|---------|------|
-| **规格工件** | | |
-| `specs/features/feat-universal-skill-engine/discover/requirements.json` | 需求变更 | REQ-002-AC-2: opencode experimental → active |
-| `specs/features/feat-universal-skill-engine/tests/mod-002-platform-registry.json` | 测试契约更新 | 更新预期输出 |
-| `specs/features/feat-universal-skill-engine/build_review.json` | 文档更新 | 更新 detail 描述 |
 | **源代码** | | |
 | `src/skill-engine/platform-registry.ts` | 配置修改 | opencode 状态和路径 |
 | `src/skill-engine/skill-installer.ts` | 逻辑修改 | 添加去重逻辑 |
@@ -232,7 +211,6 @@ for (const result of results) {
 
 ## 风险
 
-- **规格同步风险**: 如果只修改代码不更新规格工件，会导致代码与"唯一真相源"脱节
 - **测试覆盖**: 需要确保去重逻辑和 CLI 输出有充分测试
 - **向后兼容**: OpenCode 和 Codex 共享目录是预期行为，不会导致冲突
 
@@ -241,3 +219,4 @@ for (const result of results) {
 - 考虑在 `nopilot init` 输出中明确说明 OpenCode 复用 Codex 的技能目录
 - 文档更新：README.md 中说明 OpenCode 支持情况
 - 可选：更新 `LASH_DIRECTIVE` 添加 OpenCode 触发方式（`/prompts:discover` 或类似）
+- 清理：删除已弃用的 `specs/features/feat-universal-skill-engine/` 目录
