@@ -26,7 +26,7 @@ import {
   isWithinMigrationWindow,
   MIGRATION_SINCE_VERSION,
 } from './skill-engine/legacy-migrator.js';
-import { getActivePlatforms } from './skill-engine/platform-registry.js';
+import { getActivePlatforms, getPlatform } from './skill-engine/platform-registry.js';
 
 // Resolve package root relative to this compiled file (dist/nopilot-cli.js → package root)
 const __filename = fileURLToPath(import.meta.url);
@@ -107,10 +107,17 @@ program
     if (existsSync(sourceDir)) {
       const results = installAllPlatforms(sourceDir, force, platformsWithVersion);
       for (const result of results) {
-        if (result.success) {
-          console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
-        } else {
+        if (!result.success) {
           console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+        } else if (result.filesWritten === 0) {
+          // Skipped platform (shares directory with another)
+          const skippedPlatform = getPlatform(result.platform);
+          const sharedWith = platformsWithVersion.find(
+            p => p.name !== result.platform && p.skillsDir === skippedPlatform?.skillsDir,
+          );
+          console.log(`Skipped ${result.platform} (shares skill directory with ${sharedWith?.name})`);
+        } else {
+          console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
         }
       }
     }
