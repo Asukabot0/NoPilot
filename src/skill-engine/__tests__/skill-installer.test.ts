@@ -252,10 +252,12 @@ describe('installAllPlatforms — shared directory deduplication', () => {
     expect(results[0].platform).toBe('codex');
     expect(results[0].success).toBe(true);
     expect(results[0].filesWritten).toBe(1);
+    expect(results[0].skipped).toBe(false);
 
     // Second platform skipped
     expect(results[1].platform).toBe('opencode');
     expect(results[1].success).toBe(true);
     expect(results[1].filesWritten).toBe(0);
+    expect(results[1].skipped).toBe(true);
   });
 });

@@ -109,8 +109,7 @@ program
       for (const result of results) {
         if (!result.success) {
           console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
-        } else if (result.filesWritten === 0) {
-          // Skipped platform (shares directory with another)
+        } else if (result.skipped) {
           const skippedPlatform = getPlatform(result.platform);
           const sharedWith = platformsWithVersion.find(
             p => p.name !== result.platform && p.skillsDir === skippedPlatform?.skillsDir,
@@ -175,7 +174,7 @@ program
         activePlatforms.map((p) => [p.name, p.skillsDir]),
       ),
       legacy_dirs: Object.fromEntries(
-        activePlatforms.map((p) => [p.name, p.legacyDir ?? null]),
+        activePlatforms.filter((p) => p.legacyDir).map((p) => [p.name, p.legacyDir]),
       ),
     };
     console.log(JSON.stringify(paths, null, 2));

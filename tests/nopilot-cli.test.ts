@@ -180,7 +180,6 @@ describe('nopilot paths', () => {
     expect(paths.legacy_dirs).toEqual({
       claude: join(homedir(), '.claude', 'commands/'),
       codex: join(homedir(), '.codex', 'prompts/'),
-      opencode: null,
     });
   });
 

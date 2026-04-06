@@ -62,7 +62,11 @@ export function scanSourceSkills(sourceDir: string): SourceSkill[] {
 /**
  * Installs all source skills into each active platform's skillsDir.
  *
- * For each active platform:
+ * Platforms sharing the same skillsDir are deduplicated: only the first
+ * platform in iteration order is installed; subsequent platforms with an
+ * already-seen skillsDir are skipped (result.skipped = true).
+ *
+ * For each non-skipped active platform:
  *   1. Scans sourceDir for skills
  *   2. For each skill file, renders with the platform's placeholderMap
  *   3. Validates for residual placeholders (throws RESIDUAL_PLACEHOLDER if invalid)
@@ -90,14 +94,18 @@ export function installAllPlatforms(
     const result: InstallResult = {
       platform: platform.name,
       success: true,
+      skipped: false,
       filesWritten: 0,
       errors: [],
     };
 
     if (installedDirs.has(platform.skillsDir)) {
+      result.skipped = true;
       results.push(result);
       continue;
     }
+
+    installedDirs.add(platform.skillsDir);
 
     try {
       const skills = scanSourceSkills(sourceDir);
@@ -119,8 +127,6 @@ export function installAllPlatforms(
 
         if (!result.success) break;
       }
-
-      installedDirs.add(platform.skillsDir);
     } catch (err) {
       result.success = false;
       result.errors.push((err as Error).message);
