@@ -227,3 +227,35 @@ describe('installAllPlatforms — directory structure', () => {
     expect(fs.existsSync(path.join(claudeSkillsDir, 'multi-skill', 'REFERENCE.md'))).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// TEST-024: installAllPlatforms skips platforms sharing skillsDir
+// ---------------------------------------------------------------------------
+
+describe('installAllPlatforms — shared directory deduplication', () => {
+  it('TEST-024: skips installation for second platform sharing same skillsDir', () => {
+    const sourceDir = path.join(tmpDir, 'source');
+    const sharedSkillsDir = path.join(tmpDir, 'shared-skills');
+
+    writeFile(path.join(sourceDir, 'simple.md'), '# Simple');
+
+    const platforms: PlatformAdapter[] = [
+      makePlatform('codex', sharedSkillsDir, {}),
+      makePlatform('opencode', sharedSkillsDir, {}),
+    ];
+
+    const results = installAllPlatforms(sourceDir, false, platforms);
+
+    expect(results).toHaveLength(2);
+
+    // First platform installs
+    expect(results[0].platform).toBe('codex');
+    expect(results[0].success).toBe(true);
+    expect(results[0].filesWritten).toBe(1);
+
+    // Second platform skipped
+    expect(results[1].platform).toBe('opencode');
+    expect(results[1].success).toBe(true);
+    expect(results[1].filesWritten).toBe(0);
+  });
+});
