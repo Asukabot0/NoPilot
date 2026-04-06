@@ -6,4 +6,4 @@
 
 ## 当前状态
 
-V0.0.3 Released (main)。60 个 .ts 文件，17724 行 TypeScript，642 个测试。14 个 open issues。Universal Skill Engine 已上线。
+V0.0.4 Released (main)。60 个 .ts 文件，17724 行 TypeScript，642 个测试。14 个 open issues。Universal Skill Engine 已上线。
