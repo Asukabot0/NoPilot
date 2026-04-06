@@ -84,6 +84,7 @@ export function installAllPlatforms(
 ): InstallResult[] {
   const activePlatforms = platforms ?? getActivePlatforms();
   const results: InstallResult[] = [];
+  const installedDirs = new Set<string>();
 
   for (const platform of activePlatforms) {
     const result: InstallResult = {
@@ -92,6 +93,11 @@ export function installAllPlatforms(
       filesWritten: 0,
       errors: [],
     };
+
+    if (installedDirs.has(platform.skillsDir)) {
+      results.push(result);
+      continue;
+    }
 
     try {
       const skills = scanSourceSkills(sourceDir);
@@ -113,6 +119,8 @@ export function installAllPlatforms(
 
         if (!result.success) break;
       }
+
+      installedDirs.add(platform.skillsDir);
     } catch (err) {
       result.success = false;
       result.errors.push((err as Error).message);
