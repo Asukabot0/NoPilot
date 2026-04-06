@@ -175,7 +175,7 @@ program
         activePlatforms.map((p) => [p.name, p.skillsDir]),
       ),
       legacy_dirs: Object.fromEntries(
-        activePlatforms.filter((p) => p.legacyDir).map((p) => [p.name, p.legacyDir]),
+        activePlatforms.map((p) => [p.name, p.legacyDir ?? null]),
       ),
     };
     console.log(JSON.stringify(paths, null, 2));
