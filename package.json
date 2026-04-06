@@ -1,6 +1,6 @@
 {
   "name": "nopilot",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "AI Native development workflow with Lash multi-agent build engine",
   "type": "module",
   "bin": {
@@ -10,7 +10,6 @@
   "files": [
     "dist",
     "commands",
-    "prompts",
     "schemas",
     "workflow.json"
   ],
