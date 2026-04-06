@@ -1,0 +1,81 @@
+{
+  "id": "MOD-004",
+  "name": "LegacyMigrator",
+  "responsibility": "检测旧版安装路径中的 NoPilot 文件，通过 nopilot-managed 标记识别原生文件，提示用户确认后清理。支持 5 版本兼容窗口。",
+  "interfaces": [
+    {
+      "type": "internal",
+      "name": "detectLegacyFiles",
+      "input_schema": {
+        "legacyDir": "string — 旧版安装目录路径（如 ~/.claude/commands/）",
+        "knownSkillNames": "string[] — NoPilot 已知的 skill 文件名列表"
+      },
+      "output_schema": {
+        "managed": "LegacyFile[] — 带 nopilot-managed 标记的文件（可直接删除）",
+        "modified": "LegacyFile[] — 同名但无标记或标记不匹���的文件（需用户确认）",
+        "unrelated": "string[] — 不在已知列表中的文件（跳过）"
+      },
+      "errors": [
+        {
+          "code": "DIR_NOT_FOUND",
+          "condition": "legacyDir 不存在",
+          "behavior": "静默返回空结果（旧目录不存在说明无需迁移）"
+        }
+      ],
+      "requirement_refs": ["REQ-008"],
+      "acceptance_criteria_refs": ["REQ-008-AC-1", "REQ-008-AC-4"]
+    },
+    {
+      "type": "internal",
+      "name": "promptAndClean",
+      "input_schema": {
+        "managed": "LegacyFile[] — 带标记的文件",
+        "modified": "LegacyFile[] — 无标记的同名文件",
+        "stdin": "ReadableStream — 用户输入流（用于 y/N 确认）"
+      },
+      "output_schema": {
+        "deleted": "string[] — 成功删除的文件路径",
+        "skipped": "string[] — 用户拒绝删除的文件路径",
+        "failed": "Array<{ path: string, error: string }> — 删除失败的文件（权限等）"
+      },
+      "errors": [],
+      "requirement_refs": ["REQ-008"],
+      "acceptance_criteria_refs": ["REQ-008-AC-5", "REQ-008-AC-6"]
+    },
+    {
+      "type": "internal",
+      "name": "isWithinMigrationWindow",
+      "input_schema": {
+        "currentVersion": "string — 当前 NoPilot 版本",
+        "migrationSinceVersion": "string — 迁移功能引入的版本"
+      },
+      "output_schema": {
+        "active": "boolean — 是否仍在迁移窗口内（+5 minor 版本）",
+        "versionsRemaining": "number — 距窗口关闭还剩几个 minor 版本"
+      },
+      "errors": [],
+      "requirement_refs": ["REQ-008"],
+      "acceptance_criteria_refs": ["REQ-008-AC-2", "REQ-008-AC-3"]
+    }
+  ],
+  "data_models": [
+    {
+      "name": "LegacyFile",
+      "fields": [
+        { "name": "path", "type": "string", "constraints": "文件绝对路径" },
+        { "name": "name", "type": "string", "constraints": "文件名" },
+        { "name": "hasMarker", "type": "boolean", "constraints": "是否包含 <!-- nopilot-managed --> 标记" },
+        { "name": "markerVersion", "type": "string | null", "constraints": "标记中的版本号（如有）" }
+      ],
+      "relationships": []
+    }
+  ],
+  "state_machine": null,
+  "nfr_constraints": {
+    "performance": null,
+    "security": "删除操作前必须获得用户确认（managed 文件列出后确认，modified 文件逐个确认）",
+    "other": null
+  },
+  "requirement_refs": ["REQ-008"],
+  "invariant_refs": []
+}

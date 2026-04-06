@@ -19,7 +19,7 @@ NoPilot 是一个三阶段工作流，从需求探索到代码交付，下游人
 
 ### 前置条件
 
-- 已安装并配置 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- 已安装并配置 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 或 Codex CLI
 - Node.js >= 20.0.0
 
 ### 安装
@@ -39,7 +39,7 @@ cd your-project
 nopilot init
 ```
 
-自动完成：安装 slash commands 到 `~/.claude/commands/`（全局），创建 `specs/` 目录，并将 Lash 自动触发指令追加到 `CLAUDE.md`。
+自动完成：将包内 `commands/` 安装到 `~/.claude/commands/`，将包内 `prompts/codex/` 安装到 `~/.codex/prompts/`，创建 `specs/` 目录，并将 Lash 自动触发指令追加到已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md`。
 
 Schema 和 workflow.json 保留在 npm 包内，通过 `nopilot paths` 查看位置。
 
@@ -47,10 +47,9 @@ Schema 和 workflow.json 保留在 npm 包内，通过 `nopilot paths` 查看位
 
 ```bash
 cd your-project
-claude   # 打开 Claude Code
+claude   # Claude Code 中运行 /discover
+codex    # Codex 中运行 /prompts:discover
 ```
-
-输入 `/discover` 开始探索你的项目空间。
 
 ## 为什么这样设计
 
@@ -137,11 +136,22 @@ your-project/
 ├── supervisor.md        # Supervisor agent
 ├── critic.md            # Critic agent
 └── lash-*.md            # 7 个 Lash 编排命令
+
+~/.codex/prompts/        # 全局 Codex prompts（由 nopilot init 安装）
+├── discover.md
+├── spec.md
+├── build.md
+├── visualize.md
+├── supervisor.md
+├── critic.md
+└── lash-*.md
 ```
+
+Claude 版本来自包内 `commands/`，Codex 版本来自包内 `prompts/codex/`。
 
 ## 当前范围 (V1.2, Schema 4.0)
 
-**包含：** 三阶段工作流跑在 Claude Code 上，仅 Greenfield 项目，纯 prompt engineering，完整核心护栏（Supervisor 漂移检测、Critic AI 偏差目录），生成-审查分离，渐进式想法收集，设计哲学提取，完整性追踪，领域模型和 NFR 输出，制品可视化，大项目目录拆分，集成 Lash 多 Agent 构建引擎（TypeScript），双 CLI（`nopilot` + `lash`），npm 分发。
+**包含：** 三阶段工作流跑在 Claude Code 和 Codex 上，仅 Greenfield 项目，纯 prompt engineering，完整核心护栏（Supervisor 漂移检测、Critic AI 偏差目录），生成-审查分离，渐进式想法收集，设计哲学提取，完整性追踪，领域模型和 NFR 输出，制品可视化，大项目目录拆分，集成 Lash 多 Agent 构建引擎（TypeScript），双 CLI（`nopilot` + `lash`），npm 分发。
 
 **不包含：** Brownfield/增量迭代、Agent 共识机制（已声明未接线）、iOS 远程 Agent、多模型路由。
 

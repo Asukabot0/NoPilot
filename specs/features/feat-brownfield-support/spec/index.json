@@ -1,0 +1,79 @@
+{
+  "phase": "spec",
+  "version": "4.0",
+  "status": "draft",
+  "module_refs": [
+    "mod-001-profile-storage.json",
+    "mod-002-profile-writer.json",
+    "mod-003-codebase-scanner.json",
+    "mod-004-mode-detector.json",
+    "mod-005-conflict-detector.json",
+    "mod-006-discover-feature-mode.json",
+    "mod-007-spec-feature-mode.json",
+    "mod-008-build-feature-mode.json"
+  ],
+  "dependency_graph": {
+    "edges": [
+      {"from": "MOD-004", "to": "MOD-001", "type": "calls", "description": "mode-detector reads profile via storage API to check existence"},
+      {"from": "MOD-004", "to": "MOD-003", "type": "calls", "description": "mode-detector triggers scanner for first-time onboarding"},
+      {"from": "MOD-005", "to": "MOD-001", "type": "calls", "description": "conflict-detector reads profile layers for comparison"},
+      {"from": "MOD-002", "to": "MOD-001", "type": "calls", "description": "profile-writer uses storage API to write layers"},
+      {"from": "MOD-006", "to": "MOD-001", "type": "depends", "description": "discover feature mode reads profile for context injection"},
+      {"from": "MOD-006", "to": "MOD-003", "type": "depends", "description": "discover feature mode triggers codebase scan"},
+      {"from": "MOD-006", "to": "MOD-004", "type": "depends", "description": "discover feature mode uses mode detection at entry"},
+      {"from": "MOD-006", "to": "MOD-005", "type": "depends", "description": "discover feature mode uses conflict detection"},
+      {"from": "MOD-007", "to": "MOD-001", "type": "depends", "description": "spec feature mode reads profile for code awareness"},
+      {"from": "MOD-008", "to": "MOD-001", "type": "depends", "description": "build feature mode reads profile for worktree strategy"},
+      {"from": "MOD-008", "to": "MOD-002", "type": "depends", "description": "build feature mode triggers profile writer"}
+    ]
+  },
+  "external_dependencies": [
+    {
+      "name": "Node.js fs/path",
+      "purpose": "Profile file I/O",
+      "module_refs": ["MOD-001"],
+      "alternatives": [],
+      "test_strategy": "real"
+    },
+    {
+      "name": "Ajv (or similar JSON Schema validator)",
+      "purpose": "Profile layer schema validation",
+      "module_refs": ["MOD-001"],
+      "alternatives": ["zod", "manual validation"],
+      "test_strategy": "real"
+    }
+  ],
+  "global_error_strategy": {
+    "api_error_format": "Not applicable — this feature operates via file artifacts and CLI prompts, not HTTP APIs",
+    "external_service": "No external services. All operations are local file I/O and Agent-driven analysis.",
+    "logging": "Errors during profile read/write are logged to stderr via existing NoPilot output utilities. Non-fatal errors (missing profile, schema validation warnings) produce user-facing warnings. Fatal errors (disk full, permission denied) halt with descriptive message."
+  },
+  "auto_decisions": [
+    {
+      "decision": "Use Ajv for JSON Schema validation rather than Zod or manual validation",
+      "alternatives": ["Zod schema definitions", "Manual field-by-field validation"],
+      "rationale": "NoPilot already uses JSON Schema files for all artifact validation. Ajv is the standard JSON Schema validator for Node.js. Using Zod would require maintaining two schema systems (JSON Schema for artifacts, Zod for profile). Consistency with existing approach outweighs Zod's TypeScript integration advantages.",
+      "impact": "Profile validation uses same toolchain as artifact validation",
+      "impact_level": "medium"
+    },
+    {
+      "decision": "Profile writer is implemented as TypeScript utility invoked by build.md prompt, not as a standalone CLI command",
+      "alternatives": ["Standalone `nopilot profile write` CLI command", "Pure prompt-based extraction (no TypeScript)"],
+      "rationale": "A standalone CLI adds a new command surface to maintain. Pure prompt-based extraction has no validation guarantees. A TypeScript utility called from the prompt gives both schema validation and prompt-level flexibility. Aligns with how Lash utilities work (TS functions called from command prompts).",
+      "impact": "Profile write is a function call in build.md, not a separate command",
+      "impact_level": "medium"
+    },
+    {
+      "decision": "Config file at .nopilot/config.json rather than environment variables or CLI flags",
+      "alternatives": ["Environment variables", "CLI flags per command", "CLAUDE.md directives"],
+      "rationale": "Config is project-scoped and persistent, ruling out env vars and CLI flags. CLAUDE.md is for human-readable instructions, not machine-parsed config. A dedicated config file under .nopilot/ keeps all NoPilot local state together and is machine-readable.",
+      "impact": "All configurable thresholds (scan limit, staleness hours, L2 flag) in one file",
+      "impact_level": "low"
+    }
+  ],
+  "contract_amendments": [],
+  "context_dependencies": [
+    "specs/features/feat-brownfield-support/discover/index.json",
+    "specs/features/feat-brownfield-support/discover/requirements.json"
+  ]
+}

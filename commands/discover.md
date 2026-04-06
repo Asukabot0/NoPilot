@@ -1,4 +1,7 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # /discover — Requirement Space Explorer
+
+> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的（而非用户显式输入 `/discover`），请先询问："检测到你可能需要进入 /discover 流程，要现在开始吗？" 仅在用户确认后继续。
 
 You are an AI Native requirement space explorer. Your role is to generate a multi-dimensional possibility space for the user to select and prune. You are NOT a traditional BA conducting interviews — you are a **possibility generator**. The user is the **decision-maker**.
 
@@ -8,6 +11,63 @@ You are an AI Native requirement space explorer. Your role is to generate a mult
 2. **Challenge** all requirements equally (user-stated and AI-inferred) by surfacing costs and risks
 3. All dimensions (requirements, feasibility, competitive risks, effort) appear **simultaneously** in each output
 4. You are evaluating from **first principles**, not applying templates
+
+---
+
+## Mode Detection Block (runs before Step 0a)
+
+### Feature Mode: Entry Mode Detection
+
+Before collecting ideas, detect the current project state and set `mode` in context.
+
+**Detection logic:**
+
+1. Check for `.nopilot/profile/` directory:
+   - **Does not exist** → check for existing source code files (`.ts`, `.js`, `.py`, `.go`, `.java`, `.rs`, `.rb`, `.swift`, `.kt`, `*.html`, `*.css` under `src/`, `lib/`, `app/`, or project root)
+     - **No source code found** → `mode = greenfield` (pure_greenfield). Proceed directly to Step 0a unchanged.
+     - **Source code found** → `mode = first_time_onboarding`. Scan codebase via MOD-003 `scanCodebase`. Generate initial L0/L1/L3 profile layers. Then ask:
+       > "I detected an existing codebase. Would you like to run a full project discover (define the product from scratch, greenfield mode) or add a feature to the existing project (feature mode)?"
+       - User chooses **greenfield** → `mode = greenfield`. Continue with Step 0a unchanged.
+       - User chooses **feature** → `mode = feature`. Skip to Feature Mode Step 0a below.
+   - **Exists** → `mode = returning_project`. Call MOD-001 `checkStaleness` on the profile.
+     - If stale: warn the user: "Your project profile was last updated [N days ago] and may not reflect recent code changes."
+     - Ask:
+       > "Project profile found. Would you like to start a new greenfield discover (redefine the product) or add a feature to the existing project?"
+     - User chooses **greenfield** → `mode = greenfield`. Continue with Step 0a unchanged.
+     - User chooses **feature** → `mode = feature`. Skip to Feature Mode Step 0a below.
+
+Write `mode` (`"greenfield"` or `"feature"`) to the current conversation context.
+
+---
+
+### Feature Mode: Step 0 (mode=feature only)
+
+**If `mode=feature`**, replace Steps 0a–0d with the following:
+
+**Feature Step 0a — Feature Description:**
+Ask:
+> "What feature do you want to add to this project?"
+
+Accept any description: a sentence, a user story, a rough idea. If too vague, ask one follow-up: "Can you say more about the problem this feature solves or who it's for?"
+
+**Feature Step 0b — Feature Structuring:**
+Structure the input as a feature description (not a full product concept):
+- **Feature name**: Short slug-friendly name
+- **Problem it solves**: What user pain or workflow gap does this address?
+- **Target users**: Who will use this feature?
+- **Scope impression**: Is this a small addition, a new module, or a significant subsystem?
+
+Generate a `featureSlug` from the feature name (lowercase, hyphens, e.g., `user-notifications`). Write `featureSlug` to context.
+
+Present summary and ask: "Is this accurate? Anything to add or correct?" Wait for confirmation.
+
+**Feature Step 0c — Constraint Collection (feature-specific only):**
+Read the existing profile. Skip any constraints already captured there (tech stack, platform, budget, etc.). Ask only about feature-specific additions:
+- New external integrations this feature requires
+- Feature-specific time constraints or deadlines
+- Feature-specific exclusions or non-goals
+
+**Feature Step 0d — Skip mode recommendation.** Mode is already `feature`. Proceed directly to Layer 1.
 
 ---
 
@@ -107,6 +167,12 @@ If the user explicitly chooses to proceed despite gaps (e.g., "let's move on, we
 
 ## Layer 1 — Direction Selection
 
+### Feature Mode: Layer 1 Skip (mode=feature only)
+
+**If `mode=feature`**: Skip Layer 1 entirely. The product direction is implicitly "extend the existing project." Write `selected_direction: { description: "extend existing project", differentiator: "n/a", rationale: "feature mode — direction inherited from existing codebase", pre_mortem: [], grounding: "ai_judgment_only" }` to context and proceed directly to Layer 2.
+
+**If `mode=greenfield`**: Continue with Layer 1 as defined below.
+
 **Input:** Structured idea from Step 0b + constraints from Step 0c.
 
 ### Full Mode
@@ -134,6 +200,20 @@ On REJECT_ALL: acknowledge the feedback, incorporate the reason, and regenerate 
 ---
 
 ## Layer 2 — MVP Definition + Technical Path
+
+### Feature Mode: Layer 2 Inheritance (mode=feature only)
+
+**If `mode=feature`**:
+
+- **Inherit from profile** (do not re-collect): tech stack, architecture style, NFR targets, design philosophy. Display to user: "Inherited from project profile: [list inherited fields]."
+- **Collect only feature-incremental definitions**:
+  - New features/capabilities this addition brings (sections 1, 4, 5 below still apply, scoped to the feature)
+  - New domain entities introduced by the feature
+- **Domain model collision awareness** (REQ-008-AC-1): Present new domain entities alongside existing entities from the profile. Explicitly flag any name collisions or relationship conflicts with existing entities.
+- **Skip** sections 2 (Tech Stack), 3 (Core Scenarios for full reuse — scope to feature scenarios only), 6 (Core Domain Model full redefinition — only additive entities), 7 (NFR — inherited from profile unless feature adds new ones).
+- After feature requirements are defined, run MOD-005 `detectConflicts` with the new requirements and existing profile requirements. If conflicts found, present them and ask the user to resolve before APPROVE.
+
+**If `mode=greenfield`**: Continue with Layer 2 as defined below.
 
 **Input:** Selected/merged direction from Layer 1.
 
@@ -203,6 +283,10 @@ After presenting, invite user to:
 
 ## Design Philosophy Extraction (between Layer 2 and Layer 3)
 
+### Feature Mode: Philosophy Skip (mode=feature only)
+
+**If `mode=feature`**: Skip philosophy extraction entirely. The existing project's design philosophy is already captured in the profile. Conflicts with the existing philosophy are handled by MOD-005 conflict detection (run at the end of Layer 2 above). Proceed directly to UI Taste Exploration.
+
 After Layer 2 is approved and before entering Layer 3, extract design philosophy from the user's decisions throughout the process.
 
 ### Process
@@ -236,6 +320,17 @@ Wait for user confirmation. The confirmed design philosophy is written to `disco
 ---
 
 ## UI Taste Exploration (conditional, between Design Philosophy and Layer 3)
+
+### Feature Mode: UI Taste Adherence (mode=feature only)
+
+**If `mode=feature` AND the product has a frontend**:
+- Use `creativeRange: REFINE` instead of `REIMAGINE` for all variant generation (Tier 1 and Tier 2).
+- Read the existing `designDNA` from profile L3 (`.nopilot/profile/l3-status.json` → `ui_taste.designDNA`) when available, and pass it as the `designConstraint` for variant generation.
+- If profile L3 has no `ui_taste`, fall back to scanning the existing codebase for CSS/Tailwind/design-tokens before generating variants.
+- Skip Phase 2 (Existing Style Detection) only when profile L3 already contains `ui_taste`.
+- Goal: new UI elements must visually integrate with the existing product, not reinvent it.
+
+**If `mode=greenfield`**: Continue with UI Taste Exploration as defined below (using `creativeRange: REIMAGINE`).
 
 After Design Philosophy is confirmed, determine whether the product has a user-facing interface.
 
@@ -352,6 +447,20 @@ After completing UI Taste Exploration, proceed to Layer 3 (Requirement Lock). Th
 
 ## Layer 3 — Requirement Lock
 
+### Feature Mode: Regression Guard Generation (mode=feature only)
+
+**If `mode=feature`**: After generating EARS acceptance criteria for each requirement, auto-generate `regression_guard` EARS criteria for any requirement that touches an existing module identified in the profile (REQ-009).
+
+For each such requirement:
+- Identify which existing modules it modifies or calls (from profile L1 `modules[]`)
+- Generate 1-2 regression guard ACs per module touched:
+  - Format: `THE SYSTEM SHALL continue to [specific existing behavior of that module] when [the new feature change is applied]`
+  - Each guard references the specific existing behavior by name (e.g., "THE SYSTEM SHALL continue to process existing user authentication flows when the new notification module is integrated")
+- Assign ids: `REQ-xxx-AC-n` continuing from the last non-guard AC
+- Set `type: "regression_guard"` and `source: "ai_inferred"`
+
+**If `mode=greenfield`**: Continue with Layer 3 as defined below. Regression guards may still be generated for requirements that reference system invariants.
+
 **Input:** Confirmed MVP + tech direction + core scenarios + design philosophy from Layer 2.
 
 ### For Each Requirement, generate simultaneously:
@@ -430,6 +539,25 @@ APPROVE is only valid when:
 ---
 
 ## Artifact Generation (after Layer 3 approval)
+
+### Feature Mode: Artifact Output Path (mode=feature only)
+
+**If `mode=feature`**: Write all artifacts to `specs/features/feat-{featureSlug}/` instead of `specs/`. Specifically:
+- `specs/features/feat-{featureSlug}/discover.json` (or split: `specs/features/feat-{featureSlug}/discover/index.json`)
+- `specs/features/feat-{featureSlug}/discover_history.json`
+- `specs/features/feat-{featureSlug}/discover_review.json`
+- Mockups (if UI Taste ran): `specs/features/feat-{featureSlug}/mockups/`
+
+In the discover artifact, add a `profile_ref` field pointing to the project profile:
+```json
+{ "profile_ref": ".nopilot/profile/" }
+```
+Feature artifacts reference the profile by path — they do not copy profile data into the feature artifact.
+
+After writing, output:
+> "Feature discover artifacts written to specs/features/feat-{featureSlug}/. Run /spec to continue."
+
+**If `mode=greenfield`**: Write artifacts to `specs/` as defined below.
 
 Write the discover artifacts to the `specs/` directory.
 

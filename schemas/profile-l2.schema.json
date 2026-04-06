@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile L2 Decisions",
+  "type": "object",
+  "required": ["updated_at"],
+  "properties": {
+    "updated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp, auto-set on write"
+    },
+    "design_philosophy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["principle", "justification", "source_artifact"],
+        "properties": {
+          "principle": { "type": "string" },
+          "justification": { "type": "string" },
+          "source_artifact": { "type": "string" }
+        }
+      }
+    },
+    "architecture_decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["decision", "rationale", "alternatives", "source_artifact"],
+        "properties": {
+          "decision": { "type": "string" },
+          "rationale": { "type": "string" },
+          "alternatives": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "source_artifact": { "type": "string" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["constraint", "source", "source_artifact"],
+        "properties": {
+          "constraint": { "type": "string" },
+          "source": {
+            "type": "string",
+            "enum": ["user_stated", "ai_inferred"]
+          },
+          "source_artifact": { "type": "string" }
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

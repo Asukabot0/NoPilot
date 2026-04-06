@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # Lash Tracer Bullet Phase
 
 You are executing the tracer bullet phase of a Lash build. Implement the thinnest E2E slice to validate core architectural assumptions before parallel work begins.

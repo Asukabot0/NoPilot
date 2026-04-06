@@ -1,0 +1,298 @@
+{
+  "phase": "discover_review",
+  "session": "independent",
+  "iteration": 3,
+  "review_complexity": "complex",
+  "self_fix_cap": 9,
+  "6cs_audit": {
+    "passed": true,
+    "issues": [
+      {
+        "requirement_id": "REQ-001",
+        "dimension": "concreteness",
+        "finding": "AC-4 定义了 <%UPPERCASE_VAR%> 词法格式与 EJS 模式不重叠的静态属性。这是设计属性声明而非运行时行为约束，测试人员只能通过间接路径验证（构造 EJS 文件确认 init 不误识别），无法直接验证'词法不重叠保证成立'这一数学性质。可测试性受限，但间接测试路径可行，不 block。",
+        "severity": "warn",
+        "confidence": "medium",
+        "ai_bias_flags": [],
+        "escalation_reason": null
+      },
+      {
+        "requirement_id": "REQ-001",
+        "dimension": "completeness",
+        "finding": "当 PlatformAdapter 中存在某个映射键，但 skill 文件中从未使用该键时（孤立映射键），系统行为未定义。维护者删除占位符后可能遗留僵尸映射键而无任何警告。不影响输出正确性，severity=warn。",
+        "severity": "warn",
+        "confidence": "medium",
+        "ai_bias_flags": [],
+        "escalation_reason": null
+      },
+      {
+        "requirement_id": "REQ-004",
+        "dimension": "concreteness",
+        "finding": "AC-6 声明 critic-framework 由主 skill 在路由时通过 Skill tool 与阶段子 skill 一起加载，但未说明加载顺序（framework 先还是阶段子 skill 先），也未说明是否在同一 Skill tool 调用中并行加载还是串行加载。在 prompt-based 系统中，加载顺序影响 context 结构，不同实现者可能有不同方案。可在 spec 阶段进一步定义，不 block。",
+        "severity": "warn",
+        "confidence": "medium",
+        "ai_bias_flags": [],
+        "escalation_reason": null
+      },
+      {
+        "requirement_id": "REQ-006",
+        "dimension": "concreteness",
+        "finding": "AC-2 规定'不超过 20 个逻辑条目（非字符行数）'，但'逻辑条目'的定义仍不精确——什么算一个逻辑条目？一个 JSON 键值对？一行文本？一个 finding 对象？不同实现者会产生不同解读。可在 spec 阶段进一步定义，不 block。",
+        "severity": "warn",
+        "confidence": "medium",
+        "ai_bias_flags": [],
+        "escalation_reason": null
+      },
+      {
+        "requirement_id": "REQ-008",
+        "dimension": "completeness",
+        "finding": "AC-2 规定'在当前版本 +5 个 minor 版本后由维护者手动移除迁移代码（通过 TODO 注释标注移除版本号）'，这是流程性约束而非系统行为约束，无法通过功能测试验证。这是有意识的流程设计（依赖人工执行），不是 AC 设计缺陷，但测试覆盖存在盲区。",
+        "severity": "warn",
+        "confidence": "high",
+        "ai_bias_flags": [],
+        "escalation_reason": null
+      },
+      {
+        "requirement_id": "REQ-009",
+        "dimension": "clarity",
+        "finding": "REQ-009 的四个 AC 仅规定行数上限，未定义 visualize、supervisor、spec 各自应拆分为哪些具体子 skill 及其触发条件。相比 REQ-003（6 个具名子 skill，各有 AC 定义触发条件）和 REQ-004（5 个具名子 skill），REQ-009 的拆分粒度规范明显不足，不同实现者可能产生完全不同的拆分方案。Clarity 问题，有一定 Correctness 风险，但属于 P1 功能，设计粒度不足在 spec 阶段可弥补，不升级为 block。",
+        "severity": "warn",
+        "confidence": "high",
+        "ai_bias_flags": ["optimistic_assessment"],
+        "escalation_reason": null
+      },
+      {
+        "requirement_id": "REQ-009",
+        "dimension": "concreteness",
+        "finding": "AC-2 声明 visualize 生成三个页面时 SHALL 并行 dispatch 给独立 subagent，但未定义局部失败场景：若三个 subagent 中一个失败，是全部重试还是仅重试失败的？与 REQ-009 整体粒度一致，不 block。",
+        "severity": "warn",
+        "confidence": "medium",
+        "ai_bias_flags": [],
+        "escalation_reason": null
+      }
+    ]
+  },
+  "invariant_verification": {
+    "passed": true,
+    "completeness_gaps": [
+      {
+        "description": "子 skill 文件命名规范缺少正式不变量：REQ-003/004/005 引入了大量子 skill 文件（discover-ui-taste、critic-framework、critic-discover、build-test-gen 等），当前命名方式为 {parent}-{phase} 格式，但没有不变量正式约束此命名规范。若命名不一致，自动加载逻辑（基于文件名匹配）会静默失败。severity=warn（不影响 discover 阶段正确性，可在 spec 阶段或 INV 补充阶段处理）。",
+        "severity": "warn",
+        "confidence": "high"
+      },
+      {
+        "description": "REQ-007-AC-1 内嵌了 diff 验证与目录删除的执行顺序约束（'删除操作 SHALL 在 REQ-007-AC-2 的 diff 回归验证通过之后执行'），但此约束未提升为系统级不变量。当前在单需求 AC 内声明顺序依赖，若后续 spec 阶段未显式建模此顺序，可能被实现者忽略。降为 warn（AC 层面已覆盖，不需要额外 invariant 重复声明）。",
+        "severity": "warn",
+        "confidence": "medium"
+      }
+    ],
+    "contradictions": [
+      {
+        "description": "INV-005（≤35 行不拆分）与 REQ-009-AC-3（supervisor 主 skill SHALL 不超过 40 行）存在边界模糊区间：对于行数在 36-40 行之间的原始 skill 文件，INV-005 要求拆分，但拆分后主 skill 若仍为 36 行则满足 AC-3 约束，拆分意义（减少 context 占用）未实现。这是 INV-005 阈值设计问题，非逻辑矛盾，实际工程影响极小，severity=warn。",
+        "severity": "warn",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "acceptance_criteria_verification": {
+    "passed": true,
+    "untestable_criteria": [
+      {
+        "criteria_id": "REQ-001-AC-4",
+        "reason": "AC-4 声明占位符分隔符通过词法不重叠保证与其他模板语法不冲突。这是静态设计属性，测试人员只能通过间接路径验证（构造含 EJS 语法的文件，确认 init 不误识别 <%UPPERCASE_VAR%>），无法直接验证'词法不重叠保证成立'这一数学命题。间接测试路径可行，不 block。",
+        "severity": "warn",
+        "confidence": "medium"
+      },
+      {
+        "criteria_id": "REQ-008-AC-2",
+        "reason": "'在当前版本 +5 个 minor 版本后由维护者手动移除迁移代码'是流程性约束，非系统行为约束。TODO 注释的存在可通过代码扫描验证，但'维护者在正确版本移除代码'这一行为无法自动化验证。这是有意识的流程设计选择，不是 AC 设计缺陷，不 block。",
+        "severity": "warn",
+        "confidence": "high"
+      }
+    ]
+  },
+  "coverage_verification": {
+    "passed": true,
+    "uncovered_scenarios": [],
+    "orphan_requirements": [],
+    "coverage_gaps": [
+      {
+        "scenario_id": "SCENARIO-001",
+        "finding": "SCENARIO-001 引用 REQ-001、REQ-002、REQ-007。三个需求均有对应 AC 覆盖场景描述的核心步骤（单一源修改 → init → 多平台更新）。覆盖完整。",
+        "severity": "pass"
+      },
+      {
+        "scenario_id": "SCENARIO-002",
+        "finding": "SCENARIO-002 引用 REQ-003、REQ-004、REQ-006。场景描述中 Critic dispatch 对应 REQ-004-AC-2，Supervisor dispatch 对应 REQ-003-AC-4，主 context 仅收摘要对应 REQ-006-AC-1/2。覆盖完整。",
+        "severity": "pass"
+      },
+      {
+        "scenario_id": "SCENARIO-003",
+        "finding": "SCENARIO-003 引用 REQ-001、REQ-002。新增 experimental 平台改为 active → init 自动生成场景完整覆盖在 REQ-002-AC-3 和 REQ-001-AC-3 中。覆盖完整。",
+        "severity": "pass"
+      },
+      {
+        "scenario_id": "SCENARIO-004",
+        "finding": "SCENARIO-004 引用 REQ-005、REQ-006。test-gen/TDD/Auto-Acceptance/report 四个阶段对应 REQ-005-AC-2/3/4/5。覆盖完整。",
+        "severity": "pass"
+      },
+      {
+        "scenario_id": "SCENARIO-005",
+        "finding": "SCENARIO-005 引用 REQ-008。完整迁移流程（检测 → 提示确认 → 用户确认 → 删除 → 安装新 skill）覆盖在 REQ-008 的 6 个 AC 中。覆盖完整。",
+        "severity": "pass"
+      },
+      {
+        "scenario_id": "SCENARIO-006",
+        "finding": "SCENARIO-006 引用 REQ-009。spec 和 visualize 渐进式加载场景覆盖在 REQ-009-AC-1/2/3/4 中。粒度与 REQ-009 整体设计一致（行数上限为主要约束）。覆盖完整。",
+        "severity": "pass"
+      },
+      {
+        "scenario_id": "SCENARIO-007",
+        "finding": "SCENARIO-007 引用 REQ-010。lash-tracer Module Critic dispatch 和 lash-verify Build Critic/Supervisor dispatch 场景覆盖在 REQ-010-AC-1/2/3/4/5 中。覆盖完整。",
+        "severity": "pass"
+      }
+    ],
+    "orphan_analysis": "所有 10 个需求均有场景引用：REQ-001/002/007 被 SCENARIO-001/003 引用；REQ-003/004/006 被 SCENARIO-002 引用；REQ-005/006 被 SCENARIO-004 引用；REQ-008 被 SCENARIO-005 引用；REQ-009 被 SCENARIO-006 引用；REQ-010 被 SCENARIO-007 引用。无孤儿需求。"
+  },
+  "ai_bias_detection": {
+    "patterns_found": [
+      {
+        "bias_type": "optimistic_assessment",
+        "target_id": "REQ-009",
+        "evidence": "REQ-009 的 feasibility 标注为 medium，AC 仅提供行数上限而无具名子 skill 和触发条件。相比 REQ-003/004/005 的详细拆分规范，REQ-009 的设计粒度严重不足，却未识别为更高风险项。P1 优先级可接受，但 feasibility=medium 在设计粒度如此模糊的情况下属于过度乐观。",
+        "confidence": "medium"
+      },
+      {
+        "bias_type": "missing_negative_paths",
+        "target_id": "REQ-001",
+        "evidence": "当 PlatformAdapter 中存在孤立映射键（有键但 skill 文件从未使用）时，系统行为未定义，没有任何警告或错误路径。生成者只覆盖了'缺少映射键'的负路径（AC-5/AC-6），未覆盖'多余映射键'的负路径。",
+        "confidence": "medium"
+      },
+      {
+        "bias_type": "self_approval_bias",
+        "target_id": "general",
+        "evidence": "REQ-006 的 source 标注为 ai_inferred，但其余 9 个需求均标注为 user_stated，而许多 AC 细节（AC-2 中的'20 个逻辑条目'限制、AC-4 的词法规则描述、AC-5 的文件头标记格式）明显是 AI 推断细节，被包含在 user_stated 需求中规避了额外质量审查。",
+        "confidence": "medium"
+      }
+    ]
+  },
+  "self_fix_log": [
+    {
+      "iteration": 1,
+      "blocks_found": 10,
+      "fixes_applied": [
+        "REQ-001: 添加 AC-5（占位符变量缺失时报错）和 AC-6（替换后残留占位符时报错）",
+        "REQ-002: 添加 AC-4（新平台占位符映射缺失映射键时报错）",
+        "REQ-003: AC-6 更新，明确不支持断点续传，要求重新触发 /discover",
+        "INV-004: scope 从 module-specific 更正为 system-wide",
+        "REQ-004: 添加 AC-3（spec 评审加载规则）、AC-4（build test 评审加载规则）、AC-5（build acceptance 评审加载规则）",
+        "REQ-005: 添加 AC-5（build-report 子 skill）和 AC-6（build-artifact-split 子 skill）",
+        "REQ-006: AC-3 加入括号注释'（此为行为指南，非系统强制约束）'降级（部分修复，SHALL 语义矛盾仍存）",
+        "REQ-007: AC-2 更新为文本 diff 验证方法，定义'非占位符行的差异视为回归失败'",
+        "REQ-008: 添加 AC-5（用户拒绝确认时跳过继续 init）和 AC-6（删除权限失败时输出警告继续 init）",
+        "coverage_verification: 为 REQ-004/005/008/009/010 补充 scenario requirement_refs，修复 5 个孤儿需求"
+      ],
+      "reverify_result": "still_failing",
+      "remaining_blocks": 3,
+      "remaining_warns": 8,
+      "summary": "10 个 block 中 8 个完全修复，2 个部分修复（REQ-006-AC-3 SHALL 语义矛盾仍存；REQ-002 AC-3/AC-4 对 experimental 平台的交互矛盾为新识别）。iteration 2 新识别 3 个 block。"
+    },
+    {
+      "iteration": 2,
+      "blocks_found": 3,
+      "fixes_applied": [
+        "REQ-002-AC-3: 显式添加'（AC-4 仅适用于 active 平台）'声明，消解 experimental 平台的映射验证歧义",
+        "REQ-006-AC-3: 将 SHALL 改为 SHOULD，并保留括号注释'（此为行为建议，不作为测试验收条件）'，消解强制约束与行为指南的语义矛盾",
+        "REQ-007-AC-1: 内嵌执行顺序约束'删除操作 SHALL 在 REQ-007-AC-2 的 diff 回归验证通过之后执行'，消解 diff 验证顺序的 invariant 缺口"
+      ],
+      "reverify_result": "passed",
+      "remaining_blocks": 0,
+      "remaining_warns": 9,
+      "summary": "iteration 2 识别的 3 个 block 均已修复：(1) REQ-002 experimental 平台豁免已在 AC-3 显式声明；(2) REQ-006-AC-3 SHALL 改为 SHOULD，语义一致；(3) REQ-007-AC-1 内嵌顺序约束。iteration 3 评审发现 0 个新 block，9 个 warn 级问题（多数为延续前轮的已知 warn）。"
+    }
+  ],
+  "trend_evaluation": {
+    "assessed": true,
+    "trend": "converging",
+    "action": "null",
+    "detail": "Block 数量从 iteration 1（10 个）→ iteration 2（3 个）→ iteration 3（0 个），持续收敛。无新 block 引入，无回归性问题。Warn 数量稳定（9 个），均为设计阶段可接受的边界模糊问题，不影响 spec 阶段推进。自修复上限（9 次）未触及，无需延伸。评审结论：APPROVE。"
+  },
+  "global_coherence_check": {
+    "passed": true,
+    "drift_score": 12,
+    "confidence": "high",
+    "action": "proceed",
+    "findings": [
+      {
+        "id": "GCC-001",
+        "type": "alignment",
+        "severity": "pass",
+        "target": "sub-goal: single source + template",
+        "description": "REQ-001（模板占位符引擎）、REQ-002（平台注册表）、REQ-007（清理 prompts/codex/ 重复目录）三者联合覆盖「单一源 + 模板」子目标。INV-001 从系统级约束 commands/ 作为唯一真相源，防止平台特定文件绕过模板系统直接修改的漂移路径。对齐完整。"
+      },
+      {
+        "id": "GCC-002",
+        "type": "alignment",
+        "severity": "pass",
+        "target": "sub-goal: progressive split",
+        "description": "REQ-003/004/005（P0 拆分）、REQ-009（P1 拆分）、REQ-010（P2 拆分）按优先级分层覆盖「渐进式拆分」子目标。INV-002（主 skill 只含路由逻辑）是防止拆分后业务逻辑回流的核心约束，与该子目标直接绑定。non_functional_requirements 中的行数上限（250/100/50 行）与 REQ-003/004/005 的 AC 行数约束一致，无矛盾。对齐完整。"
+      },
+      {
+        "id": "GCC-003",
+        "type": "alignment",
+        "severity": "pass",
+        "target": "sub-goal: subagent offload",
+        "description": "REQ-006（dispatch 契约）定义 subagent 卸载的通用规范，各拆分需求（REQ-003-AC-3/4、REQ-004-AC-7、REQ-005-AC-3/4、REQ-009-AC-2、REQ-010-AC-2/4）在各自场景中具体化 dispatch 点。INV-003（IO 通过文件系统）和 INV-004（子 skill 自包含）共同防止 context 污染漂移。对齐完整。"
+      },
+      {
+        "id": "GCC-004",
+        "type": "alignment",
+        "severity": "pass",
+        "target": "sub-goal: install mechanism",
+        "description": "REQ-008 覆盖旧文件迁移清理路径，REQ-002（PlatformAdapter 注册表取代 PROMPT_ASSETS）和 REQ-001-AC-3（init 触发占位符替换生成文件）联合覆盖新 skill 安装核心机制。INV-006（init 幂等性）从系统级保证安装可重复执行。对齐完整，但见 GCC-007 关于安装路径完整性的 gap。"
+      },
+      {
+        "id": "GCC-005",
+        "type": "invariant_check",
+        "severity": "pass",
+        "target": "INV-001 through INV-006",
+        "description": "六个不变量均指向需求集的核心防漂移点：INV-001（源唯一性）、INV-002（主 skill 纯路由）、INV-003（文件系统 IO）、INV-004（子 skill 自包含）、INV-005（小文件豁免）、INV-006（init 幂等）。覆盖了模板引擎、拆分机制、dispatch 契约三个子系统的所有主要漂移风险路径。无冗余不变量，无冲突不变量。"
+      },
+      {
+        "id": "GCC-006",
+        "type": "scope_check",
+        "severity": "pass",
+        "target": "REQ-009, REQ-010",
+        "description": "REQ-009（P1: visualize/supervisor/spec）和 REQ-010（P2: lash-tracer/lash-verify）均在 index.json scope 字段声明的「模板引擎 + 大文件拆分 + subagent 卸载 + 安装机制改造」范围内，且 mvp_features 已明确标注 P1/P2 分级。无超范围需求。"
+      },
+      {
+        "id": "GCC-007",
+        "type": "gap",
+        "severity": "warn",
+        "target": "sub-goal: install mechanism — 安装路径完整行为未聚焦",
+        "description": "feature_description 的 scope 明确提到「安装机制改造」，但「生成新 skill 文件到目标目录」这一安装核心行为分散在 REQ-001-AC-3（init 触发替换）和 REQ-002-AC-3（只为 active 平台生成）中，没有独立需求聚焦安装路径本身的完整行为——如：目标目录冲突时的覆盖策略、安装后的文件校验、安装成功/失败的报告格式。该缺口对 P0 核心路径影响有限（SCENARIO-001 场景覆盖了正常路径），可在 spec 阶段补充，不 block。"
+      },
+      {
+        "id": "GCC-008",
+        "type": "gap",
+        "severity": "warn",
+        "target": "INV-006 — 幂等性约束缺乏可测试 AC",
+        "description": "INV-006 声明 init 幂等性是系统不变量，但 requirements.json 中没有任何 AC 对应「多次运行 init 产生相同输出」的验证要求。不变量无对应测试锚点，在 spec/build 阶段可能被忽略而无验证覆盖。可在 spec 阶段为 REQ-001 或 REQ-002 补充幂等性 AC，不 block。"
+      },
+      {
+        "id": "GCC-009",
+        "type": "gap",
+        "severity": "warn",
+        "target": "non_functional_requirements — 行数上限无 CI 验证机制",
+        "description": "non_functional_requirements 中「主 skill 加载不超过 250/100/50 行」是 must_have 级约束，但 requirements.json 中无对应的 CI lint 检查或自动化验证 AC。该约束目前仅作为 REQ-003/004/005 AC 中的静态声明存在，依赖人工 review 维护。可在 build 阶段或 CI 配置阶段补充自动化检查，不 block。"
+      },
+      {
+        "id": "GCC-010",
+        "type": "coherence_summary",
+        "severity": "pass",
+        "target": "overall",
+        "description": "需求集与 feature_description 的 4 个子目标高度对齐，覆盖完整，无超范围需求，无矛盾性需求。6 个不变量设计合理，覆盖所有主要漂移路径。3 个 warn 级 gap（安装路径完整行为、幂等性可测试性、行数上限 CI 验证）均属边界模糊而非意图偏离，可在 spec 阶段或 build 阶段补充，不影响当前阶段推进。drift_score=12（低漂移）。"
+      }
+    ]
+  }
+}

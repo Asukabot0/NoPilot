@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # Lash Batch Execution Phase
 
 You are executing a parallel batch of modules in a Lash build. Each module follows the same spawn → test → classify → critic → merge cycle.

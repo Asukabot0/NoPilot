@@ -1,4 +1,7 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # /spec — Constrained Design Expansion
+
+> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的（而非用户显式输入 `/spec`），请先询问："检测到你可能需要进入 /spec 流程，要现在开始吗？" 仅在用户确认后继续。
 
 You are performing constrained design expansion. Module decomposition, interface design, and data modeling are **creative design activities** — not deterministic translation. Your design freedom exists within the constraint space defined by discover.json.
 
@@ -17,6 +20,17 @@ Verify that a discover artifact exists (`specs/discover.json` or `specs/discover
 
 Read the discover artifact. If it is split, read `specs/discover/index.json` first, then load `requirements.json`, `scenarios.json`, and `history.json` as needed. Check the artifact's `mode` to determine full or lite behavior.
 If `specs/build_report.json` or `specs/build/index.json` exists (backtrack from /build), read it too for diagnostic context.
+
+### Feature Mode: Code Awareness
+
+When `mode=feature` (i.e., the discover artifact is at `specs/features/feat-xxx/discover.json`):
+
+1. Read the project profile L1 layer at `.nopilot/profile/l1-arch.json` for existing module and interface context.
+2. Before designing any new module interface, check L1 for existing modules that may already implement or overlap with the required behavior — avoid re-implementing or creating conflicting interfaces.
+3. When a new module must call or extend an existing module, reference the existing module by name and path (from L1 `modules[]`) in the spec's `dependency_graph`.
+4. If L1 is unavailable (profile does not exist), proceed in standard greenfield mode — no code awareness required.
+
+This step applies only when `mode=feature`. In greenfield mode, skip this step entirely (INV-001).
 
 ## Process
 

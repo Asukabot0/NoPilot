@@ -1,6 +1,6 @@
 {
   "name": "nopilot",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "AI Native development workflow with Lash multi-agent build engine",
   "type": "module",
   "bin": {
@@ -10,6 +10,7 @@
   "files": [
     "dist",
     "commands",
+    "prompts",
     "schemas",
     "workflow.json"
   ],
@@ -23,7 +24,9 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "commander": "^13.0.0"
+    "ajv": "^8.18.0",
+    "commander": "^13.0.0",
+    "eta": "^4.5.1"
   },
   "devDependencies": {
     "@types/node": "^25.5.2",

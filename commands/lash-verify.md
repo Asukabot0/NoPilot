@@ -1,3 +1,4 @@
+<!-- nopilot-managed v<%=VERSION%> -->
 # Lash Final Verification Phase
 
 You are performing the final verification of a Lash build. All modules have been merged. You now run full tests, auto-acceptance, Build Critic, and Supervisor.

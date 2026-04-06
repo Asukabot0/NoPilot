@@ -1,0 +1,117 @@
+{
+  "example_cases": [
+    {
+      "id": "TEST-028",
+      "suite_type": "integration",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-006"],
+      "description": "scanCodebase extracts tech stack from TypeScript project",
+      "category": "normal",
+      "ears_ref": "REQ-006-AC-1",
+      "derivation": "direct_from_ears",
+      "input": "rootDir of a TypeScript project with package.json, tsconfig.json, vitest.config.ts",
+      "expected_output": "l0Partial: { languages: ['TypeScript'], package_manager: 'npm', test_framework: 'vitest', frameworks: [...] }",
+      "setup": "Create minimal TypeScript project structure"
+    },
+    {
+      "id": "TEST-029",
+      "suite_type": "integration",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-006"],
+      "description": "scanCodebase extracts directory structure",
+      "category": "normal",
+      "ears_ref": "REQ-006-AC-1",
+      "derivation": "direct_from_ears",
+      "input": "rootDir with src/, tests/, docs/ directories",
+      "expected_output": "l1Partial.directory_structure includes { 'src/': '...', 'tests/': '...', 'docs/': '...' }",
+      "setup": "Create directory structure with files"
+    },
+    {
+      "id": "TEST-030",
+      "suite_type": "unit",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-006"],
+      "description": "scanCodebase sets parallelized=true when file count exceeds threshold",
+      "category": "boundary",
+      "ears_ref": "REQ-006-AC-2",
+      "derivation": "direct_from_ears",
+      "input": "rootDir with 600 files, config.scanThresholdFiles: 500",
+      "expected_output": "{ fileCount: 600, parallelized: true, ... }",
+      "setup": "Create directory with 600+ small files across multiple subdirectories"
+    },
+    {
+      "id": "TEST-031",
+      "suite_type": "unit",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-006"],
+      "description": "scanCodebase does not parallelize below threshold",
+      "category": "boundary",
+      "ears_ref": "REQ-006-AC-2",
+      "derivation": "direct_from_ears",
+      "input": "rootDir with 100 files, config.scanThresholdFiles: 500",
+      "expected_output": "{ fileCount: 100, parallelized: false, ... }",
+      "setup": "Create directory with ~100 files"
+    },
+    {
+      "id": "TEST-032",
+      "suite_type": "unit",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-004"],
+      "description": "hasExistingCode returns true for project with git history",
+      "category": "normal",
+      "ears_ref": "REQ-004-AC-1",
+      "derivation": "direct_from_ears",
+      "input": "rootDir with .git/ directory",
+      "expected_output": "{ hasCode: true, indicators: ['git_history'] }",
+      "setup": "Initialize git repo"
+    },
+    {
+      "id": "TEST-033",
+      "suite_type": "unit",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-004"],
+      "description": "hasExistingCode returns true for project with package.json only (no git)",
+      "category": "boundary",
+      "ears_ref": "REQ-004-AC-1",
+      "derivation": "direct_from_ears",
+      "input": "rootDir with package.json but no .git/",
+      "expected_output": "{ hasCode: true, indicators: ['package.json'] }",
+      "setup": "Create package.json in temp dir"
+    },
+    {
+      "id": "TEST-034",
+      "suite_type": "unit",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-004"],
+      "description": "hasExistingCode returns false for empty directory",
+      "category": "boundary",
+      "ears_ref": "REQ-004-AC-1",
+      "derivation": "direct_from_ears",
+      "input": "Empty rootDir",
+      "expected_output": "{ hasCode: false, indicators: [] }",
+      "setup": "Empty temp directory"
+    },
+    {
+      "id": "TEST-035",
+      "suite_type": "integration",
+      "module_ref": "MOD-003",
+      "requirement_refs": ["REQ-006"],
+      "description": "scanCodebase detects test coverage summary from test files",
+      "category": "normal",
+      "ears_ref": "REQ-006-AC-1",
+      "derivation": "direct_from_ears",
+      "input": "rootDir with src/__tests__/ containing 5 test files",
+      "expected_output": "l3Partial.test_coverage includes { total_tests: >0, framework: 'vitest' or detected framework }",
+      "setup": "Create test files in __tests__/ directory"
+    }
+  ],
+  "property_cases": [
+    {
+      "id": "PROP-005",
+      "module_ref": "MOD-003",
+      "invariant_ref": "INV-005",
+      "property": "For any scanCodebase call where fileCount > scanThresholdFiles, parallelized must be true and scan completes without error",
+      "requirement_refs": ["REQ-006"]
+    }
+  ]
+}

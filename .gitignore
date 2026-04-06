@@ -2,6 +2,9 @@
 .omc/
 .omx/
 
+# NoPilot profile (derived from specs/ artifacts, regenerable)
+.nopilot/profile/
+
 # Build and dependencies
 dist/
 node_modules/
@@ -11,9 +14,13 @@ specs/*.json
 specs/discover/
 specs/spec/
 specs/views/
+specs/mockups/
 
 # Superpowers generated plans/specs
 docs/superpowers/
+
+# Legacy Codex prompts (replaced by skill engine)
+prompts/codex/
 
 # Lash-generated runtime directives (created by nopilot init)
 AGENTS.md
