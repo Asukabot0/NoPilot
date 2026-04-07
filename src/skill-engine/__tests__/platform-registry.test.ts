@@ -14,14 +14,15 @@ import {
 const home = os.homedir();
 
 describe('getActivePlatforms', () => {
-  it('TEST-011: returns only claude and codex (active platforms)', () => {
+  it('TEST-011: returns claude, codex, and opencode (active platforms)', () => {
     const active = getActivePlatforms();
     const names = active.map((p) => p.name);
     expect(names).toContain('claude');
     expect(names).toContain('codex');
+    expect(names).toContain('opencode');
     expect(names).not.toContain('gemini');
-    expect(names).not.toContain('opencode');
     expect(active.every((p) => p.status === 'active')).toBe(true);
+    expect(active).toHaveLength(3);
   });
 });
 
@@ -68,6 +69,21 @@ describe('getPlatform', () => {
   it('TEST-015: returns undefined for nonexistent platform', () => {
     const platform = getPlatform('nonexistent');
     expect(platform).toBeUndefined();
+  });
+
+  it('TEST-019: returns correct config for opencode', () => {
+    const platform = getPlatform('opencode');
+    expect(platform).toBeDefined();
+    expect(platform!.name).toBe('opencode');
+    expect(platform!.status).toBe('active');
+    expect(platform!.skillsDir).toBe(`${home}/.agents/skills/`);
+    expect(platform!.legacyDir).toBeNull();
+    expect(platform!.placeholderMap['CRITIC_PATH']).toBe(
+      `${home}/.agents/skills/critic/SKILL.md`,
+    );
+    expect(platform!.placeholderMap['SUPERVISOR_PATH']).toBe(
+      `${home}/.agents/skills/supervisor/SKILL.md`,
+    );
   });
 });
 

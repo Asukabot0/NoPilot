@@ -26,7 +26,11 @@ import {
   isWithinMigrationWindow,
   MIGRATION_SINCE_VERSION,
 } from './skill-engine/legacy-migrator.js';
-import { getActivePlatforms } from './skill-engine/platform-registry.js';
+import { getActivePlatforms, getPlatform } from './skill-engine/platform-registry.js';
+
+// CLI output helpers (AGENTS.md: 禁止在源文件中直接 console.log)
+function out(message: string): void { process.stdout.write(message + '\n'); }
+function err(message: string): void { process.stderr.write(message + '\n'); }
 
 // Resolve package root relative to this compiled file (dist/nopilot-cli.js → package root)
 const __filename = fileURLToPath(import.meta.url);
@@ -76,7 +80,7 @@ program
     const currentVersion = getVersion();
     const { active, versionsRemaining } = isWithinMigrationWindow(currentVersion, MIGRATION_SINCE_VERSION);
     if (active) {
-      console.warn(
+      err(
         `[nopilot] Deprecation notice: Legacy skill locations (e.g. ~/.claude/commands/) are being replaced ` +
         `by unified skill directories. Migration window closes in ${versionsRemaining} minor version(s). ` +
         `Run \`nopilot init\` to migrate now.`,
@@ -107,10 +111,16 @@ program
     if (existsSync(sourceDir)) {
       const results = installAllPlatforms(sourceDir, force, platformsWithVersion);
       for (const result of results) {
-        if (result.success) {
-          console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
+        if (!result.success) {
+          err(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+        } else if (result.skipped) {
+          const skippedPlatform = getPlatform(result.platform);
+          const sharedWith = platformsWithVersion.find(
+            p => p.name !== result.platform && p.skillsDir === skippedPlatform?.skillsDir,
+          );
+          out(`Skipped ${result.platform} (shares skill directory with ${sharedWith?.name})`);
         } else {
-          console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+          out(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
         }
       }
     }
@@ -120,7 +130,7 @@ program
     if (!existsSync(specsDir)) {
       mkdirSync(specsDir, { recursive: true });
       writeFileSync(resolve(specsDir, '.gitkeep'), '', 'utf-8');
-      console.log(`Created specs/ directory`);
+      out(`Created specs/ directory`);
     }
 
     // Append Lash directive to agent instruction files (idempotent)
@@ -137,17 +147,17 @@ program
           const markerIdx = existing.indexOf(LASH_DIRECTIVE_MARKER);
           const updated = existing.substring(0, markerIdx).trimEnd() + '\n' + LASH_DIRECTIVE;
           writeFileSync(filePath, updated, 'utf-8');
-          console.log(`Updated Lash directive in ${filename}`);
+          out(`Updated Lash directive in ${filename}`);
         } else {
-          console.log(`Skipped Lash directive in ${filename} (already present)`);
+          out(`Skipped Lash directive in ${filename} (already present)`);
         }
         continue;
       }
       writeFileSync(filePath, existing + LASH_DIRECTIVE, 'utf-8');
-      console.log(`Appended Lash directive to ${filename}`);
+      out(`Appended Lash directive to ${filename}`);
     }
 
-    console.log(`\nNoPilot initialized in ${targetDir}`);
+    out(`\nNoPilot initialized in ${targetDir}`);
   });
 
 // ─── paths ─────────────────────────────────────────────────────────────────
@@ -171,7 +181,7 @@ program
         activePlatforms.filter((p) => p.legacyDir).map((p) => [p.name, p.legacyDir]),
       ),
     };
-    console.log(JSON.stringify(paths, null, 2));
+    out(JSON.stringify(paths, null, 2));
   });
 
 // ─── version ────────────────────────────────────────────────────────────────
@@ -180,7 +190,7 @@ program
   .command('version')
   .description('Print the nopilot package version')
   .action(() => {
-    console.log(`nopilot v${getVersion()}`);
+    out(`nopilot v${getVersion()}`);
   });
 
 // ─── validate ───────────────────────────────────────────────────────────────
@@ -189,7 +199,7 @@ program
   .command('validate')
   .description('Validate project artifacts (not yet implemented)')
   .action(() => {
-    console.log('Not yet implemented. Planned for V2.');
+    out('Not yet implemented. Planned for V2.');
     process.exit(0);
   });
 
@@ -199,7 +209,7 @@ program
   .command('preview')
   .description('Preview generated artifacts (not yet implemented)')
   .action(() => {
-    console.log('Not yet implemented. Planned for issue #21.');
+    out('Not yet implemented. Planned for issue #21.');
     process.exit(0);
   });
 
