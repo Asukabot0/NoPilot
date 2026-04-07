@@ -37,26 +37,26 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PACKAGE_ROOT = resolve(__dirname, '..');
 
-const LASH_DIRECTIVE = `
-## Lash (Auto-triggered Multi-Agent Build Orchestrator)
-
-When ALL of the following conditions are met:
-1. Spec artifact exists: \`specs/spec.json\` OR \`specs/spec/index.json\` (design is complete)
-2. Discover artifact exists: \`specs/discover.json\` OR \`specs/discover/index.json\` (requirements are locked)
-3. User intent involves building, implementing, or coding the designed system
-
-→ Invoke the installed Lash build prompt to orchestrate a multi-agent parallel build:
-  - Claude Code: \`/lash-build\`
-  - Codex: \`/prompts:lash-build\`
-
-Lash treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent.
-Lash auto-detects single-file vs split-directory format for spec and discover artifacts.
-
-NoPilot schemas and workflow definition are in the npm package.
-Run \`nopilot paths\` to locate them.
-`;
-
 const LASH_DIRECTIVE_MARKER = '## Lash (Auto-triggered Multi-Agent Build Orchestrator)';
+
+function extractLashDirective(): string {
+  const claudeDevPath = resolve(PACKAGE_ROOT, 'CLAUDE.dev.md');
+  try {
+    const content = readFileSync(claudeDevPath, 'utf-8');
+    const lines = content.split('\n');
+    const startIdx = lines.findIndex(line => line.startsWith(LASH_DIRECTIVE_MARKER));
+    if (startIdx === -1) {
+      err(`Warning: ${LASH_DIRECTIVE_MARKER} not found in CLAUDE.dev.md`);
+      return '';
+    }
+    const endIdx = lines.findIndex((line, idx) => idx > startIdx && line.startsWith('## '));
+    const lashLines = lines.slice(startIdx, endIdx === -1 ? undefined : endIdx);
+    return '\n' + lashLines.join('\n');
+  } catch {
+    err(`Error: Failed to read CLAUDE.dev.md from ${claudeDevPath}`);
+    return '';
+  }
+}
 
 const program = new Command();
 
@@ -134,27 +134,32 @@ program
     }
 
     // Append Lash directive to agent instruction files (idempotent)
-    const agentFiles = ['CLAUDE.md', 'AGENTS.md', 'opencode.md'];
-    for (const filename of agentFiles) {
-      const filePath = resolve(targetDir, filename);
-      if (!existsSync(filePath)) {
-        continue;
-      }
-      const existing = readFileSync(filePath, 'utf-8');
-      if (existing.includes(LASH_DIRECTIVE_MARKER)) {
-        if (force) {
-          // Replace old directive with new one
-          const markerIdx = existing.indexOf(LASH_DIRECTIVE_MARKER);
-          const updated = existing.substring(0, markerIdx).trimEnd() + '\n' + LASH_DIRECTIVE;
-          writeFileSync(filePath, updated, 'utf-8');
-          out(`Updated Lash directive in ${filename}`);
-        } else {
-          out(`Skipped Lash directive in ${filename} (already present)`);
+    const lashDirective = extractLashDirective();
+    if (!lashDirective) {
+      err('Warning: No Lash directive found, skipping injection');
+    } else {
+      const agentFiles = ['CLAUDE.md', 'AGENTS.md', 'opencode.md'];
+      for (const filename of agentFiles) {
+        const filePath = resolve(targetDir, filename);
+        if (!existsSync(filePath)) {
+          continue;
         }
-        continue;
+        const existing = readFileSync(filePath, 'utf-8');
+        if (existing.includes(LASH_DIRECTIVE_MARKER)) {
+          if (force) {
+            // Replace old directive with new one
+            const markerIdx = existing.indexOf(LASH_DIRECTIVE_MARKER);
+            const updated = existing.substring(0, markerIdx).trimEnd() + lashDirective;
+            writeFileSync(filePath, updated, 'utf-8');
+            out(`Updated Lash directive in ${filename}`);
+          } else {
+            out(`Skipped Lash directive in ${filename} (already present)`);
+          }
+          continue;
+        }
+        writeFileSync(filePath, existing + lashDirective, 'utf-8');
+        out(`Appended Lash directive to ${filename}`);
       }
-      writeFileSync(filePath, existing + LASH_DIRECTIVE, 'utf-8');
-      out(`Appended Lash directive to ${filename}`);
     }
 
     out(`\nNoPilot initialized in ${targetDir}`);

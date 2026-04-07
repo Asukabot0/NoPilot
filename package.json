@@ -11,7 +11,8 @@
     "dist",
     "commands",
     "schemas",
-    "workflow.json"
+    "workflow.json",
+    "CLAUDE.dev.md"
   ],
   "scripts": {
     "build": "tsc",
