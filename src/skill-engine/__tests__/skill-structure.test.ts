@@ -484,3 +484,120 @@ describe('Property tests', () => {
     expect(failures, `DISPATCH CONTRACT output_file not in specs/: ${failures.join(', ')}`).toHaveLength(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Context budget e2e tests for PR #60
+// ---------------------------------------------------------------------------
+
+describe('Context budget e2e tests (PR #60)', () => {
+  it('TEST-070-001: dispatch-protocol.md exists and defines context budget', () => {
+    const content = readFile('commands/discover/dispatch-protocol.md');
+    expect(content).toContain('Context Budget');
+    expect(content).toContain('< 200K chars');
+    expect(content).toContain('Mode Detection: < 1K chars');
+    expect(content).toContain('Layer 1 Research: < 3K chars');
+    expect(content).toContain('Layer 3 Generation: < 3K chars');
+    expect(content).toContain('Artifact Writing: < 500 chars');
+    expect(content).toContain('UI Taste (per batch): < 2K chars');
+  });
+
+  it('TEST-070-002: SKILL.md contains DISPATCH CONTRACT blocks', () => {
+    const content = readFile('commands/discover/SKILL.md');
+    expect(content).toContain('DISPATCH CONTRACT');
+    
+    // Count dispatch contracts
+    const contracts = content.match(/<!--\s*DISPATCH CONTRACT[\s\S]*?-->/g);
+    expect(contracts).toBeDefined();
+    expect(contracts!.length).toBeGreaterThan(0);
+  });
+
+  it('TEST-070-003: mode-detection.md has valid dispatch contract with correct output summary format', () => {
+    const content = readFile('commands/discover/mode-detection.md');
+    expect(content).toContain('DISPATCH CONTRACT');
+    // Format: output <= 500 chars, max 20 items
+    expect(content).toMatch(/output\s*<=\s*500\s*chars.*max\s*\d+\s*items/);
+    
+    // Verify output format specification
+    expect(content).toContain('mode: greenfield | feature');
+    expect(content).toContain('rationale:');
+    expect(content).toContain('profile_stale:');
+    expect(content).toContain('Keep total output under 500 chars');
+  });
+
+  it('TEST-070-004: ui-taste.md has valid dispatch contract with correct output summary format', () => {
+    const content = readFile('commands/discover/ui-taste.md');
+    expect(content).toContain('DISPATCH CONTRACT');
+    // Format: output <= 2K chars per batch, max 20 items
+    expect(content).toMatch(/output\s*<=\s*2K\s*chars.*per batch.*max\s*\d+\s*items/);
+    
+    // Verify output format specification
+    expect(content).toMatch(/screens:.*id:.*page:.*description:/s);
+    expect(content).toContain('Keep total output under 2K chars per batch');
+  });
+
+  it('TEST-070-005: artifact-writer.md has valid dispatch contract with correct output summary format', () => {
+    const content = readFile('commands/discover/artifact-writer.md');
+    expect(content).toContain('DISPATCH CONTRACT');
+    expect(content).toContain('output <= 500 chars');
+    
+    // Verify output format specification
+    expect(content).toMatch(/written:.*list of file paths/);
+    expect(content).toMatch(/format:\s*single\s*\|\s*split/);
+  });
+
+  it('TEST-070-006: SKILL.md dispatch contracts reference all sub-skill files', () => {
+    const content = readFile('commands/discover/SKILL.md');
+    
+    // Verify references to all dispatched sub-skills
+    expect(content).toContain('commands/discover/mode-detection.md');
+    expect(content).toContain('commands/discover/idea-intake.md');
+    expect(content).toContain('commands/discover/ui-taste.md');
+    expect(content).toContain('commands/discover/artifact-writer.md');
+    expect(content).toContain('commands/discover/completeness.md');
+  });
+
+  it('TEST-070-007: error handling protocol defined in dispatch-protocol.md', () => {
+    const content = readFile('commands/discover/dispatch-protocol.md');
+    
+    expect(content).toContain('Error Handling Protocol');
+    expect(content).toContain('Stop');
+    expect(content).toContain('Present error');
+    expect(content).toContain('Retry or fallback');
+    
+    // Verify error categories
+    expect(content).toContain('`error`');
+    expect(content).toContain('`timeout`');
+    expect(content).toContain('`unsupported`');
+  });
+
+  it('TEST-070-008: dedup guard implemented in SKILL.md', () => {
+    const content = readFile('commands/discover/SKILL.md');
+    
+    expect(content).toContain('Dedup Guard');
+    expect(content).toContain('do NOT re-inject');
+    expect(content).not.toMatch(/ARGUMENTS section/i);
+  });
+
+  it('TEST-070-009: all sub-skill files marked as dispatch targets', () => {
+    const subSkills = ['mode-detection.md', 'ui-taste.md', 'artifact-writer.md'];
+    
+    for (const skill of subSkills) {
+      const content = readFile(`commands/discover/${skill}`);
+      expect(content).toContain('(dispatch target)');
+    }
+  });
+
+  it('TEST-070-010: feature spec includes context budget requirements', () => {
+    const requirements = JSON.parse(
+      readFile('specs/features/feat-discover-context-diet/discover/requirements.json')
+    );
+    
+    const req011 = requirements.requirements.find((r: any) => r.id === 'REQ-011');
+    expect(req011).toBeDefined();
+    expect(req011.user_story).toContain('200K chars');
+    
+    const ac1 = req011.acceptance_criteria.find((c: any) => c.id === 'REQ-011-AC-1');
+    expect(ac1).toBeDefined();
+    expect(ac1.ears).toContain('< 200K chars');
+  });
+});
