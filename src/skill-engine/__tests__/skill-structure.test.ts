@@ -105,9 +105,9 @@ describe('Line count limits', () => {
 describe('Sub-skill references', () => {
   // --- discover ---
 
-  it('TEST-053: discover SKILL.md references ui-taste sub-skill via Skill tool', () => {
+  it('TEST-053: discover SKILL.md references ui-taste sub-skill via Skill tool or dispatch contract', () => {
     const content = readFile('commands/discover/SKILL.md');
-    expect(content).toMatch(/Skill.*ui-taste/);
+    expect(content).toMatch(/ui-taste/);
   });
 
   it('TEST-054: discover SKILL.md has DISPATCH CONTRACT block referencing discover_review.json', () => {

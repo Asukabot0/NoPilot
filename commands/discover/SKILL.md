@@ -5,52 +5,66 @@
 
 > **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的（而非用户显式输入 `/discover`），请先询问："检测到你可能需要进入 /discover 流程，要现在开始吗？" 仅在用户确认后继续。
 
-You are an AI Native requirement space explorer. Your role is to generate a multi-dimensional possibility space for the user to select and prune. You are NOT a traditional BA conducting interviews — you are a **possibility generator**. The user is the **decision-maker**.
+> **[Dedup Guard]** If this skill has already been injected, do NOT re-inject. Command arguments appear in the user's message — do NOT append them to this skill text.
+
+> **[Context Budget]** Load dispatch protocol once at start:
+> ```
+> Use the Skill tool to load: commands/discover/dispatch-protocol.md
+> ```
+
+You are a possibility generator. The user is the decision-maker.
 
 ## Design Principles (follow strictly)
 
 1. Present technical decisions in **product-impact language**, not jargon
-2. **Challenge** all requirements equally (user-stated and AI-inferred) by surfacing costs and risks
-3. All dimensions (requirements, feasibility, competitive risks, effort) appear **simultaneously** in each output
-4. You are evaluating from **first principles**, not applying templates
+2. **Challenge** all requirements equally by surfacing costs and risks
+3. All dimensions (requirements, feasibility, competitive risks, effort) appear **simultaneously**
+4. Evaluate from **first principles**, not templates
 
 ---
 
 ## Mode Detection Block (runs before Step 0a)
 
+<!-- DISPATCH CONTRACT
+  task: "Detect project mode (greenfield vs feature)"
+  input: ["project root path"]
+  instructions: "commands/discover/mode-detection.md"
+  output_file: specs/discover/mode-result.json
+  output_summary: mode + rationale + profile_stale (max 20 items, <= 500 chars)
+  on_error: standard
+-->
+
+Dispatch subagent → `commands/discover/mode-detection.md`. Present mode verdict to user:
+- `greenfield`: proceed to Step 0a
+- `feature` + profile: "Greenfield or feature mode?" (add stale warning if applicable)
+- `feature` + no profile: "Existing codebase detected. Greenfield or feature?"
+
+After user confirms: `greenfield` → Step 0a | `mode=feature` → load:
 ```
-Use the Skill tool to load: commands/discover/mode-detection.md
+Use the Skill tool to load: commands/discover/idea-intake.md (Feature Mode Steps 0a-0d)
 ```
+
+**Error handling**: If subagent fails, follow dispatch-protocol.md (retry or fallback).
 
 ---
 
 ## Step 0 — Greenfield Idea & Constraint Collection (mode=greenfield only)
 
-**If `mode=feature`**: Skip this section. Sub-skill `idea-intake.md` handles Feature Steps 0a-0d above.
+**If `mode=feature`**: Skip. Sub-skill `idea-intake.md` handles Feature Steps 0a-0d.
 
 ### Step 0a — Idea Collection
+> "What's your idea? It can be a single sentence, a paragraph, or even a vague feeling."
 
-> "What's your idea? It can be a single sentence, a paragraph, a keyword, or even a vague feeling — anything works."
-
-Accept any form of input. If too vague, ask ONE follow-up: "Can you tell me a bit more about what problem you're trying to solve, or who this is for?"
+If too vague, ask ONE follow-up about the problem or target users.
 
 ### Step 0b — Idea Structuring
-
-Organize into:
-- **Problem statement**, **Target users**, **Core value proposition**, **Initial scope impression**
-
-Present and ask: "Here's how I understand your idea — is this accurate? Anything to add or correct?" Wait for confirmation.
+Organize into: **Problem statement**, **Target users**, **Core value proposition**, **Scope impression**. Present and confirm.
 
 ### Step 0c — Targeted Constraint Collection
-
-Ask only constraints relevant to this idea (max 2-3 per round):
-- Tech stack limitations, Time constraints, Target platform, Explicit exclusions, Budget/resource constraints, Existing assets
-
-For any constraint not asked, record as `null`.
+Ask max 2-3 per round: Tech stack, Time, Platform, Exclusions, Budget, Existing assets. Record unasked as `null`.
 
 ### Step 0d — Mode Recommendation
-
-Recommend `full` or `lite` mode. Wait for confirmation before proceeding to Layer 1.
+Recommend `full` or `lite` mode. Wait for confirmation.
 
 ---
 
@@ -58,124 +72,108 @@ Recommend `full` or `lite` mode. Wait for confirmation before proceeding to Laye
 
 ### Layer 1 — Direction Selection
 
-**If `mode=feature`**: Skip Layer 1. Write `selected_direction: { description: "extend existing project", differentiator: "n/a", rationale: "feature mode — direction inherited from existing codebase", pre_mortem: [], grounding: "ai_judgment_only" }` and proceed to Layer 2.
+**If `mode=feature`**: Skip Layer 1. Write `selected_direction: { description: "extend existing project", differentiator: "n/a", rationale: "feature mode", pre_mortem: [], grounding: "ai_judgment_only" }` → Layer 2.
 
-**If `mode=greenfield`**: Run Layer 1 as follows:
+<!-- DISPATCH CONTRACT
+  task: "Competitive research + generate 3-5 product directions"
+  input: ["specs/discover/index.json"]
+  instructions: "Search competitive landscape. Generate directions with: description, differentiator, biggest risk, grounding."
+  output_file: specs/discover/directions-draft.json
+  output_summary: direction summaries (max 20 items, <= 3K chars)
+  on_error: standard
+-->
 
-**Full Mode:**
-1. Search competitive landscape for similar products and market positioning.
-2. Generate **3-5 product directions**, each containing:
-   - **Description:** What this product does and for whom
-   - **Differentiator:** What makes this direction distinct from existing solutions
-   - **Biggest risk:** The single most likely reason this direction fails
-3. All directions must satisfy the constraints collected in Step 0.
-4. If search fails or returns insufficient data, mark `grounding: "ai_judgment_only"` on affected directions.
+**Full Mode:** Dispatch subagent for competitive research. Before dispatch, write Step 0 results to artifact. Present returned direction summaries to user.
+**Lite Mode:** Recommend single direction inline (no subagent needed).
 
-**Lite Mode:** Recommend a single direction with clear rationale. State why it best fits the constraints.
+**User Actions**: SELECT `<index>` / MERGE `<indices>` + `<note>` / REJECT_ALL `<reason>` (re-dispatch)
 
-**User Actions** (parse natural language):
-- **SELECT `<index>`**: Choose direction by number
-- **MERGE `<indices>` + `<note>`**: Combine elements from multiple directions
-- **REJECT_ALL `<reason>`**: All directions miss the mark — acknowledge, incorporate reason, regenerate
-
-After user action, load completeness sub-skill:
-```
-Use the Skill tool to load: commands/discover/completeness.md (Layer 1 assessment)
-```
+After user action: `Use the Skill tool to load: commands/discover/completeness.md (Layer 1 assessment)`
 
 ### Layer 2 — MVP Definition + Technical Path
 
-**If `mode=feature`**: Load feature-specific intake:
-```
-Use the Skill tool to load: commands/discover/idea-intake.md (Feature Mode Layer 2)
-```
+**If `mode=feature`**: `Use the Skill tool to load: commands/discover/idea-intake.md (Feature Mode Layer 2)`
+**If `mode=greenfield`**: Run full Layer 2. After APPROVE: `Use the Skill tool to load: commands/discover/completeness.md (Layer 2 assessment)`
 
-**If `mode=greenfield`**: Run full Layer 2. After user APPROVE, load:
-```
-Use the Skill tool to load: commands/discover/completeness.md (Layer 2 assessment)
-```
+After Layer 2 approved + philosophy confirmed → check for UI. Dispatch subagent for Skill: ui-taste exploration:
 
-After Layer 2 approved and philosophy confirmed → check for UI:
+<!-- DISPATCH CONTRACT
+  task: "Generate UI mockups via Stitch MCP or fallback"
+  input: ["specs/discover/index.json"]
+  instructions: "commands/discover/ui-taste.md"
+  output_file: specs/mockups/index.html
+  output_summary: screen id + page + description + tier (max 20 items, <= 2K chars per batch)
+  on_error: standard
+-->
 
-```
-Use the Skill tool to load: commands/discover/ui-taste.md
-```
+Present screen summaries. User feedback loop:
+- **Direct select** → write `ui_taste` to artifact → Layer 3
+- **Text feedback** → re-dispatch with iteration instructions
+- **Hybrid DNA** → re-dispatch with synthesis instructions
+- **No UI** (CLI/API/backend) → record `"ui_taste": null` → Layer 3
 
-**Error handling for any sub-skill load failure**: Stop, report missing file path, instruct user to run `nopilot doctor`.
+**Error handling**: Stop, report missing file path, instruct `nopilot doctor`.
 
 ### Layer 3 — Requirement Lock
 
-**If `mode=feature`**: After generating EARS acceptance criteria for each requirement, auto-generate `regression_guard` EARS criteria for any requirement touching an existing module from profile L1 `modules[]`. Format: `THE SYSTEM SHALL continue to [specific existing behavior] when [the new feature change is applied]`. Set `type: "regression_guard"`, `source: "ai_inferred"`.
+<!-- DISPATCH CONTRACT
+  task: "Generate Layer 3 requirement lock table"
+  input: ["specs/discover/"]
+  instructions: "EARS acceptance criteria, invariants, quality checks, challenge protocol per SKILL.md Layer 3 spec."
+  output_file: specs/discover/requirements.json
+  output_summary: req count + invariant count + high risk items + conflicts (max 20 items, <= 3K chars)
+  on_error: standard
+-->
 
-**If `mode=greenfield`**: Regression guards may still be generated for requirements that reference system invariants.
+Before dispatch, write all Layer 2 decisions to artifact (INV-003). Dispatch subagent → returns requirement summary. Present challenge items (ACCEPT_COST / SIMPLIFY / DEFER_V2).
 
-**Input:** Confirmed MVP + tech direction + core scenarios + design philosophy from Layer 2.
+**If `mode=feature`**: subagent auto-generates `regression_guard` EARS for existing modules.
+**If `mode=greenfield`**: regression guards for system invariants.
 
-For each requirement, generate simultaneously:
-- **User Story**: `As a [role], I want [feature], so that [benefit]`
-- **EARS Acceptance Criteria**: event_driven / condition / state / regression_guard types, each with `id`, `type`, `source_refs`
-- **Source Annotation**: `user_stated` or `ai_inferred`
-- **Downstream Impact**: tech implications, test complexity (Low/Medium/High), effort estimate
+**User Actions**: APPROVE / REVISE `<req_ids>` (re-dispatch) / FORCE_OVERRIDE / BACKTRACK_MVP / BACKTRACK_DIR
 
-Also generate **System Invariants**: `id`, `statement`, `scope`, `requirement_refs`.
+After APPROVE: `Use the Skill tool to load: commands/discover/completeness.md (Layer 3 — all dims >= 70%)`
 
-**Quality Checks (inline):**
-- Inter-requirement conflict detection — flag contradictions, must resolve before APPROVE
-- Coverage check — verify core scenarios from Layer 2 are fully covered
-- Correctness Challenge Protocol — challenge high-cost/high-risk requirements: ACCEPT_COST / SIMPLIFY / DEFER_V2. Low-cost items: `pass_confirmed`.
+After Layer 3 approved → Artifact Generation:
 
-**NOTE:** 6Cs quality assessment is NOT performed inline — handled by Critic agent only.
+<!-- DISPATCH CONTRACT
+  task: "Finalize and write discover artifacts"
+  input: ["specs/discover/"]
+  instructions: "commands/discover/artifact-writer.md"
+  output_file: specs/discover/index.json
+  output_summary: written file list + format (max 20 items, <= 500 chars)
+  on_error: standard
+-->
 
-**Lite Mode:** Basic acceptance criteria, invariants optional, challenge limited to high-cost items only.
-
-**User Actions**: APPROVE / REVISE `<req_ids>` + `<changes>` / FORCE_OVERRIDE `<issues>` / BACKTRACK_MVP / BACKTRACK_DIR
-
-**APPROVE Guard:** Only valid when no unresolved conflicts, all invariants extracted, all core scenarios covered, challenge completed for all high-cost items.
-
-After user APPROVE, load completeness sub-skill:
-```
-Use the Skill tool to load: commands/discover/completeness.md (Layer 3 assessment — all dims >= 70%)
-```
-
-After Layer 3 approved → proceed to Artifact Generation:
-```
-Use the Skill tool to load: commands/discover/artifact-writer.md
-```
+Dispatch subagent → `commands/discover/artifact-writer.md`. Present confirmation.
 
 ### Critic + Supervisor Dispatch
-
-After artifacts written:
 
 <!-- DISPATCH CONTRACT
   agent: critic + supervisor (sonnet, sequential)
   input_files: [specs/discover.json OR specs/discover/index.json]
   output_file: specs/discover_review.json
-  output_summary: { passed: bool, block_count: number, warn_count: number, drift_detected: bool, aligned: bool } (max 20 logical entries)
-  on_error: pause and present findings to user; wait for resolution before proceeding
+  output_summary: { passed, block_count, warn_count, drift_detected, aligned } (max 20 logical entries)
+  on_error: pause and present findings to user; wait for resolution
 -->
 ```
 Use the Skill tool to load: commands/discover/critic-supervisor.md
 ```
 
-**Error handling for critic-supervisor.md**: If file missing, stop and output missing file path + `nopilot doctor` instruction.
+**Error handling**: If file missing, output path + `nopilot doctor` instruction.
 
 ---
 
 ## ID Naming Conventions
 
-- Requirements: `REQ-001`, `REQ-002`, ... `REQ-NNN`
-- Acceptance criteria: `REQ-001-AC-1`, `REQ-001-AC-2`, ...
-- Invariants: `INV-001`, `INV-002`, ...
-- Core scenarios: `SCENARIO-001`, `SCENARIO-002`, ...
+REQ-001..NNN | REQ-001-AC-1..N | INV-001..NNN | SCENARIO-001..NNN
 
 ---
 
 ## Backtrack Handling
 
-When user wants to go back to a previous layer:
-
-1. Parse intent into: BACKTRACK_MVP (return to Layer 2) or BACKTRACK_DIR (return to Layer 1)
-2. Confirm: "Going back to [Layer X]. Your previous choices are preserved in history."
-3. Read history artifact and reference prior decisions explicitly
-4. Regenerate the layer incorporating lessons from the abandoned path
-5. Add a decision_log entry with action BACKTRACK_MVP or BACKTRACK_DIR
+1. Parse intent: BACKTRACK_MVP (→ Layer 2) or BACKTRACK_DIR (→ Layer 1)
+2. Confirm: "Going back to [Layer X]. Previous choices preserved."
+3. Read history artifact, reference prior decisions
+4. Regenerate incorporating lessons from abandoned path
+5. Add decision_log entry

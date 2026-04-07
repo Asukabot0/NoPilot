@@ -1,0 +1,32 @@
+{
+  "decisions": [
+    {
+      "stage": "spec",
+      "timestamp": "2026-04-07T14:00:00Z",
+      "decision": "dispatch-protocol.md as standalone sub-skill file",
+      "alternatives": ["Embed protocol in SKILL.md header", "Inline in each sub-skill"],
+      "rationale": "Referenced by all sub-skills; single source of truth avoids duplication. ~1K file loaded once per session.",
+      "impact": "Adds one new file to the skill directory",
+      "impact_level": "low"
+    },
+    {
+      "stage": "spec",
+      "timestamp": "2026-04-07T14:00:00Z",
+      "decision": "Layer 1 and Layer 3 dispatch contracts remain in SKILL.md rather than separate files",
+      "alternatives": ["l1-dispatch.md and l3-dispatch.md as standalone files"],
+      "rationale": "These are dispatch annotations + summary presentation logic, not standalone sub-skill instructions. Keeping them in SKILL.md avoids unnecessary file proliferation.",
+      "impact": "SKILL.md grows slightly, but dispatch contracts are HTML comments",
+      "impact_level": "low"
+    },
+    {
+      "stage": "spec",
+      "timestamp": "2026-04-07T14:00:00Z",
+      "decision": "Subagent summaries not cached to files",
+      "alternatives": ["Write summaries to temp files for crash recovery"],
+      "rationale": "Summaries are < 3K chars and live in conversation context. On failure, subagent re-dispatch regenerates them.",
+      "impact": "No crash recovery for summaries, but subagent re-dispatch is fast",
+      "impact_level": "low"
+    }
+  ],
+  "contract_amendments": []
+}
