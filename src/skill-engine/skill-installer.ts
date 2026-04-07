@@ -99,13 +99,15 @@ export function installAllPlatforms(
       errors: [],
     };
 
-    if (installedDirs.has(platform.skillsDir)) {
+    const resolvedDir = path.resolve(platform.skillsDir);
+
+    if (installedDirs.has(resolvedDir)) {
       result.skipped = true;
       results.push(result);
       continue;
     }
 
-    installedDirs.add(platform.skillsDir);
+    installedDirs.add(resolvedDir);
 
     try {
       const skills = scanSourceSkills(sourceDir);

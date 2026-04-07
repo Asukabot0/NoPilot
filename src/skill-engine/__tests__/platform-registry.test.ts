@@ -71,7 +71,7 @@ describe('getPlatform', () => {
     expect(platform).toBeUndefined();
   });
 
-  it('TEST-016: returns correct config for opencode', () => {
+  it('TEST-019: returns correct config for opencode', () => {
     const platform = getPlatform('opencode');
     expect(platform).toBeDefined();
     expect(platform!.name).toBe('opencode');
@@ -88,14 +88,14 @@ describe('getPlatform', () => {
 });
 
 describe('validateMappingCompleteness', () => {
-  it('TEST-017: valid when all required variables are mapped', () => {
+  it('TEST-016: valid when all required variables are mapped', () => {
     const platform = getPlatform('claude')!;
     const result = validateMappingCompleteness(platform, ['CRITIC_PATH', 'SUPERVISOR_PATH']);
     expect(result.valid).toBe(true);
     expect(result.missingKeys).toEqual([]);
   });
 
-  it('TEST-018: invalid when a required key is missing', () => {
+  it('TEST-017: invalid when a required key is missing', () => {
     const platform = getPlatform('gemini')!;
     const result = validateMappingCompleteness(platform, ['CRITIC_PATH', 'SUPERVISOR_PATH']);
     expect(result.valid).toBe(false);
