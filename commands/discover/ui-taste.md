@@ -1,6 +1,27 @@
 <!-- nopilot-managed v<%=VERSION%> -->
+<!-- Feature Mode: mode=feature uses creativeRange REFINE; mode=greenfield uses REIMAGINE. -->
+<!-- DISPATCH CONTRACT target: dispatched by SKILL.md; output <= 2K chars per batch, max 20 items -->
 
-# discover/ui-taste — UI Taste Exploration
+# discover/ui-taste — UI Taste Exploration (dispatch target)
+
+You are a dispatch target. Execute all UI mockup generation (Stitch MCP or fallback tiers), serve previews, and return screen summaries to the main agent. The main agent handles user feedback — you receive iteration instructions via re-dispatch.
+
+### Output Format (return this to main agent after each generation batch)
+
+```
+screens:
+  - id: "{screen_id}"
+    page: "{page_name}"
+    description: "one-line visual description of the design"
+    variant_count: {N}
+stitch_project_id: "{id or null}"
+tier: 1 | 2 | 3
+preview_url: "{local url or null}"
+```
+
+Keep total output under 2K chars per batch. Do NOT return raw Stitch JSON, component trees, or full HTML content. The main agent only needs IDs and descriptions to present choices to the user.
+
+---
 
 ### Feature Mode: UI Taste Adherence
 
@@ -122,11 +143,11 @@ After user selects their preferred design:
    ```
 6. **Cleanup:** Kill HTTP server, delete temp files under `/tmp/nopilot-preview-*`
 
-After completing UI Taste Exploration, proceed to Layer 3 (Requirement Lock). The selected mockups and design tokens are available for reference during requirement definition.
+After completing UI Taste Exploration, return the final screen summaries + `ui_taste` field data to the main agent. The main agent writes `ui_taste` to the discover artifact and proceeds to Layer 3.
 
 ---
 
-### Downstream Usage
+### Downstream Usage (informational — for main agent context)
 
 - **Layer 3:** When defining UI-related requirements, reference the selected mockups for specific elements
 - **`/spec` phase:** Reads `specs/mockups/` + `tokens.json` for component-level design

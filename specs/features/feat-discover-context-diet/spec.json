@@ -1,0 +1,849 @@
+{
+  "phase": "spec",
+  "version": "4.0",
+  "status": "approved",
+  "featureSlug": "discover-context-diet",
+  "profile_ref": ".nopilot/profile/",
+  "modules": [
+    {
+      "id": "MOD-A",
+      "name": "skill-orchestrator",
+      "responsibility": "Main SKILL.md: dedup guard (AC-1: skip re-injection, AC-2: remove ARGUMENTS append from template), context budget declaration, dispatch routing for all subagent stages, user interaction loop for summaries and confirmations",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "dedup-guard",
+          "input_schema": {
+            "skill_already_loaded": "boolean (detect from conversation context)"
+          },
+          "output_schema": {
+            "action": "'skip' | 'load'"
+          },
+          "errors": [],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-001"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-001-AC-1"
+          ]
+        },
+        {
+          "type": "internal",
+          "name": "dispatch-router",
+          "input_schema": {
+            "stage": "string (mode_detection | layer1 | layer3 | artifact | ui_taste)",
+            "context": "object (user decisions so far)"
+          },
+          "output_schema": {
+            "dispatch_contract": "DispatchContract",
+            "summary": "string"
+          },
+          "errors": [
+            "subagent_timeout",
+            "subagent_error",
+            "platform_unsupported"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-008",
+            "REQ-009",
+            "REQ-010"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-008-AC-1",
+            "REQ-008-AC-2",
+            "REQ-009-AC-1",
+            "REQ-009-AC-2",
+            "REQ-009-AC-3",
+            "REQ-009-AC-4"
+          ]
+        }
+      ],
+      "data_models": [
+        {
+          "name": "ContextBudget",
+          "fields": [
+            {
+              "name": "total_target",
+              "type": "string",
+              "constraints": "< 200K chars (design-time declaration, verified by testing, not enforced at runtime)"
+            },
+            {
+              "name": "measurement_scope",
+              "type": "string",
+              "constraints": "user+assistant message content, excluding system prompts and tool schemas"
+            },
+            {
+              "name": "per_stage_targets",
+              "type": "object",
+              "constraints": "mode_detection: <1K, layer1: <3K, layer3: <3K, artifact: <500, ui_taste: <2K per batch (design-time targets)"
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "state_machine": {
+        "states": [
+          "init",
+          "skill_loaded",
+          "mode_dispatched",
+          "mode_received",
+          "idea_structuring",
+          "L1_dispatched",
+          "L1_summary_received",
+          "L1_completeness",
+          "L2_mvp",
+          "L2_completeness",
+          "design_philosophy",
+          "ui_dispatched",
+          "ui_summary_received",
+          "L3_dispatched",
+          "L3_summary_received",
+          "L3_completeness",
+          "artifact_dispatched",
+          "artifact_confirmed",
+          "critic_dispatched",
+          "supervisor_dispatched",
+          "done"
+        ],
+        "error_states": [
+          "error_presented",
+          "fallback_inline"
+        ],
+        "note": "Completeness assessments and design philosophy extraction are existing behaviors preserved by INV-002. They run inline in main agent (lightweight, ~3K each). Not subagent-ified.",
+        "transitions": [
+          {
+            "from": "init",
+            "to": "skill_loaded",
+            "event": "skill_injected (dedup guard passes)"
+          },
+          {
+            "from": "skill_loaded",
+            "to": "mode_dispatched",
+            "event": "dispatch MOD-B"
+          },
+          {
+            "from": "mode_dispatched",
+            "to": "mode_received",
+            "event": "subagent returns summary"
+          },
+          {
+            "from": "mode_received",
+            "to": "idea_structuring",
+            "event": "present mode to user"
+          },
+          {
+            "from": "idea_structuring",
+            "to": "L1_dispatched",
+            "event": "mode=greenfield, user confirms constraints"
+          },
+          {
+            "from": "idea_structuring",
+            "to": "L2_mvp",
+            "event": "mode=feature, skip Layer 1"
+          },
+          {
+            "from": "L1_dispatched",
+            "to": "L1_summary_received",
+            "event": "subagent returns directions"
+          },
+          {
+            "from": "L1_summary_received",
+            "to": "L1_completeness",
+            "event": "user selects direction"
+          },
+          {
+            "from": "L1_completeness",
+            "to": "L2_mvp",
+            "event": "completeness passes"
+          },
+          {
+            "from": "L2_mvp",
+            "to": "L2_completeness",
+            "event": "user approves L2"
+          },
+          {
+            "from": "L2_completeness",
+            "to": "design_philosophy",
+            "event": "completeness passes (greenfield)"
+          },
+          {
+            "from": "L2_completeness",
+            "to": "ui_dispatched",
+            "event": "completeness passes (feature) + has UI"
+          },
+          {
+            "from": "L2_completeness",
+            "to": "L3_dispatched",
+            "event": "completeness passes + no UI"
+          },
+          {
+            "from": "design_philosophy",
+            "to": "ui_dispatched",
+            "event": "philosophy confirmed + has UI"
+          },
+          {
+            "from": "design_philosophy",
+            "to": "L3_dispatched",
+            "event": "philosophy confirmed + no UI"
+          },
+          {
+            "from": "ui_dispatched",
+            "to": "ui_summary_received",
+            "event": "subagent returns screen summaries"
+          },
+          {
+            "from": "ui_summary_received",
+            "to": "ui_dispatched",
+            "event": "user requests iteration"
+          },
+          {
+            "from": "ui_summary_received",
+            "to": "L3_dispatched",
+            "event": "user approves UI"
+          },
+          {
+            "from": "L3_dispatched",
+            "to": "L3_summary_received",
+            "event": "subagent returns req summary"
+          },
+          {
+            "from": "L3_summary_received",
+            "to": "L3_dispatched",
+            "event": "user REVISE"
+          },
+          {
+            "from": "L3_summary_received",
+            "to": "L3_completeness",
+            "event": "user APPROVE"
+          },
+          {
+            "from": "L3_completeness",
+            "to": "artifact_dispatched",
+            "event": "all dims >= 70%"
+          },
+          {
+            "from": "artifact_dispatched",
+            "to": "artifact_confirmed",
+            "event": "subagent confirms write"
+          },
+          {
+            "from": "artifact_confirmed",
+            "to": "critic_dispatched",
+            "event": "dispatch critic"
+          },
+          {
+            "from": "critic_dispatched",
+            "to": "supervisor_dispatched",
+            "event": "critic passes"
+          },
+          {
+            "from": "critic_dispatched",
+            "to": "L3_dispatched",
+            "event": "critic rejects, user resolves"
+          },
+          {
+            "from": "supervisor_dispatched",
+            "to": "done",
+            "event": "supervisor aligned"
+          },
+          {
+            "from": "supervisor_dispatched",
+            "to": "L3_dispatched",
+            "event": "supervisor detects drift, user resolves"
+          },
+          {
+            "from": "*_dispatched",
+            "to": "error_presented",
+            "event": "subagent fails"
+          },
+          {
+            "from": "error_presented",
+            "to": "*_dispatched",
+            "event": "user chooses retry (partial files cleaned)"
+          },
+          {
+            "from": "error_presented",
+            "to": "fallback_inline",
+            "event": "user chooses fallback (context warning shown)"
+          }
+        ]
+      },
+      "nfr_constraints": {
+        "performance": "Total main-agent context < 200K chars for complete greenfield discover run with 3 UI iteration rounds",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-001",
+        "REQ-008",
+        "REQ-009",
+        "REQ-010",
+        "REQ-011"
+      ],
+      "invariant_refs": [
+        "INV-001",
+        "INV-002",
+        "INV-003"
+      ]
+    },
+    {
+      "id": "MOD-B",
+      "name": "mode-detection-agent",
+      "responsibility": "Subagent dispatch target: explore codebase to determine greenfield/feature mode. Reads project files, checks for .nopilot/profile/, scans source code. Returns structured mode verdict.",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "detect-mode",
+          "input_schema": {
+            "project_root": "string (absolute path)"
+          },
+          "output_schema": {
+            "mode": "'greenfield' | 'feature'",
+            "rationale": "string (one-line)"
+          },
+          "errors": [
+            "no_read_access",
+            "empty_directory"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-003"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-003-AC-1",
+            "REQ-003-AC-2"
+          ]
+        }
+      ],
+      "data_models": [],
+      "state_machine": null,
+      "nfr_constraints": {
+        "performance": "Output summary < 1K chars",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-003"
+      ],
+      "invariant_refs": [
+        "INV-002"
+      ]
+    },
+    {
+      "id": "MOD-C",
+      "name": "layer1-research-agent",
+      "responsibility": "Subagent dispatch target: competitive research + direction generation. Reads discover index.json for constraints and idea. Searches web, generates 3-5 directions. Returns structured summaries.",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "research-directions",
+          "input_schema": {
+            "discover_index": "string (path to index.json)"
+          },
+          "output_schema": {
+            "directions": [
+              {
+                "name": "string",
+                "description": "string",
+                "differentiator": "string",
+                "biggest_risk": "string",
+                "grounding": "'search_verified' | 'ai_judgment_only'"
+              }
+            ]
+          },
+          "errors": [
+            "search_failed",
+            "index_not_found"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-004"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-004-AC-1",
+            "REQ-004-AC-2"
+          ]
+        }
+      ],
+      "data_models": [],
+      "state_machine": null,
+      "nfr_constraints": {
+        "performance": "Output summary < 3K chars",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-004"
+      ],
+      "invariant_refs": [
+        "INV-002"
+      ]
+    },
+    {
+      "id": "MOD-D",
+      "name": "layer3-generation-agent",
+      "responsibility": "Subagent dispatch target: generate Layer 3 requirement lock table from full discover artifact. Produces requirements, invariants, scenarios with EARS criteria. Supports revision dispatches.",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "generate-requirements",
+          "input_schema": {
+            "discover_dir": "string (path to discover/ directory with all files)"
+          },
+          "output_schema": {
+            "summary": {
+              "requirement_count": "number",
+              "invariant_count": "number",
+              "high_risk_items": [
+                {
+                  "id": "string",
+                  "summary": "string"
+                }
+              ],
+              "conflicts": "string[]"
+            }
+          },
+          "errors": [
+            "discover_dir_not_found",
+            "incomplete_layer2"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-005"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-005-AC-1",
+            "REQ-005-AC-2"
+          ]
+        },
+        {
+          "type": "internal",
+          "name": "revise-requirements",
+          "input_schema": {
+            "discover_dir": "string",
+            "revision_instructions": "string (user feedback on specific REQ IDs)"
+          },
+          "output_schema": {
+            "summary": "same as generate-requirements"
+          },
+          "errors": [
+            "req_id_not_found"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-005"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-005-AC-3"
+          ]
+        }
+      ],
+      "data_models": [],
+      "state_machine": null,
+      "nfr_constraints": {
+        "performance": "Output summary < 3K chars",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-005"
+      ],
+      "invariant_refs": [
+        "INV-003",
+        "INV-002"
+      ]
+    },
+    {
+      "id": "MOD-E",
+      "name": "artifact-writer-agent",
+      "responsibility": "Subagent dispatch target: read sub-skill instructions, construct final discover JSON artifacts, write to file system. Returns file list confirmation.",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "write-artifacts",
+          "input_schema": {
+            "discover_dir": "string",
+            "artifact_writer_skill": "string (path to artifact-writer.md)"
+          },
+          "output_schema": {
+            "written": "string[] (file paths)",
+            "format": "'single' | 'split'"
+          },
+          "errors": [
+            "write_permission_denied",
+            "skill_not_found"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-006"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-006-AC-1",
+            "REQ-006-AC-2"
+          ]
+        }
+      ],
+      "data_models": [],
+      "state_machine": null,
+      "nfr_constraints": {
+        "performance": "Output confirmation < 500 chars",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-006"
+      ],
+      "invariant_refs": [
+        "INV-001",
+        "INV-002"
+      ]
+    },
+    {
+      "id": "MOD-F",
+      "name": "ui-taste-agent",
+      "responsibility": "Subagent dispatch target: execute all Stitch MCP interactions (generate_screen_from_text, generate_variants) in isolated context. Returns screen ID + description summaries. Supports iteration with user feedback.",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "generate-screens",
+          "input_schema": {
+            "discover_index": "string (path to index.json for designDNA)",
+            "pages": [
+              {
+                "name": "string",
+                "description": "string",
+                "device_type": "string"
+              }
+            ],
+            "design_constraints": "string | null"
+          },
+          "output_schema": {
+            "screens": [
+              {
+                "id": "string",
+                "page_name": "string",
+                "description": "string",
+                "variant_count": "number"
+              }
+            ],
+            "stitch_project_id": "string | null",
+            "preview_url": "string | null"
+          },
+          "errors": [
+            "stitch_mcp_unavailable",
+            "stitch_api_error",
+            "mcp_not_inherited"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-007"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-007-AC-1",
+            "REQ-007-AC-2"
+          ]
+        },
+        {
+          "type": "internal",
+          "name": "iterate-screens",
+          "input_schema": {
+            "screen_ids": "string[]",
+            "user_feedback": "string",
+            "stitch_project_id": "string | null"
+          },
+          "output_schema": {
+            "screens": "same as generate-screens"
+          },
+          "errors": [
+            "screen_id_not_found",
+            "stitch_mcp_unavailable"
+          ],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-007"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-007-AC-3"
+          ]
+        }
+      ],
+      "data_models": [],
+      "state_machine": null,
+      "nfr_constraints": {
+        "performance": "Output summary < 2K chars per batch",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-007"
+      ],
+      "invariant_refs": [
+        "INV-001",
+        "INV-002",
+        "INV-003"
+      ]
+    },
+    {
+      "id": "MOD-G",
+      "name": "dispatch-protocol",
+      "responsibility": "New sub-skill file defining the standard dispatch contract template, error handling protocol, and platform-agnostic invocation guidelines. Referenced by all other modules.",
+      "interfaces": [
+        {
+          "type": "internal",
+          "name": "dispatch-contract-template",
+          "input_schema": {
+            "task": "string",
+            "input": "string[]",
+            "instructions": "string",
+            "output_file": "string | null",
+            "output_summary": "{ format: string, max_size: string }"
+          },
+          "output_schema": {
+            "html_comment_block": "string (<!-- DISPATCH CONTRACT ... -->)"
+          },
+          "errors": [],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-008"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-008-AC-1",
+            "REQ-008-AC-2"
+          ]
+        },
+        {
+          "type": "internal",
+          "name": "error-handling-protocol",
+          "input_schema": {
+            "error_type": "'timeout' | 'error' | 'unsupported'",
+            "partial_output_file": "string | null",
+            "domain_error_mapping": "All domain-specific errors (no_read_access, empty_directory, search_failed, index_not_found, discover_dir_not_found, incomplete_layer2, write_permission_denied, skill_not_found, stitch_mcp_unavailable, stitch_api_error, mcp_not_inherited, screen_id_not_found, req_id_not_found) map to category 'error'. Only network/process hangs map to 'timeout'. Platform lacking subagent support maps to 'unsupported'."
+          },
+          "output_schema": {
+            "action": "'retry' | 'fallback'",
+            "cleanup_required": "boolean"
+          },
+          "errors": [],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-009"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-009-AC-1",
+            "REQ-009-AC-2",
+            "REQ-009-AC-3",
+            "REQ-009-AC-4"
+          ]
+        },
+        {
+          "type": "internal",
+          "name": "platform-invocation-guide",
+          "input_schema": {},
+          "output_schema": {
+            "claude_code": "Agent tool",
+            "codex_cli": "subagent spawn",
+            "opencode": "Task tool"
+          },
+          "errors": [],
+          "api_detail": null,
+          "requirement_refs": [
+            "REQ-010"
+          ],
+          "acceptance_criteria_refs": [
+            "REQ-010-AC-1",
+            "REQ-010-AC-2"
+          ]
+        }
+      ],
+      "data_models": [
+        {
+          "name": "DispatchContract",
+          "fields": [
+            {
+              "name": "task",
+              "type": "string",
+              "constraints": "required, describes what the subagent does"
+            },
+            {
+              "name": "input",
+              "type": "string[]",
+              "constraints": "required, file paths or directory paths"
+            },
+            {
+              "name": "instructions",
+              "type": "string",
+              "constraints": "required, sub-skill path or inline instructions"
+            },
+            {
+              "name": "output_file",
+              "type": "string | null",
+              "constraints": "file path for subagent to write results"
+            },
+            {
+              "name": "output_summary",
+              "type": "object",
+              "constraints": "required: format description + max_size"
+            },
+            {
+              "name": "on_error",
+              "type": "string",
+              "constraints": "'standard' references the error handling protocol"
+            }
+          ],
+          "relationships": []
+        }
+      ],
+      "state_machine": null,
+      "nfr_constraints": {
+        "performance": "File size < 2K chars (loaded once per session)",
+        "security": null,
+        "other": null
+      },
+      "requirement_refs": [
+        "REQ-008",
+        "REQ-009",
+        "REQ-010"
+      ],
+      "invariant_refs": [
+        "INV-002"
+      ]
+    }
+  ],
+  "dependency_graph": {
+    "edges": [
+      {
+        "from": "MOD-A",
+        "to": "MOD-B",
+        "type": "calls"
+      },
+      {
+        "from": "MOD-A",
+        "to": "MOD-C",
+        "type": "calls"
+      },
+      {
+        "from": "MOD-A",
+        "to": "MOD-D",
+        "type": "calls"
+      },
+      {
+        "from": "MOD-A",
+        "to": "MOD-E",
+        "type": "calls"
+      },
+      {
+        "from": "MOD-A",
+        "to": "MOD-F",
+        "type": "calls"
+      },
+      {
+        "from": "MOD-A",
+        "to": "MOD-G",
+        "type": "depends"
+      },
+      {
+        "from": "MOD-B",
+        "to": "MOD-G",
+        "type": "depends"
+      },
+      {
+        "from": "MOD-C",
+        "to": "MOD-G",
+        "type": "depends"
+      },
+      {
+        "from": "MOD-D",
+        "to": "MOD-G",
+        "type": "depends"
+      },
+      {
+        "from": "MOD-E",
+        "to": "MOD-G",
+        "type": "depends"
+      },
+      {
+        "from": "MOD-F",
+        "to": "MOD-G",
+        "type": "depends"
+      }
+    ],
+    "existing_module_refs": [
+      {
+        "name": "taste-orchestrator (L1 MOD-009)",
+        "path": "src/ui-taste",
+        "relationship": "MOD-F wraps the existing taste-orchestrator's Stitch interactions; the runtime module is unchanged, only the skill-layer invocation pattern changes"
+      }
+    ]
+  },
+  "external_dependencies": [
+    {
+      "name": "Platform subagent mechanism",
+      "purpose": "Execute dispatch contracts in isolated context (Claude Code: Agent tool, Codex CLI: subagent spawn, OpenCode: Task tool)",
+      "module_refs": [
+        "MOD-A",
+        "MOD-B",
+        "MOD-C",
+        "MOD-D",
+        "MOD-E",
+        "MOD-F"
+      ],
+      "alternatives": [
+        "Fallback to inline main-agent execution (REQ-009)"
+      ],
+      "test_strategy": "real"
+    },
+    {
+      "name": "Stitch MCP (optional)",
+      "purpose": "UI mockup generation in MOD-F",
+      "module_refs": [
+        "MOD-F"
+      ],
+      "alternatives": [
+        "Tier 2 HTML fallback",
+        "Tier 3 text-based questions"
+      ],
+      "test_strategy": "real"
+    }
+  ],
+  "global_error_strategy": {
+    "api_error_format": "N/A (no API — skill markdown instructions only)",
+    "external_service": "Subagent dispatch failure: stop → present error → ask user retry/fallback → cleanup partial files → execute chosen path (REQ-009)",
+    "logging": "N/A (no runtime logging — dispatch results visible in conversation context)"
+  },
+  "auto_decisions": [
+    {
+      "decision": "dispatch-protocol.md as standalone sub-skill file",
+      "alternatives": [
+        "Embed protocol in SKILL.md header",
+        "Inline in each sub-skill"
+      ],
+      "rationale": "Referenced by all sub-skills; single source of truth avoids duplication. ~1K file loaded once per session.",
+      "impact": "Adds one new file to the skill directory",
+      "impact_level": "low"
+    },
+    {
+      "decision": "Layer 1 and Layer 3 dispatch contracts remain in SKILL.md rather than separate files",
+      "alternatives": [
+        "l1-dispatch.md and l3-dispatch.md as standalone files"
+      ],
+      "rationale": "These are dispatch annotations + summary presentation logic, not standalone sub-skill instructions. Keeping them in SKILL.md avoids unnecessary file proliferation.",
+      "impact": "SKILL.md grows slightly, but dispatch contracts are HTML comments (invisible to non-markdown tools)",
+      "impact_level": "low"
+    },
+    {
+      "decision": "Subagent summaries not cached to files",
+      "alternatives": [
+        "Write summaries to temp files for crash recovery"
+      ],
+      "rationale": "Summaries are < 3K chars and live in conversation context. On failure, subagent re-dispatch regenerates them. Caching adds complexity without meaningful benefit.",
+      "impact": "No crash recovery for summaries, but subagent re-dispatch is fast",
+      "impact_level": "low"
+    }
+  ],
+  "contract_amendments": [],
+  "context_dependencies": [
+    "specs/features/feat-discover-context-diet/discover/index.json"
+  ]
+}
