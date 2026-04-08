@@ -61,40 +61,40 @@ function collectMdFiles(relDir: string): string[] {
 // ---------------------------------------------------------------------------
 
 describe('Line count limits', () => {
-  it('TEST-033: discover SKILL.md <= 250 lines', () => {
-    expect(lineCount('commands/discover/SKILL.md')).toBeLessThanOrEqual(250);
+  it('TEST-033: discover SKILL.md <= 254 lines', () => {
+    expect(lineCount('commands/discover/SKILL.md')).toBeLessThanOrEqual(254);
   });
 
-  it('TEST-034: critic SKILL.md <= 50 lines', () => {
-    expect(lineCount('commands/critic/SKILL.md')).toBeLessThanOrEqual(50);
+  it('TEST-034: critic SKILL.md <= 54 lines', () => {
+    expect(lineCount('commands/critic/SKILL.md')).toBeLessThanOrEqual(54);
   });
 
-  it('TEST-035: build SKILL.md <= 100 lines', () => {
-    expect(lineCount('commands/build/SKILL.md')).toBeLessThanOrEqual(100);
+  it('TEST-035: build SKILL.md <= 104 lines', () => {
+    expect(lineCount('commands/build/SKILL.md')).toBeLessThanOrEqual(104);
   });
 
-  it('TEST-036: visualize SKILL.md <= 70 lines', () => {
+  it('TEST-036: visualize SKILL.md <= 74 lines', () => {
     // Currently 100 lines — documents a real gap
-    expect(lineCount('commands/visualize/SKILL.md')).toBeLessThanOrEqual(70);
+    expect(lineCount('commands/visualize/SKILL.md')).toBeLessThanOrEqual(74);
   });
 
-  it('TEST-037: supervisor SKILL.md <= 40 lines', () => {
+  it('TEST-037: supervisor SKILL.md <= 44 lines', () => {
     // Currently 54 lines — documents a real gap
-    expect(lineCount('commands/supervisor/SKILL.md')).toBeLessThanOrEqual(40);
+    expect(lineCount('commands/supervisor/SKILL.md')).toBeLessThanOrEqual(44);
   });
 
-  it('TEST-038: spec SKILL.md <= 100 lines', () => {
-    expect(lineCount('commands/spec/SKILL.md')).toBeLessThanOrEqual(100);
+  it('TEST-038: spec SKILL.md <= 104 lines', () => {
+    expect(lineCount('commands/spec/SKILL.md')).toBeLessThanOrEqual(104);
   });
 
-  it('TEST-039: lash-tracer SKILL.md <= 40 lines', () => {
+  it('TEST-039: lash-tracer SKILL.md <= 44 lines', () => {
     // Currently 54 lines — documents a real gap
-    expect(lineCount('commands/lash-tracer/SKILL.md')).toBeLessThanOrEqual(40);
+    expect(lineCount('commands/lash-tracer/SKILL.md')).toBeLessThanOrEqual(44);
   });
 
-  it('TEST-040: lash-verify SKILL.md <= 30 lines', () => {
+  it('TEST-040: lash-verify SKILL.md <= 34 lines', () => {
     // Currently 43 lines — documents a real gap
-    expect(lineCount('commands/lash-verify/SKILL.md')).toBeLessThanOrEqual(30);
+    expect(lineCount('commands/lash-verify/SKILL.md')).toBeLessThanOrEqual(34);
   });
 });
 
@@ -281,19 +281,19 @@ describe('Feature Mode annotations', () => {
     expect(failures, `Sub-skill files missing Feature Mode annotation: ${failures.join(', ')}`).toHaveLength(0);
   });
 
-  it('TEST-043: all .md files in commands/ have nopilot-managed on first line', () => {
+  it('TEST-043: all .md files in commands/ have nopilot-managed in first 5 lines', () => {
     const allMd = collectMdFiles('commands');
     const failures: string[] = [];
 
     for (const relPath of allMd) {
       const content = fs.readFileSync(repoPath(relPath), 'utf8');
-      const firstLine = content.split('\n')[0] ?? '';
-      if (!firstLine.includes('nopilot-managed')) {
+      const headLines = content.split('\n').slice(0, 5).join('\n');
+      if (!headLines.includes('nopilot-managed')) {
         failures.push(relPath);
       }
     }
 
-    expect(failures, `Files missing nopilot-managed on first line: ${failures.join(', ')}`).toHaveLength(0);
+    expect(failures, `Files missing nopilot-managed in first 5 lines: ${failures.join(', ')}`).toHaveLength(0);
   });
 });
 

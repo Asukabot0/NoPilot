@@ -1,3 +1,7 @@
+---
+name: critic
+description: Independent challenger — reviews artifacts for completeness, consistency and feasibility
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Placeholders: <%=CRITIC_PATH%> = platform path to critic skill, <%=SUPERVISOR_PATH%> = platform path to supervisor skill -->
 

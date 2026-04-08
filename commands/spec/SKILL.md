@@ -1,3 +1,7 @@
+---
+name: spec
+description: Constrained design expansion — converts requirements into modular architecture specs
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Placeholders: <%=CRITIC_PATH%> = platform path to critic skill, <%=SUPERVISOR_PATH%> = platform path to supervisor skill -->
 

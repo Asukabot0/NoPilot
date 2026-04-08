@@ -38,12 +38,12 @@ const PLATFORMS: PlatformAdapter[] = [
   },
   {
     name: 'opencode',
-    status: 'active',
-    skillsDir: `${home}/.agents/skills/`,
+    status: 'experimental',
+    skillsDir: `${home}/.config/opencode/skills/`,
     legacyDir: null,
     placeholderMap: {
-      CRITIC_PATH: `${home}/.agents/skills/critic/SKILL.md`,
-      SUPERVISOR_PATH: `${home}/.agents/skills/supervisor/SKILL.md`,
+      CRITIC_PATH: `${home}/.config/opencode/skills/critic/SKILL.md`,
+      SUPERVISOR_PATH: `${home}/.config/opencode/skills/supervisor/SKILL.md`,
     },
   },
 ];

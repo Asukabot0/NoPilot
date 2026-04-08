@@ -14,15 +14,15 @@ import {
 const home = os.homedir();
 
 describe('getActivePlatforms', () => {
-  it('TEST-011: returns claude, codex, and opencode (active platforms)', () => {
+  it('TEST-011: returns claude and codex (active platforms)', () => {
     const active = getActivePlatforms();
     const names = active.map((p) => p.name);
     expect(names).toContain('claude');
     expect(names).toContain('codex');
-    expect(names).toContain('opencode');
     expect(names).not.toContain('gemini');
+    expect(names).not.toContain('opencode');
     expect(active.every((p) => p.status === 'active')).toBe(true);
-    expect(active).toHaveLength(3);
+    expect(active).toHaveLength(2);
   });
 });
 
@@ -71,18 +71,18 @@ describe('getPlatform', () => {
     expect(platform).toBeUndefined();
   });
 
-  it('TEST-019: returns correct config for opencode', () => {
+  it('TEST-019: returns correct config for opencode (experimental)', () => {
     const platform = getPlatform('opencode');
     expect(platform).toBeDefined();
     expect(platform!.name).toBe('opencode');
-    expect(platform!.status).toBe('active');
-    expect(platform!.skillsDir).toBe(`${home}/.agents/skills/`);
+    expect(platform!.status).toBe('experimental');
+    expect(platform!.skillsDir).toBe(`${home}/.config/opencode/skills/`);
     expect(platform!.legacyDir).toBeNull();
     expect(platform!.placeholderMap['CRITIC_PATH']).toBe(
-      `${home}/.agents/skills/critic/SKILL.md`,
+      `${home}/.config/opencode/skills/critic/SKILL.md`,
     );
     expect(platform!.placeholderMap['SUPERVISOR_PATH']).toBe(
-      `${home}/.agents/skills/supervisor/SKILL.md`,
+      `${home}/.config/opencode/skills/supervisor/SKILL.md`,
     );
   });
 });

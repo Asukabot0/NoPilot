@@ -168,14 +168,13 @@ describe('nopilot paths', () => {
     expect(existsSync(paths.workflow)).toBe(true);
   });
 
-  it('reports Claude, Codex, and OpenCode skill install locations', () => {
+  it('reports Claude and Codex skill install locations', () => {
     const output = runCli(['paths']);
     const paths = JSON.parse(output);
     expect(paths.source_skill_location).toEqual(resolve(PACKAGE_ROOT, 'commands'));
     expect(paths.installed_skills).toEqual({
       claude: join(homedir(), '.claude', 'skills/'),
       codex: join(homedir(), '.agents', 'skills/'),
-      opencode: join(homedir(), '.agents', 'skills/'),
     });
     expect(paths.legacy_dirs).toEqual({
       claude: join(homedir(), '.claude', 'commands/'),
