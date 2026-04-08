@@ -1,0 +1,1 @@
+Draft the synthetic benchmark outcome for SPEC-002 using the standard local phase-1 profile.

@@ -1,0 +1,26 @@
+{
+  "suite_id": "phase1",
+  "case_ids": [
+    "DISCOVER-001",
+    "DISCOVER-002",
+    "DISCOVER-003",
+    "DISCOVER-004",
+    "DISCOVER-005",
+    "SPEC-001",
+    "SPEC-002",
+    "BUILD-001",
+    "BUILD-002",
+    "BUILD-003"
+  ],
+  "profile_id": "phase1-local-cli-v1",
+  "ranked_platform_ids": [
+    "codex-cli"
+  ],
+  "ranked_platform_admission_rule": "Only platforms with stable complete trace evidence under phase1-local-cli-v1 may be admitted to the official ranked suite.",
+  "platform_admissions": {
+    "codex-cli": {
+      "profile_id": "phase1-local-cli-v1",
+      "stable_full_trace": true
+    }
+  }
+}
