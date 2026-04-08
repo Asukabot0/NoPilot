@@ -26,33 +26,37 @@ import {
   isWithinMigrationWindow,
   MIGRATION_SINCE_VERSION,
 } from './skill-engine/legacy-migrator.js';
-import { getActivePlatforms } from './skill-engine/platform-registry.js';
+import { getActivePlatforms, getPlatform } from './skill-engine/platform-registry.js';
+
+// CLI output helpers (AGENTS.md: 禁止在源文件中直接 console.log)
+function out(message: string): void { process.stdout.write(message + '\n'); }
+function err(message: string): void { process.stderr.write(message + '\n'); }
 
 // Resolve package root relative to this compiled file (dist/nopilot-cli.js → package root)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PACKAGE_ROOT = resolve(__dirname, '..');
 
-const LASH_DIRECTIVE = `
-## Lash (Auto-triggered Multi-Agent Build Orchestrator)
-
-When ALL of the following conditions are met:
-1. Spec artifact exists: \`specs/spec.json\` OR \`specs/spec/index.json\` (design is complete)
-2. Discover artifact exists: \`specs/discover.json\` OR \`specs/discover/index.json\` (requirements are locked)
-3. User intent involves building, implementing, or coding the designed system
-
-→ Invoke the installed Lash build prompt to orchestrate a multi-agent parallel build:
-  - Claude Code: \`/lash-build\`
-  - Codex: \`/prompts:lash-build\`
-
-Lash treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent.
-Lash auto-detects single-file vs split-directory format for spec and discover artifacts.
-
-NoPilot schemas and workflow definition are in the npm package.
-Run \`nopilot paths\` to locate them.
-`;
-
 const LASH_DIRECTIVE_MARKER = '## Lash (Auto-triggered Multi-Agent Build Orchestrator)';
+
+function extractLashDirective(): string {
+  const claudeDevPath = resolve(PACKAGE_ROOT, 'CLAUDE.dev.md');
+  try {
+    const content = readFileSync(claudeDevPath, 'utf-8');
+    const lines = content.split('\n');
+    const startIdx = lines.findIndex(line => line.startsWith(LASH_DIRECTIVE_MARKER));
+    if (startIdx === -1) {
+      err(`Warning: ${LASH_DIRECTIVE_MARKER} not found in CLAUDE.dev.md`);
+      return '';
+    }
+    const endIdx = lines.findIndex((line, idx) => idx > startIdx && line.startsWith('## '));
+    const lashLines = lines.slice(startIdx, endIdx === -1 ? undefined : endIdx);
+    return '\n' + lashLines.join('\n');
+  } catch {
+    err(`Error: Failed to read CLAUDE.dev.md from ${claudeDevPath}`);
+    return '';
+  }
+}
 
 const program = new Command();
 
@@ -76,7 +80,7 @@ program
     const currentVersion = getVersion();
     const { active, versionsRemaining } = isWithinMigrationWindow(currentVersion, MIGRATION_SINCE_VERSION);
     if (active) {
-      console.warn(
+      err(
         `[nopilot] Deprecation notice: Legacy skill locations (e.g. ~/.claude/commands/) are being replaced ` +
         `by unified skill directories. Migration window closes in ${versionsRemaining} minor version(s). ` +
         `Run \`nopilot init\` to migrate now.`,
@@ -107,10 +111,16 @@ program
     if (existsSync(sourceDir)) {
       const results = installAllPlatforms(sourceDir, force, platformsWithVersion);
       for (const result of results) {
-        if (result.success) {
-          console.log(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
+        if (!result.success) {
+          err(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+        } else if (result.skipped) {
+          const skippedPlatform = getPlatform(result.platform);
+          const sharedWith = platformsWithVersion.find(
+            p => p.name !== result.platform && p.skillsDir === skippedPlatform?.skillsDir,
+          );
+          out(`Skipped ${result.platform} (shares skill directory with ${sharedWith?.name})`);
         } else {
-          console.error(`Failed to install skills for ${result.platform}: ${result.errors.join(', ')}`);
+          out(`Installed ${result.filesWritten} skill file(s) for ${result.platform}`);
         }
       }
     }
@@ -120,34 +130,39 @@ program
     if (!existsSync(specsDir)) {
       mkdirSync(specsDir, { recursive: true });
       writeFileSync(resolve(specsDir, '.gitkeep'), '', 'utf-8');
-      console.log(`Created specs/ directory`);
+      out(`Created specs/ directory`);
     }
 
     // Append Lash directive to agent instruction files (idempotent)
-    const agentFiles = ['CLAUDE.md', 'AGENTS.md', 'opencode.md'];
-    for (const filename of agentFiles) {
-      const filePath = resolve(targetDir, filename);
-      if (!existsSync(filePath)) {
-        continue;
-      }
-      const existing = readFileSync(filePath, 'utf-8');
-      if (existing.includes(LASH_DIRECTIVE_MARKER)) {
-        if (force) {
-          // Replace old directive with new one
-          const markerIdx = existing.indexOf(LASH_DIRECTIVE_MARKER);
-          const updated = existing.substring(0, markerIdx).trimEnd() + '\n' + LASH_DIRECTIVE;
-          writeFileSync(filePath, updated, 'utf-8');
-          console.log(`Updated Lash directive in ${filename}`);
-        } else {
-          console.log(`Skipped Lash directive in ${filename} (already present)`);
+    const lashDirective = extractLashDirective();
+    if (!lashDirective) {
+      err('Warning: No Lash directive found, skipping injection');
+    } else {
+      const agentFiles = ['CLAUDE.md', 'AGENTS.md', 'opencode.md'];
+      for (const filename of agentFiles) {
+        const filePath = resolve(targetDir, filename);
+        if (!existsSync(filePath)) {
+          continue;
         }
-        continue;
+        const existing = readFileSync(filePath, 'utf-8');
+        if (existing.includes(LASH_DIRECTIVE_MARKER)) {
+          if (force) {
+            // Replace old directive with new one
+            const markerIdx = existing.indexOf(LASH_DIRECTIVE_MARKER);
+            const updated = existing.substring(0, markerIdx).trimEnd() + lashDirective;
+            writeFileSync(filePath, updated, 'utf-8');
+            out(`Updated Lash directive in ${filename}`);
+          } else {
+            out(`Skipped Lash directive in ${filename} (already present)`);
+          }
+          continue;
+        }
+        writeFileSync(filePath, existing + lashDirective, 'utf-8');
+        out(`Appended Lash directive to ${filename}`);
       }
-      writeFileSync(filePath, existing + LASH_DIRECTIVE, 'utf-8');
-      console.log(`Appended Lash directive to ${filename}`);
     }
 
-    console.log(`\nNoPilot initialized in ${targetDir}`);
+    out(`\nNoPilot initialized in ${targetDir}`);
   });
 
 // ─── paths ─────────────────────────────────────────────────────────────────
@@ -171,7 +186,7 @@ program
         activePlatforms.filter((p) => p.legacyDir).map((p) => [p.name, p.legacyDir]),
       ),
     };
-    console.log(JSON.stringify(paths, null, 2));
+    out(JSON.stringify(paths, null, 2));
   });
 
 // ─── version ────────────────────────────────────────────────────────────────
@@ -180,7 +195,7 @@ program
   .command('version')
   .description('Print the nopilot package version')
   .action(() => {
-    console.log(`nopilot v${getVersion()}`);
+    out(`nopilot v${getVersion()}`);
   });
 
 // ─── validate ───────────────────────────────────────────────────────────────
@@ -189,7 +204,7 @@ program
   .command('validate')
   .description('Validate project artifacts (not yet implemented)')
   .action(() => {
-    console.log('Not yet implemented. Planned for V2.');
+    out('Not yet implemented. Planned for V2.');
     process.exit(0);
   });
 
@@ -199,7 +214,7 @@ program
   .command('preview')
   .description('Preview generated artifacts (not yet implemented)')
   .action(() => {
-    console.log('Not yet implemented. Planned for issue #21.');
+    out('Not yet implemented. Planned for issue #21.');
     process.exit(0);
   });
 

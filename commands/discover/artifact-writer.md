@@ -1,6 +1,9 @@
 <!-- nopilot-managed v<%=VERSION%> -->
+<!-- DISPATCH CONTRACT target: dispatched by SKILL.md; output <= 500 chars, max 20 items -->
 
-# discover/artifact-writer — Artifact Generation
+# discover/artifact-writer — Artifact Generation (dispatch target)
+
+You are a subagent. Your job: read the current discover artifact state and finalize all JSON files. Do NOT interact with the user directly. Return a brief confirmation summary to the main agent.
 
 ### Feature Mode: Artifact Output Path
 
@@ -195,8 +198,13 @@ The JSON schemas below are shown in single-file form; in split mode, move the co
 
 ---
 
-### Completion Output
+### Subagent Output Format (return this to main agent)
 
-After writing the discover artifacts, output:
+After writing all files, return ONLY this summary:
 
-> "discover artifacts written to specs/. Generate visualization by running: open specs/views/discover.html (or run /visualize for full dashboard). Run /spec to continue, or review the discover artifact entry point (`specs/discover.json` or `specs/discover/index.json`) first."
+```
+written: [list of file paths written]
+format: single | split
+```
+
+Keep total output under 500 chars. The main agent will present the completion message to the user.

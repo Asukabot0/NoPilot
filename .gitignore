@@ -34,3 +34,4 @@ issues/
 
 # OS files
 .DS_Store
+.worktrees/

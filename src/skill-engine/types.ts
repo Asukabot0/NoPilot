@@ -32,6 +32,8 @@ export interface SourceSkill {
 export interface InstallResult {
   platform: string;
   success: boolean;
+  /** True when this platform was skipped (e.g. shares skillsDir with a prior platform) */
+  skipped: boolean;
   filesWritten: number;
   errors: string[];
 }
