@@ -26,6 +26,19 @@ function runLash(...args: string[]): { returncode: number; stdout: string; stder
   };
 }
 
+function runLashInDir(cwd: string, ...args: string[]): { returncode: number; stdout: string; stderr: string } {
+  const result = spawnSync(process.execPath, [DIST_CLI, ...args], {
+    encoding: 'utf-8',
+    timeout: 25_000,
+    cwd,
+  });
+  return {
+    returncode: result.status ?? 1,
+    stdout: result.stdout ?? '',
+    stderr: result.stderr ?? '',
+  };
+}
+
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), 'lash-cli-test-'));
 }
@@ -146,8 +159,9 @@ describe('lash plan missing files', () => {
     expect(result.returncode).not.toBe(0);
   });
 
-  it('returns non-zero when no args given', () => {
-    const result = runLash('plan');
+  it('returns non-zero when no args given and no artifacts found', () => {
+    const tmp = makeTmpDir();
+    const result = runLashInDir(tmp, 'plan');
     expect(result.returncode).not.toBe(0);
   });
 });

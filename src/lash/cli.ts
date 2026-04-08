@@ -48,11 +48,17 @@ program
 // ---------------------------------------------------------------------------
 
 program
-  .command('plan <spec_path> <discover_path>')
-  .description('Generate execution plan from spec + discover')
-  .action(async (specPath: string, discoverPath: string) => {
+  .command('plan [spec_path] [discover_path]')
+  .description('Generate execution plan from spec + discover (auto-detects paths if omitted)')
+  .action(async (specPath: string | undefined, discoverPath: string | undefined) => {
     const { generatePlan } = await import('./plan-generator.js');
     try {
+      if (!specPath || !discoverPath) {
+        const { resolveArtifactPaths } = await import('./spec-resolver.js');
+        const resolved = resolveArtifactPaths();
+        specPath = specPath ?? resolved.specPath;
+        discoverPath = discoverPath ?? resolved.discoverPath;
+      }
       const plan = generatePlan(specPath, discoverPath);
       out(plan);
     } catch (exc) {
@@ -117,20 +123,25 @@ worktreeCmd
 program
   .command('package <module_id> <worktree_path> <platform>')
   .description('Generate .lash/ task package for a worker')
-  .requiredOption('--spec <path>', 'Path to spec.json')
-  .requiredOption('--discover <path>', 'Path to discover.json')
+  .option('--spec <path>', 'Path to spec.json (auto-detected if omitted)')
+  .option('--discover <path>', 'Path to discover.json (auto-detected if omitted)')
   .option('--tests <path>', 'Path to tests.json')
   .option('--completed <m1,m2>', 'Comma-separated completed module IDs')
   .action(async (
     moduleId: string,
     worktreePath: string,
     platform: string,
-    opts: { spec: string; discover: string; tests?: string; completed?: string },
+    opts: { spec?: string; discover?: string; tests?: string; completed?: string },
   ) => {
     const { generatePackage } = await import('./task-packager.js');
     const { readFileSync } = await import('node:fs');
-    const { resolveSpec, resolveDiscover } = await import('./spec-resolver.js');
+    const { resolveSpec, resolveDiscover, resolveArtifactPaths } = await import('./spec-resolver.js');
     try {
+      if (!opts.spec || !opts.discover) {
+        const resolved = resolveArtifactPaths();
+        opts.spec = opts.spec ?? resolved.specPath;
+        opts.discover = opts.discover ?? resolved.discoverPath;
+      }
       const { spec } = resolveSpec(opts.spec) as { spec: Record<string, unknown> };
       const { discover } = resolveDiscover(opts.discover) as { discover: Record<string, unknown> };
       let tests: Record<string, unknown>;

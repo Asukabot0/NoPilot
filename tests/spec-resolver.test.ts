@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { resolveSpec, resolveDiscover, detectFormat } from '../src/lash/spec-resolver.js';
+import { resolveSpec, resolveDiscover, detectFormat, resolveArtifactPaths, findArtifactPath } from '../src/lash/spec-resolver.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -273,6 +273,126 @@ describe('resolveDiscover', () => {
 });
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// findArtifactPath
+// ---------------------------------------------------------------------------
+
+describe('findArtifactPath', () => {
+  it('TEST-059-001: returns single file path when name.json exists', () => {
+    const tmp = makeTmpDir();
+    writeJson(join(tmp, 'spec.json'), { phase: 'spec' });
+    expect(findArtifactPath(tmp, 'spec')).toBe(join(tmp, 'spec.json'));
+  });
+
+  it('TEST-059-002: returns split directory path when name/index.json exists', () => {
+    const tmp = makeTmpDir();
+    const splitDir = join(tmp, 'spec');
+    mkdirSync(splitDir);
+    writeJson(join(splitDir, 'index.json'), {});
+    expect(findArtifactPath(tmp, 'spec')).toBe(splitDir);
+  });
+
+  it('TEST-059-003: prefers single file over split directory', () => {
+    const tmp = makeTmpDir();
+    writeJson(join(tmp, 'spec.json'), { phase: 'spec' });
+    const splitDir = join(tmp, 'spec');
+    mkdirSync(splitDir);
+    writeJson(join(splitDir, 'index.json'), {});
+    expect(findArtifactPath(tmp, 'spec')).toBe(join(tmp, 'spec.json'));
+  });
+
+  it('TEST-059-004: returns null when artifact not found', () => {
+    const tmp = makeTmpDir();
+    expect(findArtifactPath(tmp, 'spec')).toBeNull();
+  });
+
+  it('TEST-059-005: returns null when split dir has no index.json', () => {
+    const tmp = makeTmpDir();
+    mkdirSync(join(tmp, 'spec'));
+    expect(findArtifactPath(tmp, 'spec')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveArtifactPaths
+// ---------------------------------------------------------------------------
+
+describe('resolveArtifactPaths', () => {
+  it('TEST-059-006: resolves greenfield single-file artifacts', () => {
+    const tmp = makeTmpDir();
+    const specsDir = join(tmp, 'specs');
+    mkdirSync(specsDir);
+    writeJson(join(specsDir, 'spec.json'), { phase: 'spec' });
+    writeJson(join(specsDir, 'discover.json'), { phase: 'discover' });
+    const result = resolveArtifactPaths(tmp);
+    expect(result.specPath).toBe(join(specsDir, 'spec.json'));
+    expect(result.discoverPath).toBe(join(specsDir, 'discover.json'));
+  });
+
+  it('TEST-059-007: resolves greenfield split-directory artifacts', () => {
+    const tmp = makeTmpDir();
+    const specsDir = join(tmp, 'specs');
+    mkdirSync(specsDir);
+    const specDir = join(specsDir, 'spec');
+    mkdirSync(specDir);
+    writeJson(join(specDir, 'index.json'), {});
+    const discoverDir = join(specsDir, 'discover');
+    mkdirSync(discoverDir);
+    writeJson(join(discoverDir, 'index.json'), {});
+    const result = resolveArtifactPaths(tmp);
+    expect(result.specPath).toBe(specDir);
+    expect(result.discoverPath).toBe(discoverDir);
+  });
+
+  it('TEST-059-008: auto-selects unique feature directory', () => {
+    const tmp = makeTmpDir();
+    const specsDir = join(tmp, 'specs');
+    const featuresDir = join(specsDir, 'features');
+    const featureDir = join(featuresDir, 'feat-user-notifications');
+    mkdirSync(featureDir, { recursive: true });
+    writeJson(join(featureDir, 'spec.json'), { phase: 'spec' });
+    writeJson(join(featureDir, 'discover.json'), { phase: 'discover' });
+    const result = resolveArtifactPaths(tmp);
+    expect(result.specPath).toBe(join(featureDir, 'spec.json'));
+    expect(result.discoverPath).toBe(join(featureDir, 'discover.json'));
+  });
+
+  it('TEST-059-009: throws AMBIGUOUS_FEATURE when multiple feature dirs found', () => {
+    const tmp = makeTmpDir();
+    const featuresDir = join(tmp, 'specs', 'features');
+    for (const name of ['feat-alpha', 'feat-beta']) {
+      const d = join(featuresDir, name);
+      mkdirSync(d, { recursive: true });
+      writeJson(join(d, 'spec.json'), { phase: 'spec' });
+      writeJson(join(d, 'discover.json'), { phase: 'discover' });
+    }
+    expect(() => resolveArtifactPaths(tmp)).toThrow('[AMBIGUOUS_FEATURE]');
+  });
+
+  it('TEST-059-010: throws NO_ARTIFACTS when specs/ has no artifacts and no features dir', () => {
+    const tmp = makeTmpDir();
+    mkdirSync(join(tmp, 'specs'));
+    expect(() => resolveArtifactPaths(tmp)).toThrow('[NO_ARTIFACTS]');
+  });
+
+  it('TEST-059-011: throws NO_ARTIFACTS when features/ exists but has no valid subdirs', () => {
+    const tmp = makeTmpDir();
+    const featuresDir = join(tmp, 'specs', 'features', 'feat-empty');
+    mkdirSync(featuresDir, { recursive: true });
+    // no spec.json or discover.json inside
+    expect(() => resolveArtifactPaths(tmp)).toThrow('[NO_ARTIFACTS]');
+  });
+
+  it('TEST-059-012: skips feature dirs missing one artifact (spec only)', () => {
+    const tmp = makeTmpDir();
+    const featureDir = join(tmp, 'specs', 'features', 'feat-partial');
+    mkdirSync(featureDir, { recursive: true });
+    writeJson(join(featureDir, 'spec.json'), { phase: 'spec' });
+    // no discover.json
+    expect(() => resolveArtifactPaths(tmp)).toThrow('[NO_ARTIFACTS]');
+  });
+});
+
 // Integration: resolveSpec output feeds into generatePlan
 // ---------------------------------------------------------------------------
 

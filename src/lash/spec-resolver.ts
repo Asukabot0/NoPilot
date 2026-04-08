@@ -8,8 +8,9 @@
  * Issue #26: Lash 支持多个 spec 文件输入
  */
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { cwd as processCwd } from 'node:process';
 
 // ---------------------------------------------------------------------------
 // Internal types (mirrors plan-generator.ts shapes for compatibility)
@@ -214,4 +215,95 @@ function parseJson<T>(text: string, sourcePath: string): T {
   } catch {
     throw new Error(`[INVALID_JSON] Failed to parse JSON (path: ${sourcePath})`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// resolveArtifactPaths
+// ---------------------------------------------------------------------------
+
+/**
+ * Find a spec or discover artifact in a directory.
+ * Checks for `{name}.json` (single file) then `{name}/index.json` (split directory).
+ * Returns the path to use with resolveSpec/resolveDiscover, or null if not found.
+ */
+export function findArtifactPath(dir: string, name: string): string | null {
+  const singleFile = join(dir, `${name}.json`);
+  if (existsSync(singleFile) && statSync(singleFile).isFile()) {
+    return singleFile;
+  }
+  const splitDir = join(dir, name);
+  if (existsSync(splitDir) && statSync(splitDir).isDirectory()) {
+    if (existsSync(join(splitDir, 'index.json'))) {
+      return splitDir;
+    }
+  }
+  return null;
+}
+
+/**
+ * Auto-detect spec and discover artifact paths from the project root.
+ *
+ * Search order:
+ * 1. Greenfield: `specs/spec.json` or `specs/spec/index.json`
+ *    + `specs/discover.json` or `specs/discover/index.json`
+ * 2. Feature mode: scan `specs/features/` for subdirectories containing both artifacts.
+ *    - Exactly one match → auto-select
+ *    - Multiple matches → throw [AMBIGUOUS_FEATURE] with directory list
+ *    - Zero matches → throw [NO_ARTIFACTS]
+ *
+ * @throws Error with [NO_ARTIFACTS] or [AMBIGUOUS_FEATURE] error codes
+ */
+export function resolveArtifactPaths(projectRoot: string = processCwd()): {
+  specPath: string;
+  discoverPath: string;
+} {
+  const specsRoot = join(projectRoot, 'specs');
+
+  // 1. Greenfield: check specs/ root
+  const greenfieldSpec = findArtifactPath(specsRoot, 'spec');
+  const greenfieldDiscover = findArtifactPath(specsRoot, 'discover');
+  if (greenfieldSpec !== null && greenfieldDiscover !== null) {
+    return { specPath: greenfieldSpec, discoverPath: greenfieldDiscover };
+  }
+
+  // 2. Feature mode: scan specs/features/
+  const featuresRoot = join(specsRoot, 'features');
+  if (!existsSync(featuresRoot) || !statSync(featuresRoot).isDirectory()) {
+    throw new Error(
+      '[NO_ARTIFACTS] No spec/discover artifacts found in specs/ and specs/features/ does not exist',
+    );
+  }
+
+  interface FeatureMatch {
+    name: string;
+    specPath: string;
+    discoverPath: string;
+  }
+
+  const matches: FeatureMatch[] = readdirSync(featuresRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .flatMap((entry) => {
+      const featureDir = join(featuresRoot, entry.name);
+      const s = findArtifactPath(featureDir, 'spec');
+      const d = findArtifactPath(featureDir, 'discover');
+      if (s !== null && d !== null) {
+        return [{ name: entry.name, specPath: s, discoverPath: d }];
+      }
+      return [];
+    });
+
+  if (matches.length === 0) {
+    throw new Error(
+      '[NO_ARTIFACTS] No spec/discover artifacts found in specs/ or specs/features/',
+    );
+  }
+
+  if (matches.length > 1) {
+    const names = matches.map((m) => m.name).join(', ');
+    throw new Error(
+      `[AMBIGUOUS_FEATURE] Multiple feature directories found: ${names}. Specify paths explicitly.`,
+    );
+  }
+
+  return { specPath: matches[0].specPath, discoverPath: matches[0].discoverPath };
 }
