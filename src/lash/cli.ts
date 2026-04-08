@@ -367,6 +367,24 @@ program
   });
 
 // ---------------------------------------------------------------------------
+// cleanup-specs
+// ---------------------------------------------------------------------------
+
+program
+  .command('cleanup-specs')
+  .description('Remove spec artifacts from specs/ directory')
+  .option('--feature <name>', 'Clean only specs/features/{name}/ directory')
+  .action(async (opts: { feature?: string }) => {
+    const { cleanupArtifacts } = await import('./artifact-cleaner.js');
+    try {
+      const result = cleanupArtifacts({ featureName: opts.feature ?? undefined });
+      out(result);
+    } catch (exc) {
+      err(String(exc));
+    }
+  });
+
+// ---------------------------------------------------------------------------
 // state (nested subcommands)
 // ---------------------------------------------------------------------------
 
@@ -411,6 +429,12 @@ stateCmd
       const updated = recordTransition(state, eventName, data);
       saveState(updated, statePath);
       out(updated);
+
+      // Auto-cleanup spec artifacts after build completion
+      if (eventName === 'build_completed') {
+        const { cleanupArtifacts } = await import('./artifact-cleaner.js');
+        cleanupArtifacts();
+      }
     } catch (exc) {
       err(String(exc));
     }
