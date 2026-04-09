@@ -310,10 +310,45 @@ describe('nopilot benchmark CLI', () => {
     });
     expect(evaluatePayload.runs[0].review_reason).toEqual(
       expect.arrayContaining([
-        'semantic_ambiguity',
         'oracle_trace_check_unverifiable',
       ]),
     );
+  });
+
+  it('keeps contract-valid runs from failing just because build-specific artifacts are absent', () => {
+    ensureCliBuilt();
+    const tmpRoot = makeTempDir('nopilot-benchmark-cli-contract-');
+    const binDir = join(tmpRoot, 'bin');
+    const runsRoot = join(tmpRoot, 'runs');
+    const benchmarkRoot = join(PACKAGE_ROOT, 'benchmark');
+    const caseDir = join(benchmarkRoot, 'cases', 'DISCOVER-001');
+
+    writeFakeCodexBin(binDir);
+
+    const env = {
+      PATH: `${binDir}:${process.env.PATH ?? ''}`,
+    };
+
+    const run = runCli([
+      'benchmark', 'run', caseDir,
+      '--benchmark-root', benchmarkRoot,
+      '--platform', 'codex-cli',
+      '--model', 'gpt-5.4',
+      '--output-root', runsRoot,
+    ], { env });
+    expect(run.status).toBe(0);
+
+    const runDir = (JSON.parse(run.stdout) as { runs: Array<{ run_dir: string }> }).runs[0].run_dir;
+    rmSync(join(runDir, 'artifacts', 'logs', 'result.json'), { force: true });
+
+    const evaluate = runCli(['benchmark', 'evaluate', runsRoot, '--benchmark-root', benchmarkRoot], { env });
+    expect(evaluate.status).toBe(0);
+
+    const payload = JSON.parse(evaluate.stdout) as {
+      runs: Array<{ status: string; review_reason: string[] }>;
+    };
+    expect(payload.runs[0].status).toBe('needs_review');
+    expect(payload.runs[0].review_reason).not.toContain('unknown_oracle_check:contract');
   });
 
   it('preserves a resolved human review when evaluate is run again on the same run root', () => {

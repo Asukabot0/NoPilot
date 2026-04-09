@@ -36,7 +36,7 @@ import { loadBenchmarkCase } from './benchmark/case-loader.js';
 import { writeEventLog } from './benchmark/event-log-writer.js';
 import { prepareRunWorkspace } from './benchmark/fixture-workspace.js';
 import { buildJsonReport, buildMarkdownReport } from './benchmark/reporter.js';
-import { getPhase1RunProfile } from './benchmark/run-profile.js';
+import { getPhase1RunProfile, validateRunContract } from './benchmark/run-profile.js';
 import { writeStandardRunDirectory } from './benchmark/run-writer.js';
 import { deriveSemanticEvents } from './benchmark/semantic-mapper.js';
 import { resolveCaseSelector } from './benchmark/suite-manifest.js';
@@ -359,6 +359,30 @@ benchmark
         const metadata = readJsonFile<BenchmarkRunMetadata>(join(runDir, 'metadata.json'));
         const oraclePath = join(benchmarkRoot, 'cases', metadata.case_id, 'oracle.json');
         const oracle = readJsonFile<BenchmarkOracle>(oraclePath);
+        const reviewRecordPath = join(runDir, 'review-record.json');
+        if (existsSync(reviewRecordPath)) {
+          const reviewRecord = readJsonFile<{ status?: string }>(reviewRecordPath);
+          if (reviewRecord.status === 'resolved') {
+            const preservedVerdict = readJsonFile<{
+              status: string;
+              auto_verdict: string;
+              total_score: number;
+              review_reason: string[];
+            }>(join(runDir, 'verdict.json'));
+
+            runs.push({
+              run_id: metadata.run_id,
+              case_id: metadata.case_id,
+              status: preservedVerdict.status,
+              auto_verdict: preservedVerdict.auto_verdict,
+              total_score: preservedVerdict.total_score,
+              review_reason: preservedVerdict.review_reason,
+              warnings: [],
+            });
+            continue;
+          }
+        }
+
         const transcript = readTranscriptRecords(runDir);
         const observationEvents = extractObservationEvents({
           transcript,
@@ -390,29 +414,6 @@ benchmark
             artifacts: 'artifacts',
           },
         });
-        const reviewRecordPath = join(runDir, 'review-record.json');
-        if (verdict.human_review_required && existsSync(reviewRecordPath)) {
-          const reviewRecord = readJsonFile<{ status?: string }>(reviewRecordPath);
-          if (reviewRecord.status === 'resolved') {
-            const preservedVerdict = readJsonFile<{
-              status: string;
-              auto_verdict: string;
-              total_score: number;
-              review_reason: string[];
-            }>(join(runDir, 'verdict.json'));
-            runs.push({
-              run_id: metadata.run_id,
-              case_id: metadata.case_id,
-              status: preservedVerdict.status,
-              auto_verdict: preservedVerdict.auto_verdict,
-              total_score: preservedVerdict.total_score,
-              review_reason: preservedVerdict.review_reason,
-              warnings: traceLog.warnings,
-            });
-            continue;
-          }
-        }
-
         const writtenVerdict = writeVerdictArtifact(join(runDir, 'verdict.json'), verdict);
         if (writtenVerdict.human_review_required) {
           try {
@@ -656,11 +657,29 @@ function evaluateOracleChecks(
       continue;
     }
 
-    if (normalizedCheck === 'build' || normalizedCheck === 'contract') {
+    if (normalizedCheck === 'contract') {
+      const contractValidation = validateRunContract(runDir, 'phase1-local-cli-v1');
+      if (!contractValidation.valid) {
+        outcomeChecksPassed = false;
+        failureTags.push('F11');
+      }
+      continue;
+    }
+
+    if (normalizedCheck === 'build') {
       const hasBuildArtifact = existsSync(join(runDir, 'artifacts', 'logs', 'result.json'));
       if (!hasBuildArtifact) {
         outcomeChecksPassed = false;
         failureTags.push('F11');
+      }
+      continue;
+    }
+
+    if (normalizedCheck === 'spec') {
+      const hasSpecArtifact = existsSync(join(runDir, 'artifacts', 'spec.json'))
+        || existsSync(join(runDir, 'artifacts', 'spec', 'index.json'));
+      if (!hasSpecArtifact) {
+        ambiguityReasons.push('oracle_spec_check_unverifiable');
       }
       continue;
     }

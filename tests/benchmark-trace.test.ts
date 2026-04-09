@@ -177,6 +177,31 @@ describe('deriveSemanticEvents', () => {
     expect(result.warnings).toEqual(['trace_insufficient']);
   });
 
+  it('emits trace_insufficient when no independent review signal exists at all', () => {
+    const result = deriveSemanticEvents([
+      {
+        id: 'obs-0001',
+        timestamp: '2026-04-09T10:00:00.000Z',
+        source: 'transcript',
+        type: 'phase_signal',
+        observation_key: 'phase_candidate',
+        observation_value: 'discover',
+        evidence: {
+          content: 'Entering discover phase.',
+          transcript_index: 0,
+        },
+      },
+    ]);
+
+    expect(result.semantic_events).toEqual([
+      expect.objectContaining({
+        type: 'phase_entered',
+        observation_event_ids: ['obs-0001'],
+      }),
+    ]);
+    expect(result.warnings).toEqual(['trace_insufficient']);
+  });
+
   it('emits trace_insufficient when artifact changes happen before the reverify signal', () => {
     const result = deriveSemanticEvents([
       {

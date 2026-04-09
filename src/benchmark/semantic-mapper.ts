@@ -65,6 +65,7 @@ export function deriveSemanticEvents(
   }
 
   if (!reviewObservation) {
+    pushWarning(warnings, 'trace_insufficient');
     return { semantic_events: semanticEvents, warnings };
   }
 

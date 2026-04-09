@@ -358,6 +358,50 @@ describe('benchmark reporter', () => {
     ]);
   });
 
+  it('preserves multiple runs that share the same case/platform/model key instead of overwriting them', () => {
+    const currentRoot = makeTempDir('benchmark-current-');
+    const baselineRoot = makeTempDir('benchmark-baseline-');
+    cleanupPaths.push(currentRoot, baselineRoot);
+
+    writeRunFixture(currentRoot, 'RUN-401', {
+      case_id: 'DISCOVER-006',
+      total_score: 70,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+    writeRunFixture(currentRoot, 'RUN-402', {
+      case_id: 'DISCOVER-006',
+      total_score: 65,
+      status: 'needs_review',
+      auto_verdict: 'needs_review',
+      failure_tags: ['F10'],
+      primary_failure_tag: 'F10',
+      human_review_required: true,
+    });
+
+    writeRunFixture(baselineRoot, 'BASE-401', {
+      case_id: 'DISCOVER-006',
+      total_score: 72,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+    writeRunFixture(baselineRoot, 'BASE-402', {
+      case_id: 'DISCOVER-006',
+      total_score: 67,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+
+    const report = buildJsonReport({
+      runs_root: currentRoot,
+      baseline_root: baselineRoot,
+    });
+
+    expect(report.regression_diff.entries).toHaveLength(2);
+    expect(report.regression_diff.entries.map((entry) => entry.current_run_id)).toEqual(['RUN-401', 'RUN-402']);
+    expect(report.regression_diff.entries.map((entry) => entry.baseline_run_id)).toEqual(['BASE-401', 'BASE-402']);
+  });
+
   it('keeps regression diff empty when no baseline root is provided', () => {
     const currentRoot = makeTempDir('benchmark-current-');
     cleanupPaths.push(currentRoot);

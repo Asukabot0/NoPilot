@@ -102,8 +102,23 @@ export function buildRegressionDiff(
   currentRuns: readonly RegressionComparableRun[],
   baselineRuns: readonly RegressionComparableRun[],
 ): BenchmarkRegressionDiff {
-  const currentByKey = new Map(currentRuns.map((run) => [buildComparisonKey(run), run]));
-  const baselineByKey = new Map(baselineRuns.map((run) => [buildComparisonKey(run), run]));
+  const currentByKey = new Map<string, RegressionComparableRun[]>();
+  const baselineByKey = new Map<string, RegressionComparableRun[]>();
+
+  for (const run of currentRuns) {
+    const key = buildComparisonKey(run);
+    const bucket = currentByKey.get(key) ?? [];
+    bucket.push(run);
+    currentByKey.set(key, bucket);
+  }
+
+  for (const run of baselineRuns) {
+    const key = buildComparisonKey(run);
+    const bucket = baselineByKey.get(key) ?? [];
+    bucket.push(run);
+    baselineByKey.set(key, bucket);
+  }
+
   const comparisonKeys = new Set<string>([
     ...currentByKey.keys(),
     ...baselineByKey.keys(),
@@ -111,59 +126,65 @@ export function buildRegressionDiff(
   const entries: RegressionDiffEntry[] = [];
 
   for (const comparisonKey of [...comparisonKeys].sort()) {
-    const currentRun = currentByKey.get(comparisonKey);
-    const baselineRun = baselineByKey.get(comparisonKey);
-    const caseId = currentRun?.case_id ?? baselineRun?.case_id ?? 'unknown';
+    const currentRunsForKey = [...(currentByKey.get(comparisonKey) ?? [])].sort((left, right) => left.run_id.localeCompare(right.run_id));
+    const baselineRunsForKey = [...(baselineByKey.get(comparisonKey) ?? [])].sort((left, right) => left.run_id.localeCompare(right.run_id));
+    const pairCount = Math.max(currentRunsForKey.length, baselineRunsForKey.length);
 
-    if (currentRun && baselineRun) {
-      const failureDiff = diffFailureTags(currentRun.failure_tags, baselineRun.failure_tags);
-      entries.push({
-        case_id: caseId,
-        comparison_key: comparisonKey,
-        classification: classifyMatchedRun(currentRun, baselineRun),
-        baseline_run_id: baselineRun.run_id,
-        current_run_id: currentRun.run_id,
-        baseline_score: baselineRun.total_score,
-        current_score: currentRun.total_score,
-        score_delta: currentRun.total_score - baselineRun.total_score,
-        status_change: `${baselineRun.status} -> ${currentRun.status}`,
-        new_failures: failureDiff.new_failures,
-        fixed_failures: failureDiff.fixed_failures,
-      });
-      continue;
-    }
+    for (let index = 0; index < pairCount; index += 1) {
+      const currentRun = currentRunsForKey[index];
+      const baselineRun = baselineRunsForKey[index];
+      const caseId = currentRun?.case_id ?? baselineRun?.case_id ?? 'unknown';
 
-    if (currentRun) {
-      entries.push({
-        case_id: caseId,
-        comparison_key: comparisonKey,
-        classification: 'added',
-        baseline_run_id: null,
-        current_run_id: currentRun.run_id,
-        baseline_score: null,
-        current_score: currentRun.total_score,
-        score_delta: null,
-        status_change: `missing -> ${currentRun.status}`,
-        new_failures: [...currentRun.failure_tags].sort(),
-        fixed_failures: [],
-      });
-      continue;
-    }
+      if (currentRun && baselineRun) {
+        const failureDiff = diffFailureTags(currentRun.failure_tags, baselineRun.failure_tags);
+        entries.push({
+          case_id: caseId,
+          comparison_key: comparisonKey,
+          classification: classifyMatchedRun(currentRun, baselineRun),
+          baseline_run_id: baselineRun.run_id,
+          current_run_id: currentRun.run_id,
+          baseline_score: baselineRun.total_score,
+          current_score: currentRun.total_score,
+          score_delta: currentRun.total_score - baselineRun.total_score,
+          status_change: `${baselineRun.status} -> ${currentRun.status}`,
+          new_failures: failureDiff.new_failures,
+          fixed_failures: failureDiff.fixed_failures,
+        });
+        continue;
+      }
 
-    if (baselineRun) {
-      entries.push({
-        case_id: caseId,
-        comparison_key: comparisonKey,
-        classification: 'removed',
-        baseline_run_id: baselineRun.run_id,
-        current_run_id: null,
-        baseline_score: baselineRun.total_score,
-        current_score: null,
-        score_delta: null,
-        status_change: `${baselineRun.status} -> missing`,
-        new_failures: [],
-        fixed_failures: [...baselineRun.failure_tags].sort(),
-      });
+      if (currentRun) {
+        entries.push({
+          case_id: caseId,
+          comparison_key: comparisonKey,
+          classification: 'added',
+          baseline_run_id: null,
+          current_run_id: currentRun.run_id,
+          baseline_score: null,
+          current_score: currentRun.total_score,
+          score_delta: null,
+          status_change: `missing -> ${currentRun.status}`,
+          new_failures: [...currentRun.failure_tags].sort(),
+          fixed_failures: [],
+        });
+        continue;
+      }
+
+      if (baselineRun) {
+        entries.push({
+          case_id: caseId,
+          comparison_key: comparisonKey,
+          classification: 'removed',
+          baseline_run_id: baselineRun.run_id,
+          current_run_id: null,
+          baseline_score: baselineRun.total_score,
+          current_score: null,
+          score_delta: null,
+          status_change: `${baselineRun.status} -> missing`,
+          new_failures: [],
+          fixed_failures: [...baselineRun.failure_tags].sort(),
+        });
+      }
     }
   }
 
