@@ -111,3 +111,19 @@
   - `resolveDiscover()` 仍未对 split child 内容做 schema 级结构校验，只保证文件存在且 JSON 可解析
 - 值得深入研究的问题:
   - 是否应在 resolver 层统一接入 artifact schema 校验，以便将 discover/spec/tests/build 的结构错误统一前置到加载阶段
+
+## Progress Snapshot: 2026-04-10 14:50
+- 触发方式: 修复 issue #74 / #75 的阶段入口与纠偏恢复协议
+- 代码统计: 本次修改 discover/spec/build 阶段模板、`nopilot init` 注入逻辑、结构测试与跟踪文档
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: fix/issues-74-75
+- 本次工作:
+  - 在 `commands/discover|spec|build/SKILL.md` 明确“显式阶段命令或等价指令视为已确认，直接进入，不得重复确认”
+  - 新增 `commands/discover/recovery.md`、`commands/spec/recovery.md`、`commands/build/recovery.md`，要求用户纠偏后必须重新加载阶段技能并输出 **已完成 / 待执行 / 下一步** 摘要
+  - 更新 `CLAUDE.dev.md` 与仓库 `CLAUDE.md`，使阶段入口与纠偏恢复规则在模板和维护文档中一致
+  - 调整 `src/nopilot-cli.ts` 的 directive 提取逻辑，使 `nopilot init` 注入项目 `CLAUDE.md` 时同时带上阶段触发规则与 Lash 段落
+  - 补充 `src/skill-engine/__tests__/skill-structure.test.ts` 与 `tests/nopilot-cli.test.ts` 回归约束，防止 #74/#75 再次回归
+- 当前问题:
+  - `spec` / `build` 主技能原本就贴近行数上限，后续若继续增加入口协议，应优先放到子技能，避免再次触发结构性超限
+- 值得深入研究的问题:
+  - 是否需要在运行时状态层新增更强的 phase reset 事件，还是继续以阶段技能 + `lash state resume` 的权威回读为主
