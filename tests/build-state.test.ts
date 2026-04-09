@@ -14,7 +14,7 @@ import {
   getResumePoint,
   archiveState,
 } from '../src/lash/build-state.js';
-import type { BuildState, BuildEvent } from '../src/lash/types.js';
+import type { BuildState, BuildEvent, BuildPhase } from '../src/lash/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers (mirror Python _make_* helpers)
@@ -30,6 +30,7 @@ const VALID_EVENTS: BuildEvent[] = [
   'module_critic_spawned',
   'module_critic_passed',
   'module_critic_failed',
+  'tracer_completed',
   'batch_completed',
   'merge_completed',
   'merge_conflict',
@@ -46,6 +47,37 @@ const VALID_EVENTS: BuildEvent[] = [
 
 function makeBaseState(specHash = 'abc123'): BuildState {
   return createInitialState(specHash);
+}
+
+function makeValidTransitionInput(event: BuildEvent): {
+  phase: BuildPhase;
+  data: Record<string, unknown>;
+} {
+  switch (event) {
+    case 'tracer_completed':
+      return { phase: 'planning', data: {} };
+    case 'batch_completed':
+      return { phase: 'batch_execution', data: { batch_id: 'BATCH-001' } };
+    case 'build_critic_spawned':
+      return { phase: 'batch_execution', data: {} };
+    case 'build_critic_passed':
+    case 'build_critic_failed':
+    case 'supervisor_spawned':
+      return { phase: 'build_critic', data: {} };
+    case 'supervisor_passed':
+    case 'supervisor_failed':
+    case 'build_completed':
+      return { phase: 'supervisor', data: {} };
+    case 'build_paused':
+      return { phase: 'planning', data: { reason: 'l2' } };
+    case 'build_backtracked':
+      return { phase: 'planning', data: {} };
+    default:
+      return {
+        phase: 'planning',
+        data: { module_id: 'MOD-001', batch_id: 'BATCH-001' },
+      };
+  }
 }
 
 function makeWorkerState(moduleId = 'MOD-001') {
@@ -225,20 +257,57 @@ describe('recordTransition', () => {
   });
 
   it('TEST-094: build_completed updates state status', () => {
+    state.current_phase = 'supervisor';
     const updated = recordTransition(state, 'build_completed', {});
     expect(updated.status).toBe('completed');
     expect(updated.transition_log).toHaveLength(1);
     expect(updated.transition_log[0].event).toBe('build_completed');
   });
 
-  it('TEST-095: all 21 events are recognized', () => {
+  it('TEST-095: all 22 events are recognized when phase prerequisites are satisfied', () => {
     for (const event of VALID_EVENTS) {
       const s = makeBaseState();
       s.batches = [makeBatchState()];
-      expect(() =>
-        recordTransition(s, event, { module_id: 'MOD-001', batch_id: 'BATCH-001' }),
-      ).not.toThrow();
+      const { phase, data } = makeValidTransitionInput(event);
+      s.current_phase = phase;
+      expect(() => recordTransition(s, event, data)).not.toThrow();
     }
+  });
+
+  it('TEST-095: tracer_completed advances current phase to batch_execution', () => {
+    const updated = recordTransition(state, 'tracer_completed', {});
+    expect(updated.current_phase).toBe('batch_execution');
+    expect(updated.tracer.status).toBe('completed');
+    expect(updated.transition_log[0].event).toBe('tracer_completed');
+  });
+
+  it('TEST-095: guarded phase transitions reject invalid phase jumps', () => {
+    expect(() => recordTransition(state, 'batch_completed', { batch_id: 'BATCH-001' })).toThrow(
+      'invalid_transition',
+    );
+    expect(() => recordTransition(state, 'build_critic_spawned', {})).toThrow(
+      'invalid_transition',
+    );
+    expect(() => recordTransition(state, 'build_completed', {})).toThrow('invalid_transition');
+  });
+
+  it('TEST-095: full verification chain must pass through critic and supervisor before completion', () => {
+    let updated = recordTransition(state, 'tracer_completed', {});
+    updated = recordTransition(updated, 'build_critic_spawned', {});
+    expect(updated.current_phase).toBe('build_critic');
+
+    updated = recordTransition(updated, 'supervisor_spawned', {});
+    expect(updated.current_phase).toBe('supervisor');
+
+    updated = recordTransition(updated, 'build_completed', {});
+    expect(updated.current_phase).toBe('acceptance');
+    expect(updated.status).toBe('completed');
+  });
+
+  it('TEST-095: supervisor_spawned only advances from build_critic phase', () => {
+    state.current_phase = 'build_critic';
+    const updated = recordTransition(state, 'supervisor_spawned', {});
+    expect(updated.current_phase).toBe('supervisor');
   });
 
   it('TEST-103: invalid event throws with invalid_transition', () => {
@@ -252,8 +321,11 @@ describe('recordTransition', () => {
     s.batches = [makeBatchState()];
     s = recordTransition(s, 'worker_spawned', { module_id: 'MOD-001', batch_id: 'BATCH-001' });
     s = recordTransition(s, 'test_passed', { module_id: 'MOD-001', batch_id: 'BATCH-001' });
+    s = recordTransition(s, 'tracer_completed', {});
+    s = recordTransition(s, 'build_critic_spawned', {});
+    s = recordTransition(s, 'supervisor_spawned', {});
     s = recordTransition(s, 'build_completed', {});
-    expect(s.transition_log).toHaveLength(3);
+    expect(s.transition_log).toHaveLength(6);
   });
 
   it('transition log entry has valid timestamp', () => {
@@ -324,6 +396,7 @@ describe('recordTransition', () => {
   it('batch_completed updates batch status to completed', () => {
     const s = makeBaseState();
     s.batches = [makeBatchState()];
+    s.current_phase = 'batch_execution';
     const updated = recordTransition(s, 'batch_completed', { batch_id: 'BATCH-001' });
     expect(updated.batches[0].status).toBe('completed');
   });
@@ -357,11 +430,11 @@ describe('getResumePoint', () => {
   it('TEST-096: resume from in_progress', () => {
     const state = makeBaseState();
     state.status = 'in_progress';
-    state.current_phase = 'implementing';
+    state.current_phase = 'batch_execution';
     state.batches = [makeBatchState()];
 
     const resume = getResumePoint(state);
-    expect(resume.phase).toBe('implementing');
+    expect(resume.phase).toBe('batch_execution');
     expect('batch_id' in resume).toBe(true);
     expect('module_id' in resume).toBe(true);
     expect('pending_action' in resume).toBe(true);
@@ -372,11 +445,11 @@ describe('getResumePoint', () => {
   it('TEST-097: resume from paused_l2', () => {
     const state = makeBaseState();
     state.status = 'paused_l2';
-    state.current_phase = 'testing';
+    state.current_phase = 'supervisor';
     state.batches = [makeBatchState()];
 
     const resume = getResumePoint(state);
-    expect(resume.phase).toBe('testing');
+    expect(resume.phase).toBe('supervisor');
     expect('pending_action' in resume).toBe(true);
   });
 

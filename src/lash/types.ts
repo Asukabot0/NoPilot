@@ -23,10 +23,10 @@ export interface LashConfig {
 }
 
 // ---------------------------------------------------------------------------
-// build_state.py — 21 event types + state structures
+// build_state.py — 22 event types + state structures
 // ---------------------------------------------------------------------------
 
-/** All 21 valid build-state transition events. */
+/** All 22 valid build-state transition events. */
 export type BuildEvent =
   | 'worker_spawned'
   | 'worker_completed'
@@ -37,6 +37,7 @@ export type BuildEvent =
   | 'module_critic_spawned'
   | 'module_critic_passed'
   | 'module_critic_failed'
+  | 'tracer_completed'
   | 'batch_completed'
   | 'merge_completed'
   | 'merge_conflict'
@@ -59,6 +60,14 @@ export type BuildStatus =
   | 'paused_l2'
   | 'paused_critic'
   | 'paused_supervisor';
+
+/** Runtime build phases tracked by build-state.json. */
+export type BuildPhase =
+  | 'planning'
+  | 'batch_execution'
+  | 'build_critic'
+  | 'supervisor'
+  | 'acceptance';
 
 /** Worker-level status values (set by _WORKER_EVENT_STATUS mapping). */
 export type WorkerStatus =
@@ -116,7 +125,7 @@ export interface BuildState {
   spec_hash: string;
   started_at: string;
   updated_at: string;
-  current_phase: string;
+  current_phase: BuildPhase;
   tracer: TracerStateEntry;
   batches: BatchEntry[];
   transition_log: TransitionLogEntry[];
@@ -131,7 +140,7 @@ export interface SessionRecoveryEntry {
 
 /** Return type of get_resume_point(). */
 export interface ResumePoint {
-  phase: string;
+  phase: BuildPhase;
   batch_id: string | null;
   module_id: string | null;
   pending_action: string;
@@ -388,4 +397,3 @@ export interface CancelResult {
 export interface ResumeOutput {
   sent: boolean;
 }
-

@@ -3,7 +3,7 @@
  * Mirrors Python lash/build_state.py exactly — MOD-008.
  *
  * Atomic state file read/write (write-to-temp + fs.renameSync).
- * Supports all 21 transition events. Crash recovery / resume logic.
+ * Supports all 22 transition events. Crash recovery / resume logic.
  */
 import { existsSync, readFileSync, renameSync, writeFileSync, copyFileSync } from 'node:fs';
 import { dirname, resolve, basename } from 'node:path';
@@ -11,6 +11,7 @@ import type {
   BuildState,
   BuildEvent,
   BuildStatus,
+  BuildPhase,
   WorkerStatus,
   BatchEntry,
   WorkerEntry,
@@ -34,6 +35,7 @@ export const VALID_EVENTS: ReadonlySet<BuildEvent> = new Set<BuildEvent>([
   'module_critic_spawned',
   'module_critic_passed',
   'module_critic_failed',
+  'tracer_completed',
   'batch_completed',
   'merge_completed',
   'merge_conflict',
@@ -76,12 +78,35 @@ const WORKER_EVENT_STATUS: Readonly<Partial<Record<BuildEvent, WorkerStatus>>> =
   merge_conflict: 'merge_conflict',
 };
 
+const PHASE_EVENT_GUARDS: Readonly<Partial<Record<BuildEvent, readonly BuildPhase[]>>> = {
+  tracer_completed: ['planning'],
+  batch_completed: ['batch_execution'],
+  build_critic_spawned: ['batch_execution'],
+  build_critic_passed: ['build_critic'],
+  build_critic_failed: ['build_critic'],
+  supervisor_spawned: ['build_critic'],
+  supervisor_passed: ['supervisor'],
+  supervisor_failed: ['supervisor'],
+  build_completed: ['supervisor'],
+};
+
 // ---------------------------------------------------------------------------
 // Private helpers
 // ---------------------------------------------------------------------------
 
 function nowIso(): string {
   return new Date().toISOString();
+}
+
+function assertPhaseAllowed(phase: BuildPhase, event: BuildEvent): void {
+  const allowedPhases = PHASE_EVENT_GUARDS[event];
+  if (!allowedPhases || allowedPhases.includes(phase)) {
+    return;
+  }
+
+  throw new Error(
+    `invalid_transition: event ${JSON.stringify(event)} is not allowed during phase ${JSON.stringify(phase)}`,
+  );
 }
 
 function workerPendingAction(workerStatus: string): string {
@@ -192,6 +217,10 @@ export function recordTransition(
   // Shallow copy to avoid mutating input
   const newState: BuildState = {
     ...state,
+    tracer: {
+      ...state.tracer,
+      module_statuses: { ...(state.tracer?.module_statuses ?? {}) },
+    },
     transition_log: [...(state.transition_log ?? [])],
     batches: (state.batches ?? []).map((b) => ({ ...b })),
   };
@@ -202,9 +231,15 @@ export function recordTransition(
 
   const fromStatus = newState.status as string;
   let toStatus = fromStatus;
+  const currentPhase = newState.current_phase;
+
+  assertPhaseAllowed(currentPhase, event as BuildEvent);
 
   // --- Apply state-level transitions ---
-  if (event === 'build_completed') {
+  if (event === 'tracer_completed') {
+    newState.tracer.status = 'completed';
+    newState.current_phase = 'batch_execution';
+  } else if (event === 'build_completed') {
     toStatus = 'completed';
     newState.status = 'completed';
     newState.current_phase = 'acceptance';

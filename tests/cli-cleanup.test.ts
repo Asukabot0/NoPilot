@@ -192,6 +192,21 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
     );
     expect(createResult.returncode).toBe(0);
 
+    const tracerResult = runLashInDir(
+      tmpDir, 'state', 'update', 'tracer_completed', '--state-path', statePath, '--data', '{}',
+    );
+    expect(tracerResult.returncode).toBe(0);
+
+    const criticResult = runLashInDir(
+      tmpDir, 'state', 'update', 'build_critic_spawned', '--state-path', statePath, '--data', '{}',
+    );
+    expect(criticResult.returncode).toBe(0);
+
+    const supervisorResult = runLashInDir(
+      tmpDir, 'state', 'update', 'supervisor_spawned', '--state-path', statePath, '--data', '{}',
+    );
+    expect(supervisorResult.returncode).toBe(0);
+
     // Trigger build_completed
     const result = runLashInDir(
       tmpDir, 'state', 'update', 'build_completed', '--state-path', statePath,
@@ -224,5 +239,24 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
 
     // spec.json should still exist
     expect(existsSync(join(specsDir, 'spec.json'))).toBe(true);
+  });
+
+  it('accepts tracer_completed through CLI and advances current_phase', () => {
+    const statePath = join(tmpDir, 'specs', 'build-state.json');
+    makeSpecsDir(tmpDir);
+
+    const createResult = runLashInDir(
+      tmpDir, 'state', 'create', '--spec-hash', 'abc123', '--state-path', statePath,
+    );
+    expect(createResult.returncode).toBe(0);
+
+    const result = runLashInDir(
+      tmpDir, 'state', 'update', 'tracer_completed', '--state-path', statePath, '--data', '{}',
+    );
+
+    expect(result.returncode).toBe(0);
+    const stateOutput = JSON.parse(result.stdout);
+    expect(stateOutput.current_phase).toBe('batch_execution');
+    expect(stateOutput.tracer.status).toBe('completed');
   });
 });
