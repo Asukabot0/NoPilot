@@ -656,4 +656,64 @@ describe('Context budget e2e tests (PR #60)', () => {
     expect(content).toContain('MUST re-run Critic and wait for a fresh passing review before entering Supervisor');
     expect(content).not.toContain('After Critic passes (or user resolves Critic findings):');
   });
+
+  it('TEST-070-014: /spec requires a passing discover review before Phase 1', () => {
+    const content = readFile('commands/spec/SKILL.md');
+
+    expect(content).toContain('discover_review.json');
+    expect(content).toContain('Finish `/discover` review before running `/spec`.');
+    expect(content).toContain('6cs_audit.passed');
+    expect(content).toContain('invariant_verification.passed');
+    expect(content).toContain('acceptance_criteria_verification.passed');
+    expect(content).toContain('coverage_verification.passed');
+    expect(content).toContain('global_coherence_check.intent_alignment');
+  });
+
+  it('TEST-070-015: /spec discover review gate is feature-aware', () => {
+    const content = readFile('commands/spec/SKILL.md');
+
+    expect(content).toContain('specs/features/feat-{featureSlug}/discover.json');
+    expect(content).toContain('specs/features/feat-{featureSlug}/discover_review.json');
+    expect(content).toContain('artifact root');
+  });
+
+  it('TEST-070-016: discover review contracts use feature-aware paths', () => {
+    const discoverSkill = readFile('commands/discover/SKILL.md');
+    const criticSupervisor = readFile('commands/discover/critic-supervisor.md');
+    const criticDiscover = readFile('commands/critic/discover.md');
+
+    expect(discoverSkill).toContain('specs/features/feat-{featureSlug}/discover_review.json');
+    expect(criticSupervisor).toContain('specs/features/feat-{featureSlug}/discover_review.json');
+    expect(criticDiscover).toContain('specs/features/feat-{featureSlug}/discover_review.json');
+  });
+
+  it('TEST-070-017: discover review reads and writes stay on the current artifact root', () => {
+    const criticSupervisor = readFile('commands/discover/critic-supervisor.md');
+    const criticDiscover = readFile('commands/critic/discover.md');
+
+    expect(criticSupervisor).toContain('matching `discover_review.json` under the current artifact root');
+    expect(criticDiscover).toContain('in greenfield mode, or `specs/features/feat-{featureSlug}/discover_review.json` in feature mode');
+    expect(criticDiscover).toContain('feature-scoped equivalent under `specs/features/feat-{featureSlug}/`');
+  });
+
+  it('TEST-070-018: /spec sub-skills keep spec artifacts on the current artifact root', () => {
+    const schemaContent = readFile('commands/spec/schema.md');
+    const reviewRunnerContent = readFile('commands/spec/review-runner.md');
+    const decisionsContent = readFile('commands/spec/decisions.md');
+
+    expect(schemaContent).toContain('same feature artifact root');
+    expect(schemaContent).toContain('`spec.json` under the current artifact root');
+    expect(reviewRunnerContent).toContain('spec_review.json under the current artifact root');
+    expect(reviewRunnerContent).toContain('decisions.json under the current artifact root');
+    expect(decisionsContent).toContain('specs/features/feat-{featureSlug}/decisions.json');
+    expect(decisionsContent).toContain('current artifact root');
+  });
+
+  it('TEST-070-019: critic spec contract is feature-aware for spec review artifacts', () => {
+    const content = readFile('commands/critic/spec.md');
+
+    expect(content).toContain('discover.json` or `discover/index.json` under the current artifact root');
+    expect(content).toContain('specs/features/feat-{featureSlug}/spec_review.json');
+    expect(content).toContain('current artifact root');
+  });
 });
