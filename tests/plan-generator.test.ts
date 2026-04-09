@@ -244,8 +244,8 @@ describe('plan-generator', () => {
     expect(() => generatePlan(specPath, discoverPath)).toThrow('circular_dependency');
   });
 
-  // TEST-008: Missing owned_files → infer from source_root + warning
-  it('TEST-008: missing owned_files infer from source_root', () => {
+  // TEST-008: Missing owned_files stay fail-closed with warning
+  it('TEST-008: missing owned_files stay empty', () => {
     const modules = [
       { id: 'MOD-A', source_root: 'src/', depends_on: [], requirement_refs: [] },
     ];
@@ -267,9 +267,27 @@ describe('plan-generator', () => {
 
     expect(warnMessages.some((msg) => msg.includes('MOD-A'))).toBe(true);
 
-    // owned_files should be inferred as source_root + "**"
+    // Missing ownership should stay fail-closed instead of inventing wildcard ownership.
     const batchModule = plan!.batches[0].modules[0];
-    expect(batchModule.owned_files).toEqual(['src/**']);
+    expect(batchModule.owned_files).toEqual([]);
+  });
+
+  // TEST-016: Missing owned_files should not create synthetic overlap via source_root/** fallback
+  it('TEST-016: missing owned_files do not serialize sibling modules', () => {
+    const modules = [
+      { id: 'MOD-A', source_root: 'src/shared/', depends_on: [], requirement_refs: [] },
+      { id: 'MOD-B', source_root: 'src/shared/', depends_on: [], requirement_refs: [] },
+    ];
+    writeJson(specPath, makeSpec(modules as unknown as ModuleEntry[]));
+    writeJson(discoverPath, makeDiscover());
+
+    const plan = generatePlan(specPath, discoverPath);
+
+    expect(plan.batches).toHaveLength(1);
+    const ids = plan.batches[0].modules.map((m) => m.module_id);
+    expect(ids).toEqual(['MOD-A', 'MOD-B']);
+    expect(plan.batches[0].modules[0].owned_files).toEqual([]);
+    expect(plan.batches[0].modules[1].owned_files).toEqual([]);
   });
 
   // TEST-009: Deterministic output (run twice, compare)

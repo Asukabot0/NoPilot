@@ -214,12 +214,11 @@ function inferOwnedFiles(modules: SpecModule[]): SpecModule[] {
   return modules.map((mod) => {
     if (!mod.owned_files || mod.owned_files.length === 0) {
       const sourceRoot = mod.source_root ?? '';
-      const inferred = sourceRoot + '**';
       console.warn(
         `Module ${mod.id} has no owned_files; ` +
-        `treating as owning all files under ${JSON.stringify(sourceRoot)} -> ${JSON.stringify(inferred)}`,
+        `treating ownership as empty for safety under ${JSON.stringify(sourceRoot)}`,
       );
-      return { ...mod, owned_files: [inferred] };
+      return { ...mod, owned_files: [] };
     }
     return { ...mod };
   });
