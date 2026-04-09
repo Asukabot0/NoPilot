@@ -21,6 +21,8 @@ Use the following structure (shown as single-file format; directory format split
       "id": "MOD-001",
       "name": "",
       "responsibility": "",
+      "source_root": "src/module/",
+      "owned_files": ["src/module/**", "tests/module/**"],
       "interfaces": [
         {
           "type": "api | internal | event",
@@ -88,6 +90,7 @@ Use the following structure (shown as single-file format; directory format split
 ```
 
 Ensure every interface has `requirement_refs` and `acceptance_criteria_refs` for traceability.
+Ensure every module declares a non-empty `owned_files` list; Lash packaging and `/lash-build` use these entries as the worker ownership boundary and halt when they are missing or empty.
 Ensure every module has `invariant_refs` where applicable.
 
 Emit event: `COMPLETE` → enters `reviewing` state.

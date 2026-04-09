@@ -1445,7 +1445,7 @@ lash package MOD-001 .lash/worktrees/MOD-001 claude-code \
 |------|------|------|
 | `--spec <path>` | 是 | spec 制品入口路径，可传 `spec.json`、`spec/` 或 `spec/index.json` |
 | `--discover <path>` | 是 | discover 制品入口路径，可传 `discover.json`、`discover/` 或 `discover/index.json` |
-| `--tests <path>` | 否 | tests 制品入口路径，可传 `tests.json`、`tests/` 或 `tests/index.json` |
+| `--tests <path>` | 是 | tests 制品入口路径，可传 `tests.json`、`tests/` 或 `tests/index.json`；缺失时 `lash package` 会立即报错并提示先运行 `/build` Step 2 / `commands/build/test-gen.md` 生成 tests 制品 |
 | `--completed <m1,m2>` | 否 | 已完成的模块 ID（逗号分隔） |
 
 **输出：**
@@ -1733,6 +1733,7 @@ context_dependencies : array
 | `id` | `string` (格式 `MOD-xxx`) | 模块 ID |
 | `name` | `string` | 模块名称 |
 | `responsibility` | `string` | 职责描述 |
+| `owned_files` | `string[]` | 模块拥有的文件边界，且列表必须非空；`lash package` 与 `/lash-build` 在缺失或为空时都会阻断执行 |
 | `interfaces` | `array` | 接口定义 |
 | `data_models` | `array` | 数据模型 |
 | `requirement_refs` | `string[]` | 引用的需求 ID |
@@ -1742,7 +1743,6 @@ context_dependencies : array
 | 字段 | 类型 | 含义 |
 |------|------|------|
 | `source_root` | `string` | 源码根目录 |
-| `owned_files` | `string[]` | 拥有的文件；可省略，省略时构建计划保留空 ownership 并发出警告 |
 | `state_machine` | `object` | 状态机定义 |
 | `nfr_constraints` | `object` | 非功能约束 |
 | `invariant_refs` | `string[]` | 引用的不变量 ID |
