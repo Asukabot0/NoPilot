@@ -494,4 +494,44 @@ describe('nopilot benchmark CLI', () => {
     expect(report.status).toBe(1);
     expect(report.stderr).toContain('benchmark_report_pending_evaluation');
   });
+
+  it('keeps SPEC cases in needs_review when spec artifacts exist but fresh reverification evidence is missing', () => {
+    ensureCliBuilt();
+    const tmpRoot = makeTempDir('nopilot-benchmark-cli-spec-');
+    const binDir = join(tmpRoot, 'bin');
+    const runsRoot = join(tmpRoot, 'runs');
+    const benchmarkRoot = join(PACKAGE_ROOT, 'benchmark');
+    const caseDir = join(benchmarkRoot, 'cases', 'SPEC-001');
+
+    writeFakeCodexBin(binDir);
+
+    const env = {
+      PATH: `${binDir}:${process.env.PATH ?? ''}`,
+    };
+
+    const run = runCli([
+      'benchmark', 'run', caseDir,
+      '--benchmark-root', benchmarkRoot,
+      '--platform', 'codex-cli',
+      '--model', 'gpt-5.4',
+      '--output-root', runsRoot,
+    ], { env });
+    expect(run.status).toBe(0);
+
+    const runPayload = JSON.parse(run.stdout) as { runs: Array<{ run_dir: string }> };
+    const runDir = runPayload.runs[0].run_dir;
+    mkdirSync(join(runDir, 'artifacts', 'spec'), { recursive: true });
+    writeFileSync(join(runDir, 'artifacts', 'spec', 'index.json'), '{"ok":true}\n', 'utf-8');
+
+    const evaluate = runCli(['benchmark', 'evaluate', runsRoot, '--benchmark-root', benchmarkRoot], { env });
+    expect(evaluate.status).toBe(0);
+
+    const payload = JSON.parse(evaluate.stdout) as {
+      runs: Array<{ status: string; review_reason: string[] }>;
+    };
+    expect(payload.runs[0].status).toBe('needs_review');
+    expect(payload.runs[0].review_reason).toEqual(
+      expect.arrayContaining(['oracle_spec_check_unverifiable']),
+    );
+  });
 });

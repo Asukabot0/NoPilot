@@ -715,6 +715,10 @@ function evaluateOracleChecks(
       if (!hasSpecArtifact) {
         ambiguityReasons.push('oracle_spec_check_unverifiable');
       }
+      const hasFreshReverify = requiredEventsMet.some((event) => event.startsWith('fresh_reverification:'));
+      if (!hasFreshReverify) {
+        ambiguityReasons.push('oracle_spec_check_unverifiable');
+      }
       continue;
     }
 
@@ -725,10 +729,10 @@ function evaluateOracleChecks(
       continue;
     }
 
-    if (normalizedCheck === 'tests' || normalizedCheck === 'spec') {
+    if (normalizedCheck === 'tests') {
       const hasFreshReverify = requiredEventsMet.some((event) => event.startsWith('fresh_reverification:'));
       if (!hasFreshReverify) {
-        ambiguityReasons.push(`oracle_${normalizedCheck}_check_unverifiable`);
+        ambiguityReasons.push('oracle_tests_check_unverifiable');
       }
       continue;
     }
