@@ -48,7 +48,7 @@ Lash's architecture is grounded in five core principles:
 
 Lash uses **thin per-platform launchers** (not deep adapters):
 - CC: `claude -p <task> --session-id <uuid> --permission-mode bypassPermissions --append-system-prompt-file .lash/worker-instructions.md`
-- Codex: `codex exec -c approval_policy=auto-edit <task>`
+- Codex: `codex exec --full-auto -c system_prompt_file=.lash/worker-instructions.md <task>`
 - OpenCode: `opencode run <task> --agent coder`
 
 **Rationale**: Adding a new platform costs hours (write CLI wrapper), not weeks. Version updates to platform CLIs are localized to launcher constants.
@@ -305,4 +305,3 @@ Lash **replaces** NoPilot's `/build` phase:
 - Acceptance criteria verification via EARS model
 - State machine transitions per workflow.json
 - Backtrack triggers: spec_interface_infeasible (→BACKTRACK_SPEC), requirement_level_fundamental_issue (→BACKTRACK_DISCOVER)
-

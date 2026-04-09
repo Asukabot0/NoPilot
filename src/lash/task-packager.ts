@@ -423,7 +423,7 @@ Launch this Worker with:
 
 Launch this Worker with:
 
-    codex exec -c approval_policy=auto-edit -c system_prompt_file=.lash/worker-instructions.md <task>
+    codex exec --full-auto -c system_prompt_file=.lash/worker-instructions.md <task>
 `;
   } else {
     // opencode — content is prepended to task prompt
