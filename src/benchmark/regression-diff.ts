@@ -78,6 +78,34 @@ function takeByWorkflowVersion(
   return runs.splice(index, 1)[0];
 }
 
+function extractExactWorkflowPairs(
+  currentRuns: readonly RegressionComparableRun[],
+  baselineRuns: readonly RegressionComparableRun[],
+): {
+  matched: Array<{ currentRun: RegressionComparableRun; baselineRun: RegressionComparableRun }>;
+  remainingCurrent: RegressionComparableRun[];
+  remainingBaseline: RegressionComparableRun[];
+} {
+  const remainingBaseline = sortRunsForMatching(baselineRuns);
+  const matched: Array<{ currentRun: RegressionComparableRun; baselineRun: RegressionComparableRun }> = [];
+  const remainingCurrent: RegressionComparableRun[] = [];
+
+  for (const currentRun of sortRunsForMatching(currentRuns)) {
+    const baselineRun = takeByWorkflowVersion(remainingBaseline, currentRun.workflow_version);
+    if (baselineRun) {
+      matched.push({ currentRun, baselineRun });
+    } else {
+      remainingCurrent.push(currentRun);
+    }
+  }
+
+  return {
+    matched,
+    remainingCurrent,
+    remainingBaseline,
+  };
+}
+
 function diffFailureTags(current: readonly string[], baseline: readonly string[]): { new_failures: string[]; fixed_failures: string[] } {
   const currentSet = new Set(current);
   const baselineSet = new Set(baseline);
@@ -149,14 +177,34 @@ export function buildRegressionDiff(
   const entries: RegressionDiffEntry[] = [];
 
   for (const comparisonKey of [...comparisonKeys].sort()) {
-    const currentRunsForKey = sortRunsForMatching(currentByKey.get(comparisonKey) ?? []);
-    const baselineRunsForKey = sortRunsForMatching(baselineByKey.get(comparisonKey) ?? []);
+    const exactPairs = extractExactWorkflowPairs(
+      currentByKey.get(comparisonKey) ?? [],
+      baselineByKey.get(comparisonKey) ?? [],
+    );
+    const currentRunsForKey = [...exactPairs.remainingCurrent];
+    const baselineRunsForKey = [...exactPairs.remainingBaseline];
+
+    for (const { currentRun, baselineRun } of exactPairs.matched) {
+      const failureDiff = diffFailureTags(currentRun.failure_tags, baselineRun.failure_tags);
+      entries.push({
+        case_id: currentRun.case_id,
+        comparison_key: comparisonKey,
+        classification: classifyMatchedRun(currentRun, baselineRun),
+        baseline_run_id: baselineRun.run_id,
+        current_run_id: currentRun.run_id,
+        baseline_score: baselineRun.total_score,
+        current_score: currentRun.total_score,
+        score_delta: currentRun.total_score - baselineRun.total_score,
+        status_change: `${baselineRun.status} -> ${currentRun.status}`,
+        new_failures: failureDiff.new_failures,
+        fixed_failures: failureDiff.fixed_failures,
+      });
+    }
 
     while (currentRunsForKey.length > 0 || baselineRunsForKey.length > 0) {
       const currentRun = currentRunsForKey.shift();
       const baselineRun = currentRun
-        ? takeByWorkflowVersion(baselineRunsForKey, currentRun.workflow_version)
-          ?? baselineRunsForKey.shift()
+        ? baselineRunsForKey.shift()
         : baselineRunsForKey.shift();
       const caseId = currentRun?.case_id ?? baselineRun?.case_id ?? 'unknown';
 
