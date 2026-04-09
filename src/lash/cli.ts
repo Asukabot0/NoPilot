@@ -136,6 +136,11 @@ program
     const { generatePackage } = await import('./task-packager.js');
     const { resolveSpec, resolveDiscover, resolveTests, resolveArtifactPaths } = await import('./spec-resolver.js');
     try {
+      if (!opts.tests) {
+        throw new Error(
+          'lash package requires --tests <path>. Generate the tests artifact first via commands/build/test-gen.md or /build Step 2, then rerun with --tests specs/tests.json. Split artifact paths like specs/tests/ and specs/tests/index.json are also supported.'
+        );
+      }
       if (!opts.spec || !opts.discover) {
         const resolved = resolveArtifactPaths();
         opts.spec = opts.spec ?? resolved.specPath;
@@ -143,17 +148,7 @@ program
       }
       const { spec } = resolveSpec(opts.spec) as { spec: Record<string, unknown> };
       const { discover } = resolveDiscover(opts.discover) as { discover: Record<string, unknown> };
-      let tests: Record<string, unknown>;
-      if (opts.tests) {
-        tests = resolveTests(opts.tests).tests as Record<string, unknown>;
-      } else {
-        tests = {
-          example_cases: [],
-          property_cases: [],
-          coverage_summary: {},
-          coverage_guards: {},
-        };
-      }
+      const tests = resolveTests(opts.tests).tests as Record<string, unknown>;
       const completed = opts.completed
         ? opts.completed.split(',').map((m) => m.trim())
         : [];
