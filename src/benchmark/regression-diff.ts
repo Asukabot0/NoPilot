@@ -126,8 +126,22 @@ export function buildRegressionDiff(
   const entries: RegressionDiffEntry[] = [];
 
   for (const comparisonKey of [...comparisonKeys].sort()) {
-    const currentRunsForKey = [...(currentByKey.get(comparisonKey) ?? [])].sort((left, right) => left.run_id.localeCompare(right.run_id));
-    const baselineRunsForKey = [...(baselineByKey.get(comparisonKey) ?? [])].sort((left, right) => left.run_id.localeCompare(right.run_id));
+    const currentRunsForKey = [...(currentByKey.get(comparisonKey) ?? [])].sort((left, right) => {
+      const workflowCompare = left.workflow_version.localeCompare(right.workflow_version);
+      if (workflowCompare !== 0) {
+        return workflowCompare;
+      }
+
+      return left.run_id.localeCompare(right.run_id);
+    });
+    const baselineRunsForKey = [...(baselineByKey.get(comparisonKey) ?? [])].sort((left, right) => {
+      const workflowCompare = left.workflow_version.localeCompare(right.workflow_version);
+      if (workflowCompare !== 0) {
+        return workflowCompare;
+      }
+
+      return left.run_id.localeCompare(right.run_id);
+    });
     const pairCount = Math.max(currentRunsForKey.length, baselineRunsForKey.length);
 
     for (let index = 0; index < pairCount; index += 1) {

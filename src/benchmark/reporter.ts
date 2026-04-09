@@ -77,18 +77,21 @@ function loadReportRuns(rootDir: string): BenchmarkReportRun[] {
     const runDir = path.join(rootDir, entry);
     const metadata = readJsonFile<BenchmarkRunMetadata>(path.join(runDir, 'metadata.json'));
     const verdict = readJsonFile<BenchmarkVerdictArtifact>(path.join(runDir, 'verdict.json'));
+    const failureTags = Array.isArray((verdict as { failure_tags?: unknown }).failure_tags)
+      ? (verdict.failure_tags as string[])
+      : [];
 
     return {
       run_id: metadata.run_id,
-        case_id: metadata.case_id,
-        platform_id: metadata.platform_id,
-        model_id: metadata.model_id,
-        workflow_version: metadata.workflow_version,
-        status: verdict.status,
-        total_score: verdict.total_score,
-        failure_tags: verdict.failure_tags,
-      primary_failure_tag: verdict.primary_failure_tag,
-      human_review_required: verdict.human_review_required,
+      case_id: metadata.case_id,
+      platform_id: metadata.platform_id,
+      model_id: metadata.model_id,
+      workflow_version: metadata.workflow_version,
+      status: verdict.status,
+      total_score: typeof verdict.total_score === 'number' ? verdict.total_score : 0,
+      failure_tags: failureTags,
+      primary_failure_tag: verdict.primary_failure_tag ?? null,
+      human_review_required: verdict.human_review_required ?? false,
     };
   });
 }
