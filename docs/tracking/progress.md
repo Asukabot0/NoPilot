@@ -150,3 +150,19 @@
 - 值得深入研究的问题:
   - 是否应在 `workflow.json` 与用户文档中把 `/spec` 的输入依赖显式提升为“discover artifact + discover review artifact”
   - 是否应为 discover/spec review artifact 增加 root/hash 绑定，防止人工修改 discover 后继续复用陈旧 review
+
+## Progress Snapshot: 2026-04-10 19:20
+- 触发方式: 为 ULTRAWORK 完成性验收补充可审计证据
+- 代码统计: 本次未改业务合同，仅补充验证与 review 证据记录
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 再次执行并通过定向结构测试：`pnpm test src/skill-engine/__tests__/skill-structure.test.ts`
+  - 在当前 worktree 再次执行并通过全量验证：`pnpm test`、`pnpm lint`、`pnpm build`
+  - 清理本地产生的 `.benchmark/` 未跟踪测试产物，确认工作树恢复干净状态
+  - 追加子代理终审证据：快速子代理复核认为 PR #80 当前阻塞已关闭、范围内无新 blocker，且 GitHub 状态为 `mergeStateStatus: CLEAN`
+  - 记录 Oracle 终审的关键结论：代码修补方向正确，先前未通过完成性验收的原因是“审计证据不足”，而非“仍有代码阻塞”
+- 当前问题:
+  - GitHub 侧仍显示 `gh pr checks 80` 为 `no checks reported`；本轮验收依赖本地完整验证日志与子代理/Oracle 复核证据，而非远端 CI 记录
+- 值得深入研究的问题:
+  - 是否需要把 review 子代理与本地验证结果自动沉淀为仓库内标准化验收记录，避免后续 ULTRAWORK/Oracle 验收时再次因“证据不集中”被卡住
