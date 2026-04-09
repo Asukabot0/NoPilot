@@ -131,3 +131,22 @@
 - 值得深入研究的问题:
   - 是否应把“主流程不得手工写 passed/aligned、必须等待独立 review artifact”沉淀成跨 discover/spec/build 的统一结构测试模板
   - 是否需要在 `workflow.json` 或 schema 层新增更显式的 review-gate 完成信号，减少 prompt 文本与 artifact 状态机之间的歧义
+
+## Progress Snapshot: 2026-04-10 18:45
+- 触发方式: 根据 PR #80 review 与 Oracle 复核继续修补 merge blocker
+- 代码统计: 本次继续修改 prompt contract 与结构测试，未触碰 TypeScript 运行时代码
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 在 `commands/spec/SKILL.md` 增加 discover review 硬门禁：`/spec` 现在必须读取同一 artifact root 下的 `discover_review.json`，并校验四个 Critic pass 字段与 `global_coherence_check.intent_alignment == "aligned"`
+  - 将 `commands/discover/SKILL.md`、`commands/discover/critic-supervisor.md`、`commands/critic/discover.md` 的 discover review 输入/输出路径统一为 greenfield 与 feature 共用“current artifact root”模型
+  - 将 `commands/spec/schema.md`、`commands/spec/review-runner.md`、`commands/spec/decisions.md`、`commands/critic/spec.md` 改为沿用当前 artifact root，避免 feature discover 驱动下仍回写全局 `specs/`
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 补充 `/spec` gate、feature-aware review path、spec artifact root 一致性的结构回归断言
+- 下一步计划:
+  - 先运行 `skill-structure` 定向测试，确认新增合同断言全部落地
+  - 若定向测试通过，再运行 `pnpm test`、`pnpm lint`、`pnpm build`，最后交给子代理做代码审查
+- 当前问题:
+  - LSP 本地缺少 `typescript-language-server`，无法用 LSP 直接做 TypeScript 诊断，只能依赖测试与构建验证
+- 值得深入研究的问题:
+  - 是否应在 `workflow.json` 与用户文档中把 `/spec` 的输入依赖显式提升为“discover artifact + discover review artifact”
+  - 是否应为 discover/spec review artifact 增加 root/hash 绑定，防止人工修改 discover 后继续复用陈旧 review
