@@ -72,7 +72,7 @@ describe('nopilot init', () => {
   });
 
   it('installs skills to Claude, Codex, and OpenCode (shared)', () => {
-    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
+    const output = runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const claudeSkills = join(tmpHome, '.claude', 'skills');
     const codexSkills = join(tmpHome, '.agents', 'skills');
@@ -82,6 +82,7 @@ describe('nopilot init', () => {
     // Each skill should be installed as a subdirectory with SKILL.md
     expect(readdirSync(claudeSkills).length).toBeGreaterThan(0);
     expect(readdirSync(codexSkills).length).toBeGreaterThan(0);
+    expect(output).toContain('Skipped opencode (shares skill directory with codex)');
   });
 
   it('does NOT copy schemas to project', () => {
@@ -168,13 +169,14 @@ describe('nopilot paths', () => {
     expect(existsSync(paths.workflow)).toBe(true);
   });
 
-  it('reports Claude and Codex skill install locations', () => {
+  it('reports Claude, Codex, and OpenCode skill install locations', () => {
     const output = runCli(['paths']);
     const paths = JSON.parse(output);
     expect(paths.source_skill_location).toEqual(resolve(PACKAGE_ROOT, 'commands'));
     expect(paths.installed_skills).toEqual({
       claude: join(homedir(), '.claude', 'skills/'),
       codex: join(homedir(), '.agents', 'skills/'),
+      opencode: join(homedir(), '.agents', 'skills/'),
     });
     expect(paths.legacy_dirs).toEqual({
       claude: join(homedir(), '.claude', 'commands/'),
