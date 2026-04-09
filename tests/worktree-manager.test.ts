@@ -106,6 +106,16 @@ describe('createWorktree (TEST-031)', () => {
 
     await expect(createWorktree('MOD-003', PROJECT_ROOT)).rejects.toThrow('git_error');
   });
+
+  it('resolves node_modules symlink source from project root', async () => {
+    queueOk('abc1234\n');
+    queueOk();
+
+    await createWorktree('MOD-003', 'relative/project');
+
+    const [, worktreeArgs] = mockExecFile.mock.calls[1] as [string, string[], unknown];
+    expect(worktreeArgs).toContain(join('relative/project', '.lash', 'worktrees', 'MOD-003'));
+  });
 });
 
 // ---------------------------------------------------------------------------

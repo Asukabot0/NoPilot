@@ -3,7 +3,7 @@
  * Translated from Python lash/worktree_manager.py.
  */
 import { execFile } from 'node:child_process';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { existsSync, symlinkSync } from 'node:fs';
 import type { MergeResult, WorktreeInfo, PreserveResult, UnexpectedFilesResult } from './types.js';
@@ -96,7 +96,7 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
   }
 
   // Symlink node_modules from main repo — worktrees lack it (gitignored). (#37)
-  const srcModules = join(projectRoot, 'node_modules');
+  const srcModules = resolve(projectRoot, 'node_modules');
   const destModules = join(path, 'node_modules');
   if (existsSync(srcModules) && !existsSync(destModules)) {
     symlinkSync(srcModules, destModules, 'dir');
@@ -222,7 +222,7 @@ export async function createConflictResolutionWorktree(
   }
 
   // Symlink node_modules from main repo (#37)
-  const srcModules = join(projectRoot, 'node_modules');
+  const srcModules = resolve(projectRoot, 'node_modules');
   const destModules = join(path, 'node_modules');
   if (existsSync(srcModules) && !existsSync(destModules)) {
     symlinkSync(srcModules, destModules, 'dir');

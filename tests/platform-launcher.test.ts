@@ -175,12 +175,27 @@ describe('spawnWorker', () => {
 
     expect(fullCmd[0]).toBe('codex');
     expect(fullCmd).toContain('exec');
-    expect(fullCmd).toContain('-c');
-    expect(fullCmd).toContain('approval_policy=auto-edit');
+    expect(fullCmd).toContain('--full-auto');
     expect(fullCmd).toContain('fix bug Y');
 
     expect(handle.platform).toBe('codex');
     expect(handle.pid).toBe(99);
+  });
+
+  it('TEST-016b: codex spawn passes system prompt file when provided', () => {
+    const mockProc = makeMockProc({ pid: 100 });
+    mockSpawn.mockReturnValue(mockProc);
+
+    spawnWorker('codex', 'implement benchmark contracts', '/tmp/worktree2', '.lash/worker-instructions.md');
+
+    const [bin, args] = mockSpawn.mock.calls[0] as [string, string[], unknown];
+    const fullCmd = [bin, ...args];
+
+    expect(fullCmd[0]).toBe('codex');
+    expect(fullCmd).toContain('exec');
+    expect(fullCmd).toContain('--full-auto');
+    expect(fullCmd).toContain('system_prompt_file=.lash/worker-instructions.md');
+    expect(fullCmd).toContain('implement benchmark contracts');
   });
 
   // TEST-017: OpenCode spawn → correct command
