@@ -3,7 +3,7 @@
  * Translated from tests/test_worktree_manager.py
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Mock node:child_process at the execFile level so runGit is intercepted.
@@ -131,7 +131,7 @@ describe('createWorktree (TEST-031)', () => {
     const [, worktreeArgs] = mockExecFile.mock.calls[1] as [string, string[], unknown];
     expect(worktreeArgs).toContain(join('relative/project', '.lash', 'worktrees', 'MOD-003'));
     expect(mockSymlinkSync).toHaveBeenCalledWith(
-      join(process.cwd(), 'relative/project', 'node_modules'),
+      resolve('relative/project', 'node_modules'),
       join('relative/project', '.lash', 'worktrees', 'MOD-003', 'node_modules'),
       'dir',
     );
@@ -337,7 +337,7 @@ describe('createConflictResolutionWorktree (TEST-037)', () => {
     await createConflictResolutionWorktree('MOD-003', 'lash/MOD-003', 'main', 'relative/project');
 
     expect(mockSymlinkSync).toHaveBeenCalledWith(
-      join(process.cwd(), 'relative/project', 'node_modules'),
+      resolve('relative/project', 'node_modules'),
       join('relative/project', '.lash', 'worktrees', 'MOD-003-conflict-resolve', 'node_modules'),
       'dir',
     );
