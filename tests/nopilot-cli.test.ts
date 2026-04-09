@@ -118,6 +118,17 @@ describe('nopilot init', () => {
     expect(content).toContain('nopilot paths');
   });
 
+  it('injects stage entry and recovery rules into CLAUDE.md', () => {
+    const claudeMd = join(tmpDir, 'CLAUDE.md');
+    writeFileSync(claudeMd, '# My Project\n', 'utf-8');
+
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
+
+    const content = readFileSync(claudeMd, 'utf-8');
+    expect(content).toContain('显式输入 `/discover`、`/spec`、`/build`');
+    expect(content).toContain('重新加载当前阶段的 SKILL.md');
+  });
+
   it('is idempotent — running init twice does not duplicate the directive', () => {
     const claudeMd = join(tmpDir, 'CLAUDE.md');
     writeFileSync(claudeMd, '# My Project\n', 'utf-8');
