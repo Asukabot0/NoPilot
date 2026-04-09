@@ -4,6 +4,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { resolveBuildReport, resolveDiscover, resolveSpec } from '../lash/spec-resolver.js';
 import { readConfig } from './config.js';
 import { readLayer, writeLayer, profileExists } from './storage.js';
 import { extractL0, extractL1, extractL2, extractL3, mergeDomainModel } from './extractors.js';
@@ -40,6 +41,25 @@ function loadArtifact(filePath: string): Record<string, unknown> | null {
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
+function resolveArtifactEntry(
+  artifactsDir: string,
+  options: { singleFile: string; splitDirs?: string[] },
+): string | null {
+  const singleFile = path.join(artifactsDir, options.singleFile);
+  if (fs.existsSync(singleFile)) {
+    return singleFile;
+  }
+
+  for (const splitDirName of options.splitDirs ?? []) {
+    const splitDir = path.join(artifactsDir, splitDirName);
+    if (fs.existsSync(splitDir)) {
+      return splitDir;
+    }
+  }
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // writeProfileFromArtifacts
 // ---------------------------------------------------------------------------
@@ -50,32 +70,44 @@ export async function writeProfileFromArtifacts(
   mode: 'greenfield' | 'feature'
 ): Promise<WriteProfileResult> {
   // 1. Load artifacts
-  const discoverPath = path.join(artifactsDir, 'discover.json');
+  const discoverPath = resolveArtifactEntry(artifactsDir, {
+    singleFile: 'discover.json',
+    splitDirs: ['discover'],
+  });
 
-  if (!fs.existsSync(discoverPath)) {
-    throw new Error('ARTIFACT_NOT_FOUND: discover.json not found in ' + artifactsDir);
+  if (discoverPath === null) {
+    throw new Error('ARTIFACT_NOT_FOUND: discover artifact not found in ' + artifactsDir);
   }
 
   let discoverArtifact: Record<string, unknown>;
   try {
-    const raw = fs.readFileSync(discoverPath, 'utf-8');
-    discoverArtifact = JSON.parse(raw) as Record<string, unknown>;
+    discoverArtifact = resolveDiscover(discoverPath).discover as Record<string, unknown>;
   } catch (e) {
-    throw new Error('EXTRACTION_FAILED: failed to parse discover.json: ' + String(e));
+    throw new Error('EXTRACTION_FAILED: failed to parse discover artifact: ' + String(e));
   }
 
   let specArtifact: Record<string, unknown> | null = null;
   try {
-    specArtifact = loadArtifact(path.join(artifactsDir, 'spec.json'));
+    const specPath = resolveArtifactEntry(artifactsDir, {
+      singleFile: 'spec.json',
+      splitDirs: ['spec'],
+    });
+    specArtifact = specPath ? resolveSpec(specPath).spec as Record<string, unknown> : null;
   } catch (e) {
-    throw new Error('EXTRACTION_FAILED: failed to parse spec.json: ' + String(e));
+    throw new Error('EXTRACTION_FAILED: failed to parse spec artifact: ' + String(e));
   }
 
   let buildReport: Record<string, unknown> | null = null;
   try {
-    buildReport = loadArtifact(path.join(artifactsDir, 'build_report.json'));
+    const buildPath = resolveArtifactEntry(artifactsDir, {
+      singleFile: 'build_report.json',
+      splitDirs: ['build'],
+    });
+    if (buildPath) {
+      buildReport = resolveBuildReport(buildPath).buildReport as Record<string, unknown>;
+    }
   } catch (e) {
-    throw new Error('EXTRACTION_FAILED: failed to parse build_report.json: ' + String(e));
+    throw new Error('EXTRACTION_FAILED: failed to parse build report artifact: ' + String(e));
   }
 
   let decisionsArtifact: Record<string, unknown> | null = null;

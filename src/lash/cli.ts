@@ -123,9 +123,9 @@ worktreeCmd
 program
   .command('package <module_id> <worktree_path> <platform>')
   .description('Generate .lash/ task package for a worker')
-  .option('--spec <path>', 'Path to spec.json (auto-detected if omitted)')
-  .option('--discover <path>', 'Path to discover.json (auto-detected if omitted)')
-  .option('--tests <path>', 'Path to tests.json')
+  .option('--spec <path>', 'Path to spec artifact (spec.json, spec/, or spec/index.json)')
+  .option('--discover <path>', 'Path to discover artifact (discover.json, discover/, or discover/index.json)')
+  .option('--tests <path>', 'Path to tests artifact (tests.json, tests/, or tests/index.json)')
   .option('--completed <m1,m2>', 'Comma-separated completed module IDs')
   .action(async (
     moduleId: string,
@@ -134,8 +134,7 @@ program
     opts: { spec?: string; discover?: string; tests?: string; completed?: string },
   ) => {
     const { generatePackage } = await import('./task-packager.js');
-    const { readFileSync } = await import('node:fs');
-    const { resolveSpec, resolveDiscover, resolveArtifactPaths } = await import('./spec-resolver.js');
+    const { resolveSpec, resolveDiscover, resolveTests, resolveArtifactPaths } = await import('./spec-resolver.js');
     try {
       if (!opts.spec || !opts.discover) {
         const resolved = resolveArtifactPaths();
@@ -146,7 +145,7 @@ program
       const { discover } = resolveDiscover(opts.discover) as { discover: Record<string, unknown> };
       let tests: Record<string, unknown>;
       if (opts.tests) {
-        tests = JSON.parse(readFileSync(opts.tests, 'utf-8'));
+        tests = resolveTests(opts.tests).tests as Record<string, unknown>;
       } else {
         tests = {
           example_cases: [],
