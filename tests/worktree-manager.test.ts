@@ -10,10 +10,19 @@ import { join } from 'node:path';
 // vi.hoisted() ensures mockExecFile is declared before vi.mock hoisting.
 // ---------------------------------------------------------------------------
 
-const { mockExecFile } = vi.hoisted(() => ({ mockExecFile: vi.fn() }));
+const { mockExecFile, mockExistsSync, mockSymlinkSync } = vi.hoisted(() => ({
+  mockExecFile: vi.fn(),
+  mockExistsSync: vi.fn(),
+  mockSymlinkSync: vi.fn(),
+}));
 
 vi.mock('node:child_process', () => ({
   execFile: mockExecFile,
+}));
+
+vi.mock('node:fs', () => ({
+  existsSync: mockExistsSync,
+  symlinkSync: mockSymlinkSync,
 }));
 
 // Mock node:util promisify to return an async wrapper around the mocked exec.
@@ -70,6 +79,9 @@ function queueFail(stdout = '', stderr = '', code = 1) {
 
 beforeEach(() => {
   mockExecFile.mockReset();
+  mockExistsSync.mockReset();
+  mockExistsSync.mockReturnValue(false);
+  mockSymlinkSync.mockReset();
 });
 
 // ---------------------------------------------------------------------------
@@ -110,11 +122,19 @@ describe('createWorktree (TEST-031)', () => {
   it('resolves node_modules symlink source from project root', async () => {
     queueOk('abc1234\n');
     queueOk();
+    mockExistsSync
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
 
     await createWorktree('MOD-003', 'relative/project');
 
     const [, worktreeArgs] = mockExecFile.mock.calls[1] as [string, string[], unknown];
     expect(worktreeArgs).toContain(join('relative/project', '.lash', 'worktrees', 'MOD-003'));
+    expect(mockSymlinkSync).toHaveBeenCalledWith(
+      join(process.cwd(), 'relative/project', 'node_modules'),
+      join('relative/project', '.lash', 'worktrees', 'MOD-003', 'node_modules'),
+      'dir',
+    );
   });
 });
 
@@ -305,6 +325,22 @@ describe('createConflictResolutionWorktree (TEST-037)', () => {
     );
 
     expect(result.branch_name).toBe('lash/MOD-007-conflict-resolve');
+  });
+
+  it('links node_modules into the conflict resolution worktree from the project root', async () => {
+    queueOk('abc1234\n');
+    queueOk();
+    mockExistsSync
+      .mockReturnValueOnce(true)
+      .mockReturnValueOnce(false);
+
+    await createConflictResolutionWorktree('MOD-003', 'lash/MOD-003', 'main', 'relative/project');
+
+    expect(mockSymlinkSync).toHaveBeenCalledWith(
+      join(process.cwd(), 'relative/project', 'node_modules'),
+      join('relative/project', '.lash', 'worktrees', 'MOD-003-conflict-resolve', 'node_modules'),
+      'dir',
+    );
   });
 
   it('throws git_error on worktree add failure', async () => {

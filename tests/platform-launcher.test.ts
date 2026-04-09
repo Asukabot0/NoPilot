@@ -176,6 +176,8 @@ describe('spawnWorker', () => {
     expect(fullCmd[0]).toBe('codex');
     expect(fullCmd).toContain('exec');
     expect(fullCmd).toContain('--full-auto');
+    expect(fullCmd[1]).toBe('exec');
+    expect(fullCmd[2]).toBe('--full-auto');
     expect(fullCmd).toContain('fix bug Y');
 
     expect(handle.platform).toBe('codex');
@@ -194,6 +196,9 @@ describe('spawnWorker', () => {
     expect(fullCmd[0]).toBe('codex');
     expect(fullCmd).toContain('exec');
     expect(fullCmd).toContain('--full-auto');
+    const promptFlagIndex = fullCmd.indexOf('system_prompt_file=.lash/worker-instructions.md');
+    expect(promptFlagIndex).toBeGreaterThan(0);
+    expect(fullCmd[promptFlagIndex - 1]).toBe('-c');
     expect(fullCmd).toContain('system_prompt_file=.lash/worker-instructions.md');
     expect(fullCmd).toContain('implement benchmark contracts');
   });
