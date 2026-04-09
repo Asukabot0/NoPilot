@@ -111,3 +111,23 @@
   - `resolveDiscover()` 仍未对 split child 内容做 schema 级结构校验，只保证文件存在且 JSON 可解析
 - 值得深入研究的问题:
   - 是否应在 resolver 层统一接入 artifact schema 校验，以便将 discover/spec/tests/build 的结构错误统一前置到加载阶段
+
+## Progress Snapshot: 2026-04-10 14:45
+- 触发方式: 修复 discover review gate 相关 issue #69 / #70 / #48 / #58
+- 代码统计: 本次未改运行时代码，收紧 `discover` prompt 合同并补充结构测试
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 将 `commands/discover/SKILL.md` 明确改为：Layer 3 与 artifact 写入后不得视为 discover 完成，下一步必须进入 Critic + Supervisor review gate
+  - 将 `commands/discover/critic-supervisor.md` 明确改为：禁止主代理内联 Critic/Supervisor、禁止手工写 `passed/aligned` 通过、Critic 自修复后必须由 fresh Critic 复检
+  - 将 `commands/discover/artifact-writer.md` 去掉提前提示 `Run /spec to continue.` 的放行文案，改为仅回传写入确认并等待 review gate 完成
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 增加回归断言，锁定上述 discover review 合同
+  - 根据独立复核继续收紧边界：`artifact-writer` 不再宣称写入 `discover_review.json`，且 `critic-supervisor` 明确“用户手工处理发现的问题后也必须先拿到 fresh Critic pass，才能进入 Supervisor”
+- 下一步计划:
+  - 重新运行 `skill-structure` 定向测试与类型检查，确认 Oracle 指出的剩余两处合同缺口已被锁定
+  - 若重新验证通过，再复核全量测试 / build 结果与变更概况
+- 当前问题:
+  - `README_AGENT.md` 与部分旧说明仍保留 lite/spec 的 same-session Critic 叙述；本次 issue 目标集中在 discover，后续是否统一口径仍需单独决策
+- 值得深入研究的问题:
+  - 是否应把“主流程不得手工写 passed/aligned、必须等待独立 review artifact”沉淀成跨 discover/spec/build 的统一结构测试模板
+  - 是否需要在 `workflow.json` 或 schema 层新增更显式的 review-gate 完成信号，减少 prompt 文本与 artifact 状态机之间的歧义
