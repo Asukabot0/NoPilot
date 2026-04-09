@@ -336,6 +336,7 @@ describe('TEST-041: codex worker instructions', () => {
       'utf8',
     );
     expect(content).toContain('system_prompt_file');
+    expect(content).toContain('codex exec --full-auto -c system_prompt_file=.lash/worker-instructions.md <task>');
   });
 });
 

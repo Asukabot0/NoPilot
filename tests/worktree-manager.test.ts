@@ -129,10 +129,10 @@ describe('createWorktree (TEST-031)', () => {
     await createWorktree('MOD-003', 'relative/project');
 
     const [, worktreeArgs] = mockExecFile.mock.calls[1] as [string, string[], unknown];
-    expect(worktreeArgs).toContain(join('relative/project', '.lash', 'worktrees', 'MOD-003'));
+    expect(worktreeArgs).toContain(resolve('relative/project', '.lash', 'worktrees', 'MOD-003'));
     expect(mockSymlinkSync).toHaveBeenCalledWith(
       resolve('relative/project', 'node_modules'),
-      join('relative/project', '.lash', 'worktrees', 'MOD-003', 'node_modules'),
+      resolve('relative/project', '.lash', 'worktrees', 'MOD-003', 'node_modules'),
       'dir',
     );
   });
@@ -338,7 +338,7 @@ describe('createConflictResolutionWorktree (TEST-037)', () => {
 
     expect(mockSymlinkSync).toHaveBeenCalledWith(
       resolve('relative/project', 'node_modules'),
-      join('relative/project', '.lash', 'worktrees', 'MOD-003-conflict-resolve', 'node_modules'),
+      resolve('relative/project', '.lash', 'worktrees', 'MOD-003-conflict-resolve', 'node_modules'),
       'dir',
     );
   });

@@ -75,18 +75,19 @@ function _parseConflictFiles(output: string): string[] {
  *   'git_error' on other git failures.
  */
 export async function createWorktree(moduleId: string, projectRoot: string = '.'): Promise<WorktreeInfo> {
-  const path = _worktreePath(moduleId, projectRoot);
+  const resolvedProjectRoot = resolve(projectRoot);
+  const path = _worktreePath(moduleId, resolvedProjectRoot);
   const branch = _branchName(moduleId);
 
   // Get current HEAD sha to branch from
-  const headResult = await runGit(['rev-parse', 'HEAD'], projectRoot);
+  const headResult = await runGit(['rev-parse', 'HEAD'], resolvedProjectRoot);
   if (headResult.returncode !== 0) {
     throw new Error(`git_error: could not resolve HEAD: ${headResult.stderr.trim()}`);
   }
   const headSha = headResult.stdout.trim();
 
   // Create the worktree on a new branch
-  const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
+  const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], resolvedProjectRoot);
   if (result.returncode !== 0) {
     const stderr = result.stderr.trim();
     if (stderr.includes('already exists') || stderr.includes('already checked out')) {
@@ -96,7 +97,7 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
   }
 
   // Symlink node_modules from main repo — worktrees lack it (gitignored). (#37)
-  const srcModules = resolve(projectRoot, 'node_modules');
+  const srcModules = resolve(resolvedProjectRoot, 'node_modules');
   const destModules = join(path, 'node_modules');
   if (existsSync(srcModules) && !existsSync(destModules)) {
     symlinkSync(srcModules, destModules, 'dir');
@@ -115,28 +116,29 @@ export async function createWorktree(moduleId: string, projectRoot: string = '.'
  *   'git_error' on unexpected git failures.
  */
 export async function mergeToMain(moduleId: string, projectRoot: string = '.'): Promise<MergeResult> {
+  const resolvedProjectRoot = resolve(projectRoot);
   const branch = _branchName(moduleId);
 
   // Verify worktree exists
-  const listResult = await runGit(['worktree', 'list'], projectRoot);
-  const path = _worktreePath(moduleId, projectRoot);
+  const listResult = await runGit(['worktree', 'list'], resolvedProjectRoot);
+  const path = _worktreePath(moduleId, resolvedProjectRoot);
   if (!listResult.stdout.includes(path)) {
     throw new Error(`no_worktree: no worktree found for ${moduleId}`);
   }
 
   // Switch to main
-  const checkoutResult = await runGit(['checkout', 'main'], projectRoot);
+  const checkoutResult = await runGit(['checkout', 'main'], resolvedProjectRoot);
   if (checkoutResult.returncode !== 0) {
     throw new Error(`git_error: could not checkout main: ${checkoutResult.stderr.trim()}`);
   }
 
   // Attempt merge --no-ff
-  const mergeResult = await runGit(['merge', '--no-ff', branch], projectRoot);
+  const mergeResult = await runGit(['merge', '--no-ff', branch], resolvedProjectRoot);
 
   if (mergeResult.returncode !== 0) {
     // Conflict — abort and report conflict files
     const conflictFiles = _parseConflictFiles(mergeResult.stdout);
-    await runGit(['merge', '--abort'], projectRoot);
+    await runGit(['merge', '--abort'], resolvedProjectRoot);
     return {
       success: false,
       branch_name: branch,
@@ -146,7 +148,7 @@ export async function mergeToMain(moduleId: string, projectRoot: string = '.'): 
   }
 
   // Success — get merge commit sha
-  const commitResult = await runGit(['rev-parse', 'HEAD'], projectRoot);
+  const commitResult = await runGit(['rev-parse', 'HEAD'], resolvedProjectRoot);
   const mergeCommit = commitResult.returncode === 0 ? commitResult.stdout.trim() : null;
 
   return {
@@ -164,17 +166,18 @@ export async function mergeToMain(moduleId: string, projectRoot: string = '.'): 
  *   'git_error' on git failures.
  */
 export async function cleanupWorktree(moduleId: string, projectRoot: string = '.'): Promise<void> {
-  const path = _worktreePath(moduleId, projectRoot);
+  const resolvedProjectRoot = resolve(projectRoot);
+  const path = _worktreePath(moduleId, resolvedProjectRoot);
   const branch = _branchName(moduleId);
 
   // Remove the worktree
-  const removeResult = await runGit(['worktree', 'remove', '--force', path], projectRoot);
+  const removeResult = await runGit(['worktree', 'remove', '--force', path], resolvedProjectRoot);
   if (removeResult.returncode !== 0) {
     throw new Error(`git_error: could not remove worktree: ${removeResult.stderr.trim()}`);
   }
 
   // Delete the branch
-  const branchResult = await runGit(['branch', '-D', branch], projectRoot);
+  const branchResult = await runGit(['branch', '-D', branch], resolvedProjectRoot);
   if (branchResult.returncode !== 0) {
     throw new Error(`git_error: could not delete branch ${branch}: ${branchResult.stderr.trim()}`);
   }
@@ -186,7 +189,7 @@ export async function cleanupWorktree(moduleId: string, projectRoot: string = '.
  * Returns PreserveResult: { preserved_path }
  */
 export function preserveWorktree(moduleId: string, reason: string, projectRoot: string = '.'): PreserveResult {
-  const path = _worktreePath(moduleId, projectRoot);
+  const path = _worktreePath(moduleId, resolve(projectRoot));
   return { preserved_path: path };
 }
 
@@ -204,25 +207,26 @@ export async function createConflictResolutionWorktree(
   targetBranch: string,
   projectRoot: string = '.',
 ): Promise<WorktreeInfo> {
+  const resolvedProjectRoot = resolve(projectRoot);
   const resolveModuleId = `${moduleId}-conflict-resolve`;
-  const path = _worktreePath(resolveModuleId, projectRoot);
+  const path = _worktreePath(resolveModuleId, resolvedProjectRoot);
   const branch = _branchName(resolveModuleId);
 
   // Get sha of source branch HEAD
-  const headResult = await runGit(['rev-parse', sourceBranch], projectRoot);
+  const headResult = await runGit(['rev-parse', sourceBranch], resolvedProjectRoot);
   if (headResult.returncode !== 0) {
     throw new Error(`git_error: could not resolve ${sourceBranch}: ${headResult.stderr.trim()}`);
   }
   const headSha = headResult.stdout.trim();
 
   // Create the conflict resolution worktree
-  const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], projectRoot);
+  const result = await runGit(['worktree', 'add', '-b', branch, path, headSha], resolvedProjectRoot);
   if (result.returncode !== 0) {
     throw new Error(`git_error: ${result.stderr.trim()}`);
   }
 
   // Symlink node_modules from main repo (#37)
-  const srcModules = resolve(projectRoot, 'node_modules');
+  const srcModules = resolve(resolvedProjectRoot, 'node_modules');
   const destModules = join(path, 'node_modules');
   if (existsSync(srcModules) && !existsSync(destModules)) {
     symlinkSync(srcModules, destModules, 'dir');
@@ -241,7 +245,7 @@ export async function checkUnexpectedFiles(
   ownedFiles: string[],
   projectRoot: string = '.',
 ): Promise<UnexpectedFilesResult> {
-  const worktree = _worktreePath(moduleId, projectRoot);
+  const worktree = _worktreePath(moduleId, resolve(projectRoot));
 
   // Get list of modified files in the worktree compared to its base
   const result = await runGit(['diff', '--name-only', 'HEAD'], worktree);
