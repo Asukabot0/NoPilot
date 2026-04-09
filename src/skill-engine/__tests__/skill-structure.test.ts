@@ -69,6 +69,30 @@ function collectMdFiles(relDir: string): string[] {
   return results;
 }
 
+const STAGE_SKILL_CONTRACTS = [
+  {
+    name: 'discover',
+    skillPath: 'commands/discover/SKILL.md',
+    recoveryPath: 'commands/discover/recovery.md',
+    explicitCommand: '/discover',
+    explicitNaturalLanguage: '进 discover',
+  },
+  {
+    name: 'spec',
+    skillPath: 'commands/spec/SKILL.md',
+    recoveryPath: 'commands/spec/recovery.md',
+    explicitCommand: '/spec',
+    explicitNaturalLanguage: '进 spec',
+  },
+  {
+    name: 'build',
+    skillPath: 'commands/build/SKILL.md',
+    recoveryPath: 'commands/build/recovery.md',
+    explicitCommand: '/build',
+    explicitNaturalLanguage: '进 build',
+  },
+] as const;
+
 // ---------------------------------------------------------------------------
 // Line count limits
 // ---------------------------------------------------------------------------
@@ -108,6 +132,35 @@ describe('Line count limits', () => {
   it('TEST-040: lash-verify SKILL.md <= 30 lines (excluding frontmatter)', () => {
     // Currently 43 lines — documents a real gap
     expect(lineCount('commands/lash-verify/SKILL.md')).toBeLessThanOrEqual(30);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Stage entry and recovery contracts
+// ---------------------------------------------------------------------------
+
+describe('Stage entry and recovery contracts', () => {
+  it('requires explicit stage instructions to bypass redundant confirmation', () => {
+    for (const stage of STAGE_SKILL_CONTRACTS) {
+      const content = readFile(stage.skillPath);
+      expect(content, `${stage.name} should mention explicit slash command entry`).toContain(stage.explicitCommand);
+      expect(content, `${stage.name} should mention imperative natural-language stage entry`).toContain(stage.explicitNaturalLanguage);
+      expect(content, `${stage.name} should treat explicit stage entry as pre-confirmed`).toMatch(/视为已确认|直接继续/);
+    }
+  });
+
+  it('requires stage skills to reference a correction recovery sub-skill', () => {
+    for (const stage of STAGE_SKILL_CONTRACTS) {
+      const content = readFile(stage.skillPath);
+      expect(content, `${stage.name} should reference its recovery sub-skill`).toContain(stage.recoveryPath);
+      expect(content, `${stage.name} should expose a correction recovery guardrail`).toContain('纠偏恢复');
+    }
+  });
+
+  it('requires recovery sub-skill files for discover/spec/build', () => {
+    for (const stage of STAGE_SKILL_CONTRACTS) {
+      expect(fileExists(stage.recoveryPath), `Expected recovery file to exist: ${stage.recoveryPath}`).toBe(true);
+    }
   });
 });
 
@@ -152,6 +205,7 @@ describe('Sub-skill references', () => {
       'commands/discover/critic-supervisor.md',
       'commands/discover/idea-intake.md',
       'commands/discover/mode-detection.md',
+      'commands/discover/recovery.md',
     ];
     for (const f of expected) {
       expect(fileExists(f), `Expected file to exist: ${f}`).toBe(true);
@@ -223,6 +277,7 @@ describe('Sub-skill references', () => {
       'commands/build/acceptance.md',
       'commands/build/report.md',
       'commands/build/artifact-split.md',
+      'commands/build/recovery.md',
     ];
     for (const f of expected) {
       expect(fileExists(f), `Expected file to exist: ${f}`).toBe(true);
