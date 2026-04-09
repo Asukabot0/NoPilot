@@ -159,8 +159,8 @@ Dispatch subagent → `commands/discover/artifact-writer.md`. Present only the f
 
 <!-- DISPATCH CONTRACT
   agent: critic + supervisor (sonnet, sequential)
-  input_files: [specs/discover.json OR specs/discover/index.json]
-  output_file: specs/discover_review.json
+  input_files: [specs/discover.json OR specs/discover/index.json OR specs/features/feat-{featureSlug}/discover.json OR specs/features/feat-{featureSlug}/discover/index.json]
+  output_file: specs/discover_review.json OR specs/features/feat-{featureSlug}/discover_review.json
   output_summary: { passed, block_count, warn_count, drift_detected, aligned } (max 20 logical entries)
   on_error: pause and present findings to user; wait for resolution
 -->

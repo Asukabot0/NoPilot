@@ -25,9 +25,9 @@ Spawn the Critic agent for independent requirement quality verification.
 
 <!-- DISPATCH CONTRACT
   agent: critic (sonnet)
-  input_files: [specs/discover.json OR specs/discover/index.json]
+  input_files: [specs/discover.json OR specs/discover/index.json OR specs/features/feat-{featureSlug}/discover.json OR specs/features/feat-{featureSlug}/discover/index.json]
   input_state: []
-  output_file: specs/discover_review.json
+  output_file: specs/discover_review.json OR specs/features/feat-{featureSlug}/discover_review.json
   output_summary: { passed: bool, block_count: number, warn_count: number, 6cs_audit: { passed: bool }, invariant_verification: { passed: bool }, acceptance_criteria_verification: { passed: bool }, coverage_verification: { passed: bool } } (max 20 logical entries)
   on_error: pause and present findings to user; do not proceed to Supervisor
 -->
@@ -35,13 +35,13 @@ Spawn the Critic agent for independent requirement quality verification.
 ### Critic Dispatch Instructions
 
 1. Spawn Critic agent using the Agent tool targeting `<%=CRITIC_PATH%>`
-2. Critic reads only the discover artifact (`specs/discover.json` or `specs/discover/index.json`) — no conversation history, independent session
+2. Critic reads only the discover artifact (`specs/discover.json` or `specs/discover/index.json`, or the feature-scoped equivalent) — no conversation history, independent session
 3. Critic performs four checks:
    - **6Cs quality audit** — independently evaluate each requirement's 6Cs dimensions (see grading below)
    - **Invariant verification** — completeness, non-contradiction, scope accuracy
    - **Acceptance criteria testability** — can concrete tests be derived directly?
    - **Requirement coverage** — are all core scenarios covered? Any orphan requirements?
-4. Critic writes results to `specs/discover_review.json`
+4. Critic writes results to the matching `discover_review.json` under the current artifact root
 5. **If issues found:** Critic attempts self-fix on the discover artifact, records the attempt in `discover_review.json.self_fix_log`, then re-verifies with a fresh Critic instance using the floating complexity-based cap from `<%=CRITIC_PATH%>`.
 6. The main discover flow MUST NOT treat self-fixed output as passed until that fresh Critic instance writes a passing review.
 7. If still failing after the cap and trend evaluation, pause and present findings to user.
@@ -69,7 +69,7 @@ In `discover_review.json`, Critic records advisory failures with `"severity": "w
 
 ### Checkpoint: Read discover_review.json
 
-After Critic completes, read `specs/discover_review.json` and check:
+After Critic completes, read the matching `discover_review.json` under the current artifact root and check:
 - `6cs_audit.passed == true` (only `"block"` severity issues count toward pass/fail)
 - `invariant_verification.passed == true`
 - `acceptance_criteria_verification.passed == true`
@@ -87,9 +87,9 @@ After Critic passes:
 
 <!-- DISPATCH CONTRACT
   agent: supervisor (sonnet)
-  input_files: [specs/discover.json OR specs/discover/index.json, specs/discover_review.json]
+  input_files: [specs/discover.json OR specs/discover/index.json OR specs/features/feat-{featureSlug}/discover.json OR specs/features/feat-{featureSlug}/discover/index.json, specs/discover_review.json OR specs/features/feat-{featureSlug}/discover_review.json]
   input_state: [constraints, selected_direction, tech_direction, design_philosophy]
-  output_file: specs/discover_review.json (global_coherence_check field)
+  output_file: specs/discover_review.json OR specs/features/feat-{featureSlug}/discover_review.json (global_coherence_check field)
   output_summary: { drift_detected: bool, drift_score: number, drift_diagnosis: string, aligned: bool } (max 20 logical entries)
   on_error: pause and present drift diagnosis to user; wait for resolution before proceeding
 -->
@@ -102,9 +102,9 @@ After Critic passes:
    - `selected_direction`
    - `tech_direction`
    - `design_philosophy`
-3. Pass the complete discover artifact (`specs/discover.json` or `specs/discover/index.json`) as the **current stage output**
+3. Pass the complete discover artifact (greenfield or feature-scoped) as the **current stage output**
 4. Supervisor checks global coherence: does the requirement set match the stated intent?
-5. Write the Supervisor's assessment into `specs/discover_review.json`'s `global_coherence_check` field
+5. Write the Supervisor's assessment into the matching `discover_review.json`'s `global_coherence_check` field
 6. **If drift detected:** Pause, present the drift diagnosis to the user, and wait for resolution before proceeding
 7. **If aligned:** Proceed — only now may the main agent present discover as complete and mention `/spec` as the next stage.
 
