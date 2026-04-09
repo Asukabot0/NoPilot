@@ -127,6 +127,32 @@
 - 值得深入研究的问题:
   - 是否应在后续版本把 `owned_files` 提升为更强合同（例如 spec 阶段必填，或在 `lash plan` 中将缺失 ownership 升级为显式错误），从源头消除 ownership 不完整问题
 
+
+## Progress Snapshot: 2026-04-10 01:45
+- 触发方式: 修复 GitHub issues #63 与 #67（`lash package`/`/lash-build` 前置条件与文档契约）
+- 代码统计: 本次修改 `src/lash/cli.ts`、`src/lash/task-packager.ts` 与对应回归测试，并同步更新 `commands/`、schema 与中文用户指南
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - `lash package` 在缺失 `--tests` 时改为 fail-fast，直接返回带恢复指引的错误，而不再静默构造空 tests 载荷
+  - `generatePackage()` 在模块缺失 `owned_files` 时明确抛出 `missing_owned_files`，避免生成空的 `.lash/owned_files.txt` 破坏 Worker 边界
+  - `missing_tests` 报错补充恢复指引，明确 `--tests <path>`、`specs/tests.json` / `specs/tests/` / `specs/tests/index.json` 以及 `/build` Step 2 / `commands/build/test-gen.md` 的生成路径
+  - 同步更新 `/lash-build` 前置条件、`spec` 模板、`spec.schema.json` 与 `docs/zh-CN/USER_GUIDE.md`，将 `owned_files` 与 tests artifact 都提升为显式上游契约
+- 计划 / 下一步:
+  - 运行受影响测试、TypeScript 诊断、全量测试与构建验证，确认无回归后拆分提交并创建 PR
+- 当前问题:
+  - `plan-generator` 仍对缺失 `owned_files` 保留兼容性推断；当前修复选择在 package/build 入口硬阻断，在计划层保持向后兼容，后续可再评估是否统一收紧
+- 值得深入研究的问题:
+  - 是否应把 spec artifact 的 schema 校验前移到 `/spec` 写出阶段或 resolver 层，从而在 `owned_files` 等关键字段缺失时更早阻断，而不是等到 `lash package` / `/lash-build` 才暴露问题
+
+## Progress Snapshot: 2026-04-10 02:02
+- 触发方式: Oracle 最终审查后的契约收口
+- 本次工作:
+  - 根据 Oracle 审查补充 `tests/spec-schema.test.ts`，锁定 `schemas/spec.schema.json` 对空 `owned_files` 的拒绝行为
+  - 将 `schemas/spec.schema.json` 的 `owned_files` 约束从“字段存在”收紧为“字段存在且至少包含 1 个条目”
+  - 同步更新 `commands/spec/schema.md` 与中文用户指南，将 `owned_files` 的口径统一为“缺失或为空都会阻断执行”
+- 当前问题:
+  - 无新的阻断性问题；等待重跑验证与最终 Oracle 放行
+
 ## Progress Snapshot: 2026-04-10 14:45
 - 触发方式: 修复 discover review gate 相关 issue #69 / #70 / #48 / #58
 - 代码统计: 本次未改运行时代码，收紧 `discover` prompt 合同并补充结构测试
