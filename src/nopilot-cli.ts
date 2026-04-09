@@ -366,7 +366,6 @@ benchmark
         });
         const semanticResult = deriveSemanticEvents(observationEvents);
         const requiredEventsMet = mapRequiredEvents(semanticResult.semantic_events);
-        const oracleCheck = evaluateOracleChecks(oracle, runDir, requiredEventsMet);
         const traceLog = writeEventLog({
           destination_path: join(runDir, 'event-log.json'),
           run_id: metadata.run_id,
@@ -374,6 +373,7 @@ benchmark
           semantic_events: semanticResult.semantic_events,
           warnings: semanticResult.warnings,
         });
+        const oracleCheck = evaluateOracleChecks(oracle, runDir, requiredEventsMet, traceLog.warnings);
         const verdict = composeVerdict({
           run_id: metadata.run_id,
           oracle_result: {
@@ -390,13 +390,42 @@ benchmark
             artifacts: 'artifacts',
           },
         });
+        const reviewRecordPath = join(runDir, 'review-record.json');
+        if (verdict.human_review_required && existsSync(reviewRecordPath)) {
+          const reviewRecord = readJsonFile<{ status?: string }>(reviewRecordPath);
+          if (reviewRecord.status === 'resolved') {
+            const preservedVerdict = readJsonFile<{
+              status: string;
+              auto_verdict: string;
+              total_score: number;
+              review_reason: string[];
+            }>(join(runDir, 'verdict.json'));
+            runs.push({
+              run_id: metadata.run_id,
+              case_id: metadata.case_id,
+              status: preservedVerdict.status,
+              auto_verdict: preservedVerdict.auto_verdict,
+              total_score: preservedVerdict.total_score,
+              review_reason: preservedVerdict.review_reason,
+              warnings: traceLog.warnings,
+            });
+            continue;
+          }
+        }
+
         const writtenVerdict = writeVerdictArtifact(join(runDir, 'verdict.json'), verdict);
         if (writtenVerdict.human_review_required) {
-          createReviewTicket({
-            run_dir: runDir,
-            review_reason: writtenVerdict.review_reason,
-            failure_tags: writtenVerdict.failure_tags,
-          });
+          try {
+            createReviewTicket({
+              run_dir: runDir,
+              review_reason: writtenVerdict.review_reason,
+              failure_tags: writtenVerdict.failure_tags,
+            });
+          } catch (error) {
+            if (!(error instanceof Error) || error.message !== 'review_not_pending') {
+              throw error;
+            }
+          }
         }
 
         runs.push({
@@ -572,7 +601,6 @@ function collectArtifactChanges(artifactsRoot: string): BenchmarkArtifactChange[
   }
 
   const changes: BenchmarkArtifactChange[] = [];
-  const timestamp = new Date().toISOString();
 
   const visit = (dirPath: string): void => {
     for (const entry of readdirSync(dirPath, { withFileTypes: true })) {
@@ -583,7 +611,7 @@ function collectArtifactChanges(artifactsRoot: string): BenchmarkArtifactChange[
       }
 
       changes.push({
-        timestamp,
+        timestamp: statSync(entryPath).mtime.toISOString(),
         path: relative(artifactsRoot, entryPath).replace(/\\/g, '/'),
         change_type: 'added',
       });
@@ -612,6 +640,7 @@ function evaluateOracleChecks(
   oracle: BenchmarkOracle,
   runDir: string,
   requiredEventsMet: string[],
+  traceWarnings: string[],
 ): {
   outcome_checks_passed: boolean;
   failure_tags: string[];
@@ -627,7 +656,7 @@ function evaluateOracleChecks(
       continue;
     }
 
-    if (normalizedCheck === 'build') {
+    if (normalizedCheck === 'build' || normalizedCheck === 'contract') {
       const hasBuildArtifact = existsSync(join(runDir, 'artifacts', 'logs', 'result.json'));
       if (!hasBuildArtifact) {
         outcomeChecksPassed = false;
@@ -636,10 +665,17 @@ function evaluateOracleChecks(
       continue;
     }
 
-    if (normalizedCheck === 'tests') {
+    if (normalizedCheck === 'trace') {
+      if (traceWarnings.length > 0) {
+        ambiguityReasons.push('oracle_trace_check_unverifiable');
+      }
+      continue;
+    }
+
+    if (normalizedCheck === 'tests' || normalizedCheck === 'spec') {
       const hasFreshReverify = requiredEventsMet.some((event) => event.startsWith('fresh_reverification:'));
       if (!hasFreshReverify) {
-        ambiguityReasons.push('oracle_tests_check_unverifiable');
+        ambiguityReasons.push(`oracle_${normalizedCheck}_check_unverifiable`);
       }
       continue;
     }

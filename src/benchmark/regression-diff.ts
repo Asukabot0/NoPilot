@@ -52,7 +52,7 @@ function compareStatuses(current: VerdictStatus, baseline: VerdictStatus): numbe
 }
 
 function buildComparisonKey(run: RegressionComparableRun): string {
-  return [run.case_id, run.platform_id, run.model_id, run.workflow_version].join('::');
+  return [run.case_id, run.platform_id, run.model_id].join('::');
 }
 
 function diffFailureTags(current: readonly string[], baseline: readonly string[]): { new_failures: string[]; fixed_failures: string[] } {

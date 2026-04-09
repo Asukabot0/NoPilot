@@ -17,6 +17,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PACKAGE_ROOT = resolve(__dirname, '..');
 const CLI = resolve(PACKAGE_ROOT, 'dist', 'nopilot-cli.js');
+let cliBuilt = false;
 
 const cleanupPaths: string[] = [];
 
@@ -52,6 +53,24 @@ function runCli(
   };
 }
 
+function ensureCliBuilt(): void {
+  if (cliBuilt && existsSync(CLI)) {
+    return;
+  }
+
+  const result = spawnSync('pnpm', ['build'], {
+    cwd: PACKAGE_ROOT,
+    encoding: 'utf-8',
+    env: process.env,
+  });
+
+  if ((result.status ?? 1) !== 0) {
+    throw new Error(`failed to build benchmark CLI test fixture: ${result.stderr ?? result.stdout}`);
+  }
+
+  cliBuilt = true;
+}
+
 function writeFakeCodexBin(binDir: string): void {
   mkdirSync(binDir, { recursive: true });
   const codexPath = join(binDir, 'codex');
@@ -73,6 +92,7 @@ function writeFakeCodexBin(binDir: string): void {
 
 describe('nopilot benchmark CLI', () => {
   it('exposes the benchmark command group and its phase-1 subcommands', () => {
+    ensureCliBuilt();
     const result = runCli(['benchmark', '--help']);
     const output = result.stdout + result.stderr;
 
@@ -86,6 +106,7 @@ describe('nopilot benchmark CLI', () => {
   });
 
   it('runs a case through validate, run, evaluate, report, and review-apply', () => {
+    ensureCliBuilt();
     const tmpRoot = makeTempDir('nopilot-benchmark-cli-');
     const binDir = join(tmpRoot, 'bin');
     const runsRoot = join(tmpRoot, 'runs');
@@ -230,6 +251,7 @@ describe('nopilot benchmark CLI', () => {
   });
 
   it('does not mark evaluate as pass when oracle checks cannot be satisfied from the run evidence', () => {
+    ensureCliBuilt();
     const tmpRoot = makeTempDir('nopilot-benchmark-cli-fail-');
     const binDir = join(tmpRoot, 'bin');
     const runsRoot = join(tmpRoot, 'runs');
@@ -289,9 +311,69 @@ describe('nopilot benchmark CLI', () => {
     expect(evaluatePayload.runs[0].review_reason).toEqual(
       expect.arrayContaining([
         'semantic_ambiguity',
-        'unknown_oracle_check:contract',
-        'unknown_oracle_check:trace',
+        'oracle_trace_check_unverifiable',
       ]),
     );
+  });
+
+  it('preserves a resolved human review when evaluate is run again on the same run root', () => {
+    ensureCliBuilt();
+    const tmpRoot = makeTempDir('nopilot-benchmark-cli-rerun-');
+    const binDir = join(tmpRoot, 'bin');
+    const runsRoot = join(tmpRoot, 'runs');
+    const benchmarkRoot = join(PACKAGE_ROOT, 'benchmark');
+    const caseDir = join(benchmarkRoot, 'cases', 'DISCOVER-001');
+
+    writeFakeCodexBin(binDir);
+
+    const env = {
+      PATH: `${binDir}:${process.env.PATH ?? ''}`,
+    };
+
+    const run = runCli(
+      [
+        'benchmark',
+        'run',
+        caseDir,
+        '--benchmark-root',
+        benchmarkRoot,
+        '--platform',
+        'codex-cli',
+        '--model',
+        'gpt-5.4',
+        '--output-root',
+        runsRoot,
+      ],
+      { env },
+    );
+    expect(run.status).toBe(0);
+
+    const runPayload = JSON.parse(run.stdout) as {
+      runs: Array<{ run_dir: string }>;
+    };
+    const runDir = runPayload.runs[0].run_dir;
+
+    expect(runCli(['benchmark', 'evaluate', runsRoot, '--benchmark-root', benchmarkRoot], { env }).status).toBe(0);
+    expect(runCli([
+      'benchmark',
+      'review-apply',
+      runDir,
+      '--verdict',
+      'pass',
+      '--reviewer',
+      'qa-user',
+    ], { env }).status).toBe(0);
+
+    const reevaluate = runCli(['benchmark', 'evaluate', runsRoot, '--benchmark-root', benchmarkRoot], { env });
+    expect(reevaluate.status).toBe(0);
+
+    const finalVerdict = JSON.parse(readFileSync(join(runDir, 'verdict.json'), 'utf-8')) as {
+      status: string;
+      final_verdict: string | null;
+    };
+    expect(finalVerdict).toMatchObject({
+      status: 'pass',
+      final_verdict: 'pass',
+    });
   });
 });

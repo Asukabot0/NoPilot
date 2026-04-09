@@ -1,6 +1,7 @@
 import {
   readdirSync,
   readFileSync,
+  statSync,
 } from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -21,15 +22,26 @@ function collectWorkspaceFiles(rootDir: string, currentDir = rootDir): string[] 
       continue;
     }
 
+    if (path.relative(rootDir, entryPath).startsWith('.benchmark')) {
+      continue;
+    }
+
     files.push(entryPath);
   }
 
   return files.sort();
 }
 
+function buildArtifactSnapshot(rootDir: string, startedAtMs: number): string[] {
+  return collectWorkspaceFiles(rootDir)
+    .filter((entryPath) => statSync(entryPath).mtimeMs >= startedAtMs)
+    .map((entryPath) => path.relative(rootDir, entryPath).replace(/\\/g, '/'));
+}
+
 function runCodexProcess(request: AdapterLaunchRequest): Promise<AdapterRunResult> {
   const promptText = readFileSync(request.prompt_path, 'utf-8');
   const args = ['exec', '--model', request.model_id, promptText];
+  const startedAtMs = Date.now();
 
   return new Promise((resolve, reject) => {
     const child = spawn('codex', args, {
@@ -74,7 +86,7 @@ function runCodexProcess(request: AdapterLaunchRequest): Promise<AdapterRunResul
                 content,
               },
             ],
-        artifact_snapshot: collectWorkspaceFiles(request.workspace_path),
+        artifact_snapshot: buildArtifactSnapshot(request.workspace_path, startedAtMs),
         adapter_notes: [`codex ${args.join(' ')}`],
       });
     });

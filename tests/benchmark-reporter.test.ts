@@ -208,7 +208,7 @@ describe('benchmark reporter', () => {
       entries: [
         {
           case_id: 'BUILD-001',
-          comparison_key: 'BUILD-001::codex-cli::gpt-5.4::wf-1',
+          comparison_key: 'BUILD-001::codex-cli::gpt-5.4',
           classification: 'regressed',
           score_delta: -14,
           status_change: 'fail -> fail',
@@ -217,7 +217,7 @@ describe('benchmark reporter', () => {
         },
         {
           case_id: 'DISCOVER-001',
-          comparison_key: 'DISCOVER-001::codex-cli::gpt-5.4::wf-1',
+          comparison_key: 'DISCOVER-001::codex-cli::gpt-5.4',
           classification: 'improved',
           score_delta: 11,
           status_change: 'pass -> pass',
@@ -226,7 +226,7 @@ describe('benchmark reporter', () => {
         },
         {
           case_id: 'DISCOVER-002',
-          comparison_key: 'DISCOVER-002::codex-cli::gpt-5.4::wf-1',
+          comparison_key: 'DISCOVER-002::codex-cli::gpt-5.4',
           classification: 'regressed',
           score_delta: -6,
           status_change: 'pass -> needs_review',
@@ -306,16 +306,54 @@ describe('benchmark reporter', () => {
     expect(report.regression_diff.entries).toHaveLength(2);
     expect(report.regression_diff.entries).toEqual([
       expect.objectContaining({
-        comparison_key: 'DISCOVER-003::codex-cli::gpt-5.4-mini::wf-a',
+        comparison_key: 'DISCOVER-003::codex-cli::gpt-5.4',
+        classification: 'regressed',
+        new_failures: ['F10'],
+        fixed_failures: [],
+      }),
+      expect.objectContaining({
+        comparison_key: 'DISCOVER-003::codex-cli::gpt-5.4-mini',
         classification: 'regressed',
         new_failures: ['F2'],
         fixed_failures: ['F10'],
       }),
+    ]);
+  });
+
+  it('matches runs across workflow versions instead of downgrading them to added and removed entries', () => {
+    const currentRoot = makeTempDir('benchmark-current-');
+    const baselineRoot = makeTempDir('benchmark-baseline-');
+    cleanupPaths.push(currentRoot, baselineRoot);
+
+    writeRunFixture(currentRoot, 'RUN-301', {
+      case_id: 'DISCOVER-005',
+      workflow_version: 'wf-new',
+      total_score: 62,
+      status: 'needs_review',
+      auto_verdict: 'needs_review',
+      failure_tags: ['F10'],
+      primary_failure_tag: 'F10',
+      human_review_required: true,
+    });
+    writeRunFixture(baselineRoot, 'BASE-301', {
+      case_id: 'DISCOVER-005',
+      workflow_version: 'wf-old',
+      total_score: 78,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+
+    const report = buildJsonReport({
+      runs_root: currentRoot,
+      baseline_root: baselineRoot,
+    });
+
+    expect(report.regression_diff.entries).toEqual([
       expect.objectContaining({
-        comparison_key: 'DISCOVER-003::codex-cli::gpt-5.4::wf-a',
+        comparison_key: 'DISCOVER-005::codex-cli::gpt-5.4',
         classification: 'regressed',
-        new_failures: ['F10'],
-        fixed_failures: [],
+        baseline_run_id: 'BASE-301',
+        current_run_id: 'RUN-301',
       }),
     ]);
   });
