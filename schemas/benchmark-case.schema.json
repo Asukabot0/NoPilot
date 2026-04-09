@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "id",
+    "case_version",
+    "run_profile",
+    "fixture",
+    "budget"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "case_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_profile": {
+      "type": "string",
+      "const": "phase1-local-cli-v1"
+    },
+    "fixture": {
+      "type": "string",
+      "const": "fixture"
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "max_turns",
+        "timeout_seconds",
+        "max_cost_usd"
+      ],
+      "properties": {
+        "max_turns": {
+          "type": "number",
+          "minimum": 1
+        },
+        "timeout_seconds": {
+          "type": "number",
+          "minimum": 1
+        },
+        "max_cost_usd": {
+          "type": "number",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
