@@ -1027,7 +1027,7 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 
 **原子写入保证：** 使用"临时文件 + `fs.renameSync`"模式，防止进程崩溃导致状态文件损坏。
 
-**21 种状态转换事件：**
+**22 种状态转换事件：**
 
 | 事件 | 含义 |
 |------|------|
@@ -1040,6 +1040,7 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 | `module_critic_spawned` | 模块 Critic 已启动 |
 | `module_critic_passed` | 模块 Critic 通过 |
 | `module_critic_failed` | 模块 Critic 失败 |
+| `tracer_completed` | Tracer 阶段完成，允许进入批次执行 |
 | `batch_completed` | 批次完成 |
 | `merge_completed` | 合并完成 |
 | `merge_conflict` | 合并冲突 |
@@ -1052,6 +1053,24 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 | `build_paused` | 构建暂停 |
 | `build_completed` | 构建完成 |
 | `build_backtracked` | 构建回溯 |
+
+**5 个运行时 phase：**
+
+| phase | 含义 |
+|------|------|
+| `planning` | Tracer 前的初始阶段 |
+| `batch_execution` | Tracer 完成后，执行并合并批次模块 |
+| `build_critic` | Final verification 中的 Build Critic 审查 |
+| `supervisor` | Final verification 中的 Supervisor 审查 |
+| `acceptance` | 构建已完成，进入最终验收状态 |
+
+**phase 前置条件：**
+
+- 只有 `tracer_completed` 能把 phase 从 `planning` 推进到 `batch_execution`
+- 只有在 `batch_execution` 中才允许触发 `batch_completed` 与 `build_critic_spawned`
+- 只有在 `build_critic` 中才允许触发 `build_critic_passed` / `build_critic_failed` / `supervisor_spawned`
+- 只有在 `supervisor` 中才允许触发 `supervisor_passed` / `supervisor_failed`
+- `build_completed` 只能在 `supervisor` phase 中触发，确保 Build Critic 与 Supervisor 都已留下状态痕迹后才进入 `acceptance`
 
 **7 种构建状态：**
 
