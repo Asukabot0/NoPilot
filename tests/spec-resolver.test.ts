@@ -208,6 +208,53 @@ function makeSplitTestsWithMalformedChild(tmpDir: string): string {
   return dir;
 }
 
+function makeSplitTestsWithoutModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+  });
+
+  return dir;
+}
+
+function makeSplitTestsWithInvalidModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+    modules: ['mod-001-alpha.json', 7],
+  });
+
+  return dir;
+}
+
 function makeSingleBuildReport(tmpDir: string): string {
   const p = join(tmpDir, 'build_report.json');
   writeJson(p, {
@@ -317,6 +364,73 @@ function makeSplitBuildReportWithMalformedChild(tmpDir: string): string {
 
   writeJson(join(dir, 'mod-001-alpha.json'), {
     module_results: { module_ref: 'MOD-001', status: 'completed' },
+  });
+
+  return dir;
+}
+
+function makeSplitBuildReportWithoutModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+  });
+
+  return dir;
+}
+
+function makeSplitBuildReportWithInvalidModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001-alpha.json', ''],
   });
 
   return dir;
@@ -548,6 +662,18 @@ describe('resolveTests', () => {
     const testsDir = makeSplitTestsWithMalformedChild(tmp);
     expect(() => resolveTests(testsDir)).toThrow('INVALID_CHILD_PAYLOAD');
   });
+
+  it('TEST-026-031: throws INVALID_INDEX_PAYLOAD when split tests index omits modules', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTestsWithoutModules(tmp);
+    expect(() => resolveTests(testsDir)).toThrow('INVALID_INDEX_PAYLOAD');
+  });
+
+  it('TEST-026-032: throws INVALID_INDEX_PAYLOAD when split tests index modules contains invalid entries', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTestsWithInvalidModules(tmp);
+    expect(() => resolveTests(testsDir)).toThrow('INVALID_INDEX_PAYLOAD');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -593,6 +719,18 @@ describe('resolveBuildReport', () => {
     const tmp = makeTmpDir();
     const buildDir = makeSplitBuildReportWithMalformedChild(tmp);
     expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_CHILD_PAYLOAD');
+  });
+
+  it('TEST-026-033: throws INVALID_INDEX_PAYLOAD when split build index omits modules', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReportWithoutModules(tmp);
+    expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_INDEX_PAYLOAD');
+  });
+
+  it('TEST-026-034: throws INVALID_INDEX_PAYLOAD when split build index modules contains invalid entries', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReportWithInvalidModules(tmp);
+    expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_INDEX_PAYLOAD');
   });
 });
 

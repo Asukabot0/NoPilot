@@ -98,3 +98,16 @@
   - discover split child 仍然采用 `Object.assign` 合并，若未来要对 `requirements` / `core_scenarios` 做更强结构校验，还需单独补 schema 级验证
 - 值得深入研究的问题:
   - 是否在 resolver 层统一接入 schema 校验，而不仅是路径解析与基础结构拼装
+
+## Progress Snapshot: 2026-04-09 21:35
+- 触发方式: 最后一轮 merge blocker 修补
+- 代码统计: 本次继续修改 `spec-resolver` 与回归测试，补齐 split index `modules` 字段强校验
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 将 split `tests/build` 的 `index.json` 中 `modules` 读取从默认空数组改为强校验，缺失或包含非法项时明确抛出 `INVALID_INDEX_PAYLOAD`
+  - 新增 `tests/spec-resolver.test.ts` 负向用例，覆盖 split tests/build index 缺失 `modules` 与 `modules` 含非法项两类场景
+  - 消除 split index 元数据错误时的静默空聚合风险
+- 当前问题:
+  - `resolveDiscover()` 仍未对 split child 内容做 schema 级结构校验，只保证文件存在且 JSON 可解析
+- 值得深入研究的问题:
+  - 是否应在 resolver 层统一接入 artifact schema 校验，以便将 discover/spec/tests/build 的结构错误统一前置到加载阶段

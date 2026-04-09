@@ -204,7 +204,7 @@ function loadSplitSpec(dirPath: string): { spec: Spec; specHash: string } {
 
 /**
  * Load a discover artifact from a single file or split directory.
- * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON
+ * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON, INVALID_INDEX_PAYLOAD, INVALID_CHILD_PAYLOAD
  */
 export function resolveDiscover(discoverPath: string): { discover: Discover } {
   const { format, normalizedPath } = resolveArtifactInput(discoverPath);
@@ -268,7 +268,7 @@ function loadSplitTests(dirPath: string): { tests: TestsArtifact } {
   const indexText = readFileSync(indexPath, 'utf8');
   const index = parseJson(indexText, indexPath) as Record<string, unknown>;
 
-  const moduleFiles = (index.modules ?? []) as string[];
+  const moduleFiles = requireStringArray(index.modules, indexPath, 'modules');
   const merged: TestsArtifact = {
     ...index,
     example_cases: [],
@@ -301,7 +301,7 @@ function loadSplitTests(dirPath: string): { tests: TestsArtifact } {
 
 /**
  * Load a build report artifact from a single file or split directory.
- * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON
+ * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON, INVALID_INDEX_PAYLOAD, INVALID_CHILD_PAYLOAD
  */
 export function resolveBuildReport(buildPath: string): { buildReport: BuildReportArtifact } {
   const { format, normalizedPath } = resolveArtifactInput(buildPath);
@@ -321,7 +321,7 @@ function loadSplitBuildReport(dirPath: string): { buildReport: BuildReportArtifa
   const indexText = readFileSync(indexPath, 'utf8');
   const index = parseJson(indexText, indexPath) as Record<string, unknown>;
 
-  const moduleFiles = (index.modules ?? []) as string[];
+  const moduleFiles = requireStringArray(index.modules, indexPath, 'modules');
   const merged: BuildReportArtifact = {
     ...index,
     module_results: [],
@@ -378,6 +378,30 @@ function requireObjectArray(
   }
 
   return value as Array<Record<string, unknown>>;
+}
+
+function requireStringArray(
+  value: unknown,
+  sourcePath: string,
+  fieldName: string,
+): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `[INVALID_INDEX_PAYLOAD] Expected '${fieldName}' to be an array in split index file (path: ${sourcePath})`
+    );
+  }
+
+  const invalidItemIndex = value.findIndex(
+    (item) => typeof item !== 'string' || item.length === 0,
+  );
+
+  if (invalidItemIndex !== -1) {
+    throw new Error(
+      `[INVALID_INDEX_PAYLOAD] Expected '${fieldName}' entries to be non-empty strings in split index file (path: ${sourcePath}, index: ${invalidItemIndex})`
+    );
+  }
+
+  return value;
 }
 
 // ---------------------------------------------------------------------------
