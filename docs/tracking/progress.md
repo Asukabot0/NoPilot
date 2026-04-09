@@ -112,6 +112,21 @@
 - 值得深入研究的问题:
   - 是否应在 resolver 层统一接入 artifact schema 校验，以便将 discover/spec/tests/build 的结构错误统一前置到加载阶段
 
+## Progress Snapshot: 2026-04-10 00:35
+- 触发方式: 修复 issue #64 的 plan-generator ownership fallback 缺口
+- 代码统计: 本次修改 `src/lash/plan-generator.ts`、`tests/plan-generator.test.ts`、`tests/worktree-manager.test.ts` 与 `docs/zh-CN/USER_GUIDE.md`
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-64-plan-generator-batches`
+- 本次工作:
+  - 将 `plan-generator` 在缺失 `owned_files` 时的行为改为在 plan 生成阶段直接抛错（fail-closed），列出所有缺失 `owned_files` 的模块 ID
+  - 新增 `tests/plan-generator.test.ts` 回归覆盖，确认缺失 ownership 不再伪造 wildcard ownership，也不会把同目录 sibling 模块被动串行化
+  - 新增 `tests/worktree-manager.test.ts` 回归覆盖，明确 `checkUnexpectedFiles` 仍按显式文件路径做 merge 前边界检查，`src/**` 这类字符串不会被当成授权模式
+  - 同步更新 `docs/zh-CN/USER_GUIDE.md`，补充缺失 `owned_files` 的 fail-closed 语义与边界检查说明
+- 当前问题:
+  - 现有 schema 仍只把 `owned_files` 视为可选字段，没有进一步约束“缺失 ownership 是否应阻断构建”；当前修复仅保证语义一致，不额外引入新的 hard fail
+- 值得深入研究的问题:
+  - 是否应在后续版本把 `owned_files` 提升为更强合同（例如 spec 阶段必填，或在 `lash plan` 中将缺失 ownership 升级为显式错误），从源头消除 ownership 不完整问题
+
 ## Progress Snapshot: 2026-04-10 14:45
 - 触发方式: 修复 discover review gate 相关 issue #69 / #70 / #48 / #58
 - 代码统计: 本次未改运行时代码，收紧 `discover` prompt 合同并补充结构测试
