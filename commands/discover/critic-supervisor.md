@@ -13,7 +13,15 @@
 
 ## Critic Integration
 
-After both artifact files are written, spawn the Critic agent for independent requirement quality verification.
+After both artifact files are written, the main discover flow MUST immediately enter this review gate. Discover is not complete after artifact generation alone.
+
+The main discover flow MUST NOT:
+- inline the Critic review or Supervisor review in the main agent,
+- manually mark `passed: true`, `aligned: true`, or any equivalent success field,
+- tell the user to continue to `/spec`,
+- generate extra completion files/messages before this review gate passes.
+
+Spawn the Critic agent for independent requirement quality verification.
 
 <!-- DISPATCH CONTRACT
   agent: critic (sonnet)
@@ -34,8 +42,10 @@ After both artifact files are written, spawn the Critic agent for independent re
    - **Acceptance criteria testability** — can concrete tests be derived directly?
    - **Requirement coverage** — are all core scenarios covered? Any orphan requirements?
 4. Critic writes results to `specs/discover_review.json`
-5. **If issues found:** Critic attempts self-fix on the discover artifact, then re-verifies with a fresh Critic instance using the floating complexity-based cap from `<%=CRITIC_PATH%>`. If still failing after the cap and trend evaluation, pause and present findings to user.
-6. **If passed:** Proceed to Supervisor check.
+5. **If issues found:** Critic attempts self-fix on the discover artifact, records the attempt in `discover_review.json.self_fix_log`, then re-verifies with a fresh Critic instance using the floating complexity-based cap from `<%=CRITIC_PATH%>`.
+6. The main discover flow MUST NOT treat self-fixed output as passed until that fresh Critic instance writes a passing review.
+7. If still failing after the cap and trend evaluation, pause and present findings to user.
+8. **If passed:** Proceed to Supervisor check.
 
 ### 6Cs Grading: Mandatory vs Advisory
 
@@ -67,11 +77,13 @@ After Critic completes, read `specs/discover_review.json` and check:
 
 If all four pass → proceed to Supervisor. If any failed and Critic's self-fix was exhausted → pause, present the review findings to the user, wait for resolution.
 
+The main discover flow MUST NOT manually rewrite those pass/fail fields to force progression.
+
 ---
 
 ## Supervisor Integration
 
-After Critic passes (or user resolves Critic findings):
+After Critic passes:
 
 <!-- DISPATCH CONTRACT
   agent: supervisor (sonnet)
@@ -94,4 +106,6 @@ After Critic passes (or user resolves Critic findings):
 4. Supervisor checks global coherence: does the requirement set match the stated intent?
 5. Write the Supervisor's assessment into `specs/discover_review.json`'s `global_coherence_check` field
 6. **If drift detected:** Pause, present the drift diagnosis to the user, and wait for resolution before proceeding
-7. **If aligned:** Proceed — output the completion message from `artifact-writer.md`
+7. **If aligned:** Proceed — only now may the main agent present discover as complete and mention `/spec` as the next stage.
+
+If the user resolves Critic findings manually after a failed review, the main discover flow MUST re-run Critic and wait for a fresh passing review before entering Supervisor.

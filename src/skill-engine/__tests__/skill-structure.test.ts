@@ -558,6 +558,22 @@ describe('Context budget e2e tests (PR #60)', () => {
     expect(content).toMatch(/format:\s*single\s*\|\s*split/);
   });
 
+  it('TEST-070-005a: artifact writer does not tell the user to run /spec before review gate passes', () => {
+    const content = readFile('commands/discover/artifact-writer.md');
+
+    expect(content).not.toContain('Run /spec to continue.');
+    expect(content).toContain('Critic + Supervisor review');
+    expect(content).toContain('before presenting completion or `/spec`');
+  });
+
+  it('TEST-070-005b: artifact writer does not claim ownership of discover_review.json', () => {
+    const content = readFile('commands/discover/artifact-writer.md');
+
+    expect(content).not.toContain('`specs/features/feat-{featureSlug}/discover_review.json`\n');
+    expect(content).toContain('is **not** written by this artifact writer');
+    expect(content).toContain('created later by the mandatory independent Critic + Supervisor review gate');
+  });
+
   it('TEST-070-006: SKILL.md dispatch contracts reference all sub-skill files', () => {
     const content = readFile('commands/discover/SKILL.md');
     
@@ -612,5 +628,32 @@ describe('Context budget e2e tests (PR #60)', () => {
     const ac1 = req011.acceptance_criteria.find((c: any) => c.id === 'REQ-011-AC-1');
     expect(ac1).toBeDefined();
     expect(ac1.ears).toContain('< 200K chars');
+  });
+
+  it('TEST-070-011: discover skill makes Critic + Supervisor the mandatory next step after artifact writing', () => {
+    const content = readFile('commands/discover/SKILL.md');
+
+    expect(content).toContain('Discover is **not complete** after Layer 3 or artifact writing');
+    expect(content).toContain('Next: mandatory Critic + Supervisor dispatch');
+    expect(content).toContain('do NOT tell the user to run `/spec` yet');
+    expect(content).toContain('fresh independent Critic pass');
+  });
+
+  it('TEST-070-012: critic-supervisor contract forbids inline review and manual pass marking', () => {
+    const content = readFile('commands/discover/critic-supervisor.md');
+
+    expect(content).toContain('MUST NOT');
+    expect(content).toContain('inline the Critic review or Supervisor review');
+    expect(content).toContain('manually mark `passed: true`, `aligned: true`');
+    expect(content).toContain('discover_review.json.self_fix_log');
+    expect(content).toContain('MUST NOT treat self-fixed output as passed');
+  });
+
+  it('TEST-070-013: supervisor may run only after a fresh Critic pass', () => {
+    const content = readFile('commands/discover/critic-supervisor.md');
+
+    expect(content).toContain('After Critic passes:');
+    expect(content).toContain('MUST re-run Critic and wait for a fresh passing review before entering Supervisor');
+    expect(content).not.toContain('After Critic passes (or user resolves Critic findings):');
   });
 });

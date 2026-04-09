@@ -149,7 +149,11 @@ After Layer 3 approved → Artifact Generation:
   on_error: standard
 -->
 
-Dispatch subagent → `commands/discover/artifact-writer.md`. Present confirmation.
+Dispatch subagent → `commands/discover/artifact-writer.md`. Present only the file-write confirmation.
+
+**Do NOT stop here.** Discover is **not complete** after Layer 3 or artifact writing. Do NOT generate extra files, do NOT inline any review, and do NOT tell the user to run `/spec` yet.
+
+**Next: mandatory Critic + Supervisor dispatch.** The very next step after artifact writing is the independent review gate below.
 
 ### Critic + Supervisor Dispatch
 
@@ -163,6 +167,8 @@ Dispatch subagent → `commands/discover/artifact-writer.md`. Present confirmati
 ```
 Use the Skill tool to load: commands/discover/critic-supervisor.md
 ```
+
+Only after a **fresh independent Critic pass** and an **aligned Supervisor result** may the main agent present discover as complete and mention `/spec` as the next stage.
 
 **Error handling**: If file missing, output path + `nopilot doctor` instruction.
 
