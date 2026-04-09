@@ -155,7 +155,8 @@ export function buildRegressionDiff(
     while (currentRunsForKey.length > 0 || baselineRunsForKey.length > 0) {
       const currentRun = currentRunsForKey.shift();
       const baselineRun = currentRun
-        ? takeByWorkflowVersion(baselineRunsForKey, currentRun.workflow_version) ?? baselineRunsForKey.shift()
+        ? takeByWorkflowVersion(baselineRunsForKey, currentRun.workflow_version)
+          ?? (baselineRunsForKey.length === 1 ? baselineRunsForKey.shift() : undefined)
         : baselineRunsForKey.shift();
       const caseId = currentRun?.case_id ?? baselineRun?.case_id ?? 'unknown';
 
