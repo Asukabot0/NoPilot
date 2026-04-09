@@ -402,6 +402,55 @@ describe('benchmark reporter', () => {
     expect(report.regression_diff.entries.map((entry) => entry.baseline_run_id)).toEqual(['BASE-401', 'BASE-402']);
   });
 
+  it('matches same-key runs by workflow version before falling back to run id order', () => {
+    const currentRoot = makeTempDir('benchmark-current-');
+    const baselineRoot = makeTempDir('benchmark-baseline-');
+    cleanupPaths.push(currentRoot, baselineRoot);
+
+    writeRunFixture(currentRoot, 'RUN-Z', {
+      case_id: 'DISCOVER-007',
+      workflow_version: 'wf-z',
+      total_score: 91,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+
+    writeRunFixture(baselineRoot, 'BASE-A', {
+      case_id: 'DISCOVER-007',
+      workflow_version: 'wf-a',
+      total_score: 40,
+      status: 'fail',
+      auto_verdict: 'fail',
+      failure_tags: ['F2'],
+      primary_failure_tag: 'F2',
+    });
+    writeRunFixture(baselineRoot, 'BASE-Z', {
+      case_id: 'DISCOVER-007',
+      workflow_version: 'wf-z',
+      total_score: 89,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+
+    const report = buildJsonReport({
+      runs_root: currentRoot,
+      baseline_root: baselineRoot,
+    });
+
+    expect(report.regression_diff.entries).toEqual([
+      expect.objectContaining({
+        baseline_run_id: 'BASE-Z',
+        current_run_id: 'RUN-Z',
+        classification: 'improved',
+      }),
+      expect.objectContaining({
+        baseline_run_id: 'BASE-A',
+        current_run_id: null,
+        classification: 'removed',
+      }),
+    ]);
+  });
+
   it('keeps regression diff empty when no baseline root is provided', () => {
     const currentRoot = makeTempDir('benchmark-current-');
     cleanupPaths.push(currentRoot);

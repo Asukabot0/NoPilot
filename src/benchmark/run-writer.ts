@@ -77,11 +77,11 @@ function copyArtifactSnapshot(
     mkdirSync(path.dirname(destinationPath), { recursive: true });
 
     if (statSync(sourcePath).isDirectory()) {
-      cpSync(sourcePath, destinationPath, { recursive: true });
+      cpSync(sourcePath, destinationPath, { recursive: true, preserveTimestamps: true });
       continue;
     }
 
-    cpSync(sourcePath, destinationPath);
+    cpSync(sourcePath, destinationPath, { preserveTimestamps: true });
   }
 }
 

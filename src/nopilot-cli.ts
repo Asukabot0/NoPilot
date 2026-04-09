@@ -320,6 +320,7 @@ benchmark
           repo_fixture_hash: bundle.fixture_hash,
           trace_extractor_version: DEFAULT_TRACE_EXTRACTOR_VERSION,
           run_profile: profile.profile_id,
+          adapter_exit_code: adapterResult.exit_code,
         };
         const runOutput = writeStandardRunDirectory(metadata, adapterResult, outputRoot);
 
@@ -381,6 +382,39 @@ benchmark
             });
             continue;
           }
+        }
+
+        if ((metadata.adapter_exit_code ?? 0) !== 0) {
+          const verdict = composeVerdict({
+            run_id: metadata.run_id,
+            oracle_result: {
+              outcome_checks_passed: false,
+              failure_tags: ['F11'],
+              ambiguity_reasons: [],
+              trace_warnings: [],
+            },
+            run_metrics: {
+              process_score: 25,
+              outcome_score: 0,
+              efficiency_score: 0,
+            },
+            evidence_paths: {
+              transcript: 'transcript.jsonl',
+              event_log: 'event-log.json',
+              artifacts: 'artifacts',
+            },
+          });
+          const writtenVerdict = writeVerdictArtifact(join(runDir, 'verdict.json'), verdict);
+          runs.push({
+            run_id: metadata.run_id,
+            case_id: metadata.case_id,
+            status: writtenVerdict.status,
+            auto_verdict: writtenVerdict.auto_verdict,
+            total_score: writtenVerdict.total_score,
+            review_reason: writtenVerdict.review_reason,
+            warnings: [],
+          });
+          continue;
         }
 
         const transcript = readTranscriptRecords(runDir);

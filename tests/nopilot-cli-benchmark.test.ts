@@ -90,6 +90,26 @@ function writeFakeCodexBin(binDir: string): void {
   chmodSync(codexPath, 0o755);
 }
 
+function writeFailingCodexBin(binDir: string): void {
+  mkdirSync(binDir, { recursive: true });
+  const codexPath = join(binDir, 'codex');
+  writeFileSync(
+    codexPath,
+    [
+      '#!/usr/bin/env bash',
+      'set -euo pipefail',
+      'printf "starting discover phase\\n"',
+      'printf "independent critic dispatch\\n"',
+      'printf "completed benchmark prompt\\n"',
+      'mkdir -p "$PWD/logs"',
+      'printf "{\\"result\\":\\"failed\\"}\\n" > "$PWD/logs/result.json"',
+      'exit 1',
+    ].join('\n'),
+    'utf-8',
+  );
+  chmodSync(codexPath, 0o755);
+}
+
 describe('nopilot benchmark CLI', () => {
   it('exposes the benchmark command group and its phase-1 subcommands', () => {
     ensureCliBuilt();
@@ -410,5 +430,68 @@ describe('nopilot benchmark CLI', () => {
       status: 'pass',
       final_verdict: 'pass',
     });
+  });
+
+  it('marks runs as failed when the adapter exits non-zero even if artifacts were produced', () => {
+    ensureCliBuilt();
+    const tmpRoot = makeTempDir('nopilot-benchmark-cli-exit-');
+    const binDir = join(tmpRoot, 'bin');
+    const runsRoot = join(tmpRoot, 'runs');
+    const benchmarkRoot = join(PACKAGE_ROOT, 'benchmark');
+    const caseDir = join(benchmarkRoot, 'cases', 'BUILD-001');
+
+    writeFailingCodexBin(binDir);
+
+    const env = {
+      PATH: `${binDir}:${process.env.PATH ?? ''}`,
+    };
+
+    const run = runCli([
+      'benchmark', 'run', caseDir,
+      '--benchmark-root', benchmarkRoot,
+      '--platform', 'codex-cli',
+      '--model', 'gpt-5.4',
+      '--output-root', runsRoot,
+    ], { env });
+    expect(run.status).toBe(0);
+
+    const evaluate = runCli(['benchmark', 'evaluate', runsRoot, '--benchmark-root', benchmarkRoot], { env });
+    expect(evaluate.status).toBe(0);
+
+    const payload = JSON.parse(evaluate.stdout) as {
+      runs: Array<{ status: string; auto_verdict: string }>;
+    };
+    expect(payload.runs[0]).toMatchObject({
+      status: 'fail',
+      auto_verdict: 'fail',
+    });
+  });
+
+  it('rejects benchmark report before evaluate has replaced the pending verdict placeholder', () => {
+    ensureCliBuilt();
+    const tmpRoot = makeTempDir('nopilot-benchmark-cli-report-');
+    const binDir = join(tmpRoot, 'bin');
+    const runsRoot = join(tmpRoot, 'runs');
+    const benchmarkRoot = join(PACKAGE_ROOT, 'benchmark');
+    const caseDir = join(benchmarkRoot, 'cases', 'DISCOVER-001');
+
+    writeFakeCodexBin(binDir);
+
+    const env = {
+      PATH: `${binDir}:${process.env.PATH ?? ''}`,
+    };
+
+    const run = runCli([
+      'benchmark', 'run', caseDir,
+      '--benchmark-root', benchmarkRoot,
+      '--platform', 'codex-cli',
+      '--model', 'gpt-5.4',
+      '--output-root', runsRoot,
+    ], { env });
+    expect(run.status).toBe(0);
+
+    const report = runCli(['benchmark', 'report', runsRoot], { env });
+    expect(report.status).toBe(1);
+    expect(report.stderr).toContain('benchmark_report_pending_evaluation');
   });
 });

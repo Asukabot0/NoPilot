@@ -68,6 +68,36 @@ function readJsonFile<T>(filePath: string): T {
   return JSON.parse(readFileSync(filePath, 'utf-8')) as T;
 }
 
+function normalizeReportVerdict(
+  runId: string,
+  rawVerdict: unknown,
+): {
+  status: VerdictStatus;
+  total_score: number;
+  failure_tags: string[];
+  primary_failure_tag: string | null;
+  human_review_required: boolean;
+} {
+  const rawStatus = (rawVerdict as { status?: string }).status;
+  if (rawStatus === 'pending_review') {
+    throw new Error(`benchmark_report_pending_evaluation: run ${runId} must be evaluated before reporting`);
+  }
+
+  const verdict = rawVerdict as Partial<BenchmarkVerdictArtifact> & { status?: string };
+
+  if (verdict.status !== 'pass' && verdict.status !== 'fail' && verdict.status !== 'needs_review') {
+    throw new Error(`benchmark_report_invalid_verdict: run ${runId} has an unsupported status`);
+  }
+
+  return {
+    status: verdict.status,
+    total_score: typeof verdict.total_score === 'number' ? verdict.total_score : 0,
+    failure_tags: Array.isArray(verdict.failure_tags) ? verdict.failure_tags : [],
+    primary_failure_tag: typeof verdict.primary_failure_tag === 'string' ? verdict.primary_failure_tag : null,
+    human_review_required: verdict.human_review_required === true,
+  };
+}
+
 function loadReportRuns(rootDir: string): BenchmarkReportRun[] {
   const entries = readdirSync(rootDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
@@ -76,10 +106,10 @@ function loadReportRuns(rootDir: string): BenchmarkReportRun[] {
   return entries.map((entry) => {
     const runDir = path.join(rootDir, entry);
     const metadata = readJsonFile<BenchmarkRunMetadata>(path.join(runDir, 'metadata.json'));
-    const verdict = readJsonFile<BenchmarkVerdictArtifact>(path.join(runDir, 'verdict.json'));
-    const failureTags = Array.isArray((verdict as { failure_tags?: unknown }).failure_tags)
-      ? (verdict.failure_tags as string[])
-      : [];
+    const verdict = normalizeReportVerdict(
+      metadata.run_id,
+      readJsonFile<unknown>(path.join(runDir, 'verdict.json')),
+    );
 
     return {
       run_id: metadata.run_id,
@@ -88,10 +118,10 @@ function loadReportRuns(rootDir: string): BenchmarkReportRun[] {
       model_id: metadata.model_id,
       workflow_version: metadata.workflow_version,
       status: verdict.status,
-      total_score: typeof verdict.total_score === 'number' ? verdict.total_score : 0,
-      failure_tags: failureTags,
-      primary_failure_tag: verdict.primary_failure_tag ?? null,
-      human_review_required: verdict.human_review_required ?? false,
+      total_score: verdict.total_score,
+      failure_tags: verdict.failure_tags,
+      primary_failure_tag: verdict.primary_failure_tag,
+      human_review_required: verdict.human_review_required,
     };
   });
 }

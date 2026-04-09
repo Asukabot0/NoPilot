@@ -55,6 +55,29 @@ function buildComparisonKey(run: RegressionComparableRun): string {
   return [run.case_id, run.platform_id, run.model_id].join('::');
 }
 
+function sortRunsForMatching(runs: readonly RegressionComparableRun[]): RegressionComparableRun[] {
+  return [...runs].sort((left, right) => {
+    const workflowCompare = left.workflow_version.localeCompare(right.workflow_version);
+    if (workflowCompare !== 0) {
+      return workflowCompare;
+    }
+
+    return left.run_id.localeCompare(right.run_id);
+  });
+}
+
+function takeByWorkflowVersion(
+  runs: RegressionComparableRun[],
+  workflowVersion: string,
+): RegressionComparableRun | undefined {
+  const index = runs.findIndex((run) => run.workflow_version === workflowVersion);
+  if (index === -1) {
+    return undefined;
+  }
+
+  return runs.splice(index, 1)[0];
+}
+
 function diffFailureTags(current: readonly string[], baseline: readonly string[]): { new_failures: string[]; fixed_failures: string[] } {
   const currentSet = new Set(current);
   const baselineSet = new Set(baseline);
@@ -126,27 +149,14 @@ export function buildRegressionDiff(
   const entries: RegressionDiffEntry[] = [];
 
   for (const comparisonKey of [...comparisonKeys].sort()) {
-    const currentRunsForKey = [...(currentByKey.get(comparisonKey) ?? [])].sort((left, right) => {
-      const workflowCompare = left.workflow_version.localeCompare(right.workflow_version);
-      if (workflowCompare !== 0) {
-        return workflowCompare;
-      }
+    const currentRunsForKey = sortRunsForMatching(currentByKey.get(comparisonKey) ?? []);
+    const baselineRunsForKey = sortRunsForMatching(baselineByKey.get(comparisonKey) ?? []);
 
-      return left.run_id.localeCompare(right.run_id);
-    });
-    const baselineRunsForKey = [...(baselineByKey.get(comparisonKey) ?? [])].sort((left, right) => {
-      const workflowCompare = left.workflow_version.localeCompare(right.workflow_version);
-      if (workflowCompare !== 0) {
-        return workflowCompare;
-      }
-
-      return left.run_id.localeCompare(right.run_id);
-    });
-    const pairCount = Math.max(currentRunsForKey.length, baselineRunsForKey.length);
-
-    for (let index = 0; index < pairCount; index += 1) {
-      const currentRun = currentRunsForKey[index];
-      const baselineRun = baselineRunsForKey[index];
+    while (currentRunsForKey.length > 0 || baselineRunsForKey.length > 0) {
+      const currentRun = currentRunsForKey.shift();
+      const baselineRun = currentRun
+        ? takeByWorkflowVersion(baselineRunsForKey, currentRun.workflow_version) ?? baselineRunsForKey.shift()
+        : baselineRunsForKey.shift();
       const caseId = currentRun?.case_id ?? baselineRun?.case_id ?? 'unknown';
 
       if (currentRun && baselineRun) {

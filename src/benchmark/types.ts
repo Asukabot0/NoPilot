@@ -30,6 +30,7 @@ export interface BenchmarkRunMetadata {
   repo_fixture_hash: string;
   trace_extractor_version: string;
   run_profile: string;
+  adapter_exit_code?: number;
   [key: string]: unknown;
 }
 
