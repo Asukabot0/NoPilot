@@ -85,3 +85,16 @@
   - `profile writer` 之前一直按单文件入口读取 stage artifact，这次已补齐 split discover/spec/build 支持，但其他非 Lash 路径若未来新增 artifact loader，仍需优先复用统一 resolver，避免再次出现入口语义分叉
 - 值得深入研究的问题:
   - 是否将 `decisions.json`、未来的 `tests_review` / `build_review` 等 artifact 也统一纳入一层通用 resolver API，进一步消除不同子系统各自读取 JSON 的重复实现
+
+## Progress Snapshot: 2026-04-09 21:05
+- 触发方式: 子 agent 复审后修补 split child payload 静默降级缺陷
+- 代码统计: 本次修改 `spec-resolver` 与回归测试，新增 malformed split child 负向覆盖
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 将 `resolveTests()` / `resolveBuildReport()` 对 split child payload 的数组字段读取从“非数组则吞掉”改为“明确抛出 `INVALID_CHILD_PAYLOAD`”
+  - 新增 `tests/spec-resolver.test.ts` 负向用例，覆盖 split tests child 与 split build child 字段类型错误场景
+  - 收紧错误语义，避免上游生成畸形 split child 文件时出现 silent data loss
+- 当前问题:
+  - discover split child 仍然采用 `Object.assign` 合并，若未来要对 `requirements` / `core_scenarios` 做更强结构校验，还需单独补 schema 级验证
+- 值得深入研究的问题:
+  - 是否在 resolver 层统一接入 schema 校验，而不仅是路径解析与基础结构拼装

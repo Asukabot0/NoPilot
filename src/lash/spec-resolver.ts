@@ -284,8 +284,12 @@ function loadSplitTests(dirPath: string): { tests: TestsArtifact } {
     }
     const childText = readFileSync(childPath, 'utf8');
     const childData = parseJson(childText, childPath) as Record<string, unknown>;
-    merged.example_cases!.push(...extractObjectArray(childData.example_cases));
-    merged.property_cases!.push(...extractObjectArray(childData.property_cases));
+    merged.example_cases!.push(
+      ...requireObjectArray(childData.example_cases, childPath, 'example_cases')
+    );
+    merged.property_cases!.push(
+      ...requireObjectArray(childData.property_cases, childPath, 'property_cases')
+    );
   }
 
   return { tests: merged };
@@ -332,7 +336,9 @@ function loadSplitBuildReport(dirPath: string): { buildReport: BuildReportArtifa
     }
     const childText = readFileSync(childPath, 'utf8');
     const childData = parseJson(childText, childPath) as Record<string, unknown>;
-    merged.module_results!.push(...extractObjectArray(childData.module_results));
+    merged.module_results!.push(
+      ...requireObjectArray(childData.module_results, childPath, 'module_results')
+    );
   }
 
   return { buildReport: merged };
@@ -350,14 +356,28 @@ function parseJson<T>(text: string, sourcePath: string): T {
   }
 }
 
-function extractObjectArray(value: unknown): Array<Record<string, unknown>> {
+function requireObjectArray(
+  value: unknown,
+  sourcePath: string,
+  fieldName: string,
+): Array<Record<string, unknown>> {
   if (!Array.isArray(value)) {
-    return [];
+    throw new Error(
+      `[INVALID_CHILD_PAYLOAD] Expected '${fieldName}' to be an array in split child file (path: ${sourcePath})`
+    );
   }
 
-  return value.filter(
-    (item): item is Record<string, unknown> => typeof item === 'object' && item !== null,
+  const invalidItemIndex = value.findIndex(
+    (item) => typeof item !== 'object' || item === null,
   );
+
+  if (invalidItemIndex !== -1) {
+    throw new Error(
+      `[INVALID_CHILD_PAYLOAD] Expected '${fieldName}' entries to be objects in split child file (path: ${sourcePath}, index: ${invalidItemIndex})`
+    );
+  }
+
+  return value as Array<Record<string, unknown>>;
 }
 
 // ---------------------------------------------------------------------------

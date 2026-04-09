@@ -179,6 +179,35 @@ function makeSplitTests(tmpDir: string, opts?: { missingChild?: boolean }): stri
   return dir;
 }
 
+function makeSplitTestsWithMalformedChild(tmpDir: string): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+    modules: ['mod-001-alpha.json'],
+  });
+
+  writeJson(join(dir, 'mod-001-alpha.json'), {
+    example_cases: { id: 'TEST-001', module_ref: 'MOD-001' },
+    property_cases: [{ id: 'PROP-001', module_ref: 'MOD-001' }],
+  });
+
+  return dir;
+}
+
 function makeSingleBuildReport(tmpDir: string): string {
   const p = join(tmpDir, 'build_report.json');
   writeJson(p, {
@@ -251,6 +280,44 @@ function makeSplitBuildReport(tmpDir: string, opts?: { missingChild?: boolean })
       module_results: [{ module_ref: 'MOD-002', status: 'degraded', retry_history: [], auto_decisions: [] }],
     });
   }
+
+  return dir;
+}
+
+function makeSplitBuildReportWithMalformedChild(tmpDir: string): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001-alpha.json'],
+  });
+
+  writeJson(join(dir, 'mod-001-alpha.json'), {
+    module_results: { module_ref: 'MOD-001', status: 'completed' },
+  });
 
   return dir;
 }
@@ -475,6 +542,12 @@ describe('resolveTests', () => {
     const testsDir = makeSplitTests(tmp, { missingChild: true });
     expect(() => resolveTests(testsDir)).toThrow('CHILD_FILE_MISSING');
   });
+
+  it('TEST-026-029: throws INVALID_CHILD_PAYLOAD when split tests child fields are malformed', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTestsWithMalformedChild(tmp);
+    expect(() => resolveTests(testsDir)).toThrow('INVALID_CHILD_PAYLOAD');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -514,6 +587,12 @@ describe('resolveBuildReport', () => {
     const tmp = makeTmpDir();
     const buildDir = makeSplitBuildReport(tmp, { missingChild: true });
     expect(() => resolveBuildReport(buildDir)).toThrow('CHILD_FILE_MISSING');
+  });
+
+  it('TEST-026-030: throws INVALID_CHILD_PAYLOAD when split build child fields are malformed', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReportWithMalformedChild(tmp);
+    expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_CHILD_PAYLOAD');
   });
 });
 
