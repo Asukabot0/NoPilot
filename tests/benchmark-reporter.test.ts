@@ -451,6 +451,68 @@ describe('benchmark reporter', () => {
     ]);
   });
 
+  it('falls back to stable same-key pairing when no workflow version matches exist', () => {
+    const currentRoot = makeTempDir('benchmark-current-');
+    const baselineRoot = makeTempDir('benchmark-baseline-');
+    cleanupPaths.push(currentRoot, baselineRoot);
+
+    writeRunFixture(currentRoot, 'RUN-B', {
+      case_id: 'DISCOVER-008',
+      workflow_version: 'wf-b',
+      total_score: 70,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+    writeRunFixture(currentRoot, 'RUN-C', {
+      case_id: 'DISCOVER-008',
+      workflow_version: 'wf-c',
+      total_score: 50,
+      status: 'fail',
+      auto_verdict: 'fail',
+      failure_tags: ['F2'],
+      primary_failure_tag: 'F2',
+    });
+
+    writeRunFixture(baselineRoot, 'BASE-A', {
+      case_id: 'DISCOVER-008',
+      workflow_version: 'wf-a',
+      total_score: 60,
+      status: 'pass',
+      auto_verdict: 'pass',
+    });
+    writeRunFixture(baselineRoot, 'BASE-D', {
+      case_id: 'DISCOVER-008',
+      workflow_version: 'wf-d',
+      total_score: 55,
+      status: 'needs_review',
+      auto_verdict: 'needs_review',
+      failure_tags: ['F10'],
+      primary_failure_tag: 'F10',
+      human_review_required: true,
+    });
+
+    const report = buildJsonReport({
+      runs_root: currentRoot,
+      baseline_root: baselineRoot,
+    });
+
+    expect(report.regression_diff.summary).toMatchObject({
+      matched_cases: 2,
+      added_cases: 0,
+      removed_cases: 0,
+    });
+    expect(report.regression_diff.entries).toEqual([
+      expect.objectContaining({
+        baseline_run_id: 'BASE-A',
+        current_run_id: 'RUN-B',
+      }),
+      expect.objectContaining({
+        baseline_run_id: 'BASE-D',
+        current_run_id: 'RUN-C',
+      }),
+    ]);
+  });
+
   it('keeps regression diff empty when no baseline root is provided', () => {
     const currentRoot = makeTempDir('benchmark-current-');
     cleanupPaths.push(currentRoot);
