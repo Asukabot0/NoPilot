@@ -139,7 +139,7 @@ function makeSplitSpecFiles(baseDir: string, overrides: Record<string, unknown> 
 
 function makeSplitBuildFiles(baseDir: string, overrides: Record<string, unknown> = {}): void {
   const build = makeBuildReport(overrides);
-  const buildDir = path.join(baseDir, 'build_report');
+  const buildDir = path.join(baseDir, 'build');
   fs.mkdirSync(buildDir, { recursive: true });
   fs.writeFileSync(path.join(buildDir, 'index.json'), JSON.stringify({
     phase: 'build',
@@ -492,6 +492,7 @@ describe('writeProfileFromArtifacts', () => {
     const l3 = readLayer(root, 'l3');
     const data = l3.data as Record<string, unknown>;
     expect((data.test_coverage as { total_tests: number }).total_tests).toBe(7);
+    expect((data.test_coverage as { framework: string }).framework).toBe('vitest');
   });
 
   it('TEST-069: throws ARTIFACT_NOT_FOUND when discover.json missing', async () => {

@@ -41,15 +41,20 @@ function loadArtifact(filePath: string): Record<string, unknown> | null {
   return JSON.parse(raw) as Record<string, unknown>;
 }
 
-function resolveArtifactEntry(artifactsDir: string, baseName: string): string | null {
-  const singleFile = path.join(artifactsDir, `${baseName}.json`);
+function resolveArtifactEntry(
+  artifactsDir: string,
+  options: { singleFile: string; splitDirs?: string[] },
+): string | null {
+  const singleFile = path.join(artifactsDir, options.singleFile);
   if (fs.existsSync(singleFile)) {
     return singleFile;
   }
 
-  const splitDir = path.join(artifactsDir, baseName);
-  if (fs.existsSync(splitDir)) {
-    return splitDir;
+  for (const splitDirName of options.splitDirs ?? []) {
+    const splitDir = path.join(artifactsDir, splitDirName);
+    if (fs.existsSync(splitDir)) {
+      return splitDir;
+    }
   }
 
   return null;
@@ -65,7 +70,10 @@ export async function writeProfileFromArtifacts(
   mode: 'greenfield' | 'feature'
 ): Promise<WriteProfileResult> {
   // 1. Load artifacts
-  const discoverPath = resolveArtifactEntry(artifactsDir, 'discover');
+  const discoverPath = resolveArtifactEntry(artifactsDir, {
+    singleFile: 'discover.json',
+    splitDirs: ['discover'],
+  });
 
   if (discoverPath === null) {
     throw new Error('ARTIFACT_NOT_FOUND: discover artifact not found in ' + artifactsDir);
@@ -80,7 +88,10 @@ export async function writeProfileFromArtifacts(
 
   let specArtifact: Record<string, unknown> | null = null;
   try {
-    const specPath = resolveArtifactEntry(artifactsDir, 'spec');
+    const specPath = resolveArtifactEntry(artifactsDir, {
+      singleFile: 'spec.json',
+      splitDirs: ['spec'],
+    });
     specArtifact = specPath ? resolveSpec(specPath).spec as Record<string, unknown> : null;
   } catch (e) {
     throw new Error('EXTRACTION_FAILED: failed to parse spec artifact: ' + String(e));
@@ -88,7 +99,10 @@ export async function writeProfileFromArtifacts(
 
   let buildReport: Record<string, unknown> | null = null;
   try {
-    const buildPath = resolveArtifactEntry(artifactsDir, 'build_report');
+    const buildPath = resolveArtifactEntry(artifactsDir, {
+      singleFile: 'build_report.json',
+      splitDirs: ['build'],
+    });
     if (buildPath) {
       buildReport = resolveBuildReport(buildPath).buildReport as Record<string, unknown>;
     }

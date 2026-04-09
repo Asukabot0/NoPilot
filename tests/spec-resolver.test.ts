@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { resolveSpec, resolveDiscover, resolveTests, detectFormat, resolveArtifactPaths, findArtifactPath } from '../src/lash/spec-resolver.js';
+import { resolveSpec, resolveDiscover, resolveTests, resolveBuildReport, detectFormat, resolveArtifactPaths, findArtifactPath } from '../src/lash/spec-resolver.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -179,6 +179,81 @@ function makeSplitTests(tmpDir: string, opts?: { missingChild?: boolean }): stri
   return dir;
 }
 
+function makeSingleBuildReport(tmpDir: string): string {
+  const p = join(tmpDir, 'build_report.json');
+  writeJson(p, {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    module_results: [
+      { module_ref: 'MOD-001', status: 'completed', retry_history: [], auto_decisions: [] },
+    ],
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+  });
+  return p;
+}
+
+function makeSplitBuildReport(tmpDir: string, opts?: { missingChild?: boolean }): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001', 'MOD-002'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 3,
+      passed: 3,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001-alpha.json', 'mod-002-beta.json'],
+  });
+
+  if (!opts?.missingChild) {
+    writeJson(join(dir, 'mod-001-alpha.json'), {
+      module_results: [{ module_ref: 'MOD-001', status: 'completed', retry_history: [], auto_decisions: [] }],
+    });
+    writeJson(join(dir, 'mod-002-beta.json'), {
+      module_results: [{ module_ref: 'MOD-002', status: 'degraded', retry_history: [], auto_decisions: [] }],
+    });
+  }
+
+  return dir;
+}
 // ---------------------------------------------------------------------------
 // detectFormat
 // ---------------------------------------------------------------------------
@@ -399,6 +474,46 @@ describe('resolveTests', () => {
     const tmp = makeTmpDir();
     const testsDir = makeSplitTests(tmp, { missingChild: true });
     expect(() => resolveTests(testsDir)).toThrow('CHILD_FILE_MISSING');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveBuildReport
+// ---------------------------------------------------------------------------
+
+describe('resolveBuildReport', () => {
+  it('TEST-026-025: loads single file build report artifact', () => {
+    const tmp = makeTmpDir();
+    const buildPath = makeSingleBuildReport(tmp);
+    const { buildReport } = resolveBuildReport(buildPath);
+
+    expect(buildReport.module_results).toHaveLength(1);
+    expect(buildReport.test_summary).toBeDefined();
+  });
+
+  it('TEST-026-026: loads split build report artifact and merges module files', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReport(tmp);
+    const { buildReport } = resolveBuildReport(buildDir);
+
+    expect(buildReport.module_results).toHaveLength(2);
+    expect(buildReport.test_summary).toBeDefined();
+  });
+
+  it('TEST-026-027: explicit split build index path matches directory behavior', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReport(tmp);
+
+    const byDir = resolveBuildReport(buildDir);
+    const byIndex = resolveBuildReport(join(buildDir, 'index.json'));
+
+    expect(byIndex.buildReport).toEqual(byDir.buildReport);
+  });
+
+  it('TEST-026-028: throws CHILD_FILE_MISSING for missing split build module file', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReport(tmp, { missingChild: true });
+    expect(() => resolveBuildReport(buildDir)).toThrow('CHILD_FILE_MISSING');
   });
 });
 
