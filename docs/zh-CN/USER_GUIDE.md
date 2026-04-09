@@ -1441,9 +1441,9 @@ lash package MOD-001 .lash/worktrees/MOD-001 claude-code \
 
 | 选项 | 必须 | 说明 |
 |------|------|------|
-| `--spec <path>` | 是 | spec.json 路径 |
-| `--discover <path>` | 是 | discover.json 路径 |
-| `--tests <path>` | 否 | tests.json 路径 |
+| `--spec <path>` | 是 | spec 制品入口路径，可传 `spec.json`、`spec/` 或 `spec/index.json` |
+| `--discover <path>` | 是 | discover 制品入口路径，可传 `discover.json`、`discover/` 或 `discover/index.json` |
+| `--tests <path>` | 否 | tests 制品入口路径，可传 `tests.json`、`tests/` 或 `tests/index.json` |
 | `--completed <m1,m2>` | 否 | 已完成的模块 ID（逗号分隔） |
 
 **输出：**

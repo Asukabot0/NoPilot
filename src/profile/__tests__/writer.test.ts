@@ -85,6 +85,79 @@ function makeDecisions(overrides: Record<string, unknown> = {}): Record<string, 
   };
 }
 
+function makeSplitDiscoverFiles(baseDir: string, overrides: Record<string, unknown> = {}): void {
+  const discover = makeDiscover(overrides);
+  const discoverDir = path.join(baseDir, 'discover');
+  fs.mkdirSync(discoverDir, { recursive: true });
+  fs.writeFileSync(path.join(discoverDir, 'index.json'), JSON.stringify({
+    phase: 'discover',
+    version: '4.0',
+    status: 'approved',
+    mode: 'full',
+    constraints: discover.constraints,
+    selected_direction: { description: 'test direction' },
+    design_philosophy: discover.design_philosophy,
+    domain_model: discover.domain_model,
+    child_files: {
+      requirements: 'requirements.json',
+      scenarios: 'scenarios.json',
+    },
+    ui_taste: discover.ui_taste,
+  }), 'utf-8');
+  fs.writeFileSync(path.join(discoverDir, 'requirements.json'), JSON.stringify({
+    requirements: discover.requirements ?? [],
+  }), 'utf-8');
+  fs.writeFileSync(path.join(discoverDir, 'scenarios.json'), JSON.stringify({
+    core_scenarios: discover.core_scenarios ?? [],
+  }), 'utf-8');
+}
+
+function makeSplitSpecFiles(baseDir: string, overrides: Record<string, unknown> = {}): void {
+  const spec = makeSpec(overrides);
+  const specDir = path.join(baseDir, 'spec');
+  fs.mkdirSync(specDir, { recursive: true });
+  const modules = (spec.modules as Record<string, unknown>[]) ?? [];
+  const moduleRefs = modules.map((_, idx) => `mod-${String(idx + 1).padStart(3, '0')}.json`);
+  const moduleIds = new Set(modules.map((mod) => String(mod.id ?? '')));
+  const dependencyGraph = (spec.dependency_graph as { edges?: Array<Record<string, unknown>> }) ?? {};
+  const edges = (dependencyGraph.edges ?? []).filter((edge) => {
+    const from = String(edge.from ?? '');
+    const to = String(edge.to ?? '');
+    return moduleIds.has(from) && moduleIds.has(to);
+  });
+  fs.writeFileSync(path.join(specDir, 'index.json'), JSON.stringify({
+    phase: 'spec',
+    version: '4.0',
+    status: 'approved',
+    module_refs: moduleRefs,
+    dependency_graph: { edges },
+  }), 'utf-8');
+  modules.forEach((mod, idx) => {
+    fs.writeFileSync(path.join(specDir, `mod-${String(idx + 1).padStart(3, '0')}.json`), JSON.stringify(mod), 'utf-8');
+  });
+}
+
+function makeSplitBuildFiles(baseDir: string, overrides: Record<string, unknown> = {}): void {
+  const build = makeBuildReport(overrides);
+  const buildDir = path.join(baseDir, 'build_report');
+  fs.mkdirSync(buildDir, { recursive: true });
+  fs.writeFileSync(path.join(buildDir, 'index.json'), JSON.stringify({
+    phase: 'build',
+    version: '4.0',
+    execution_plan: { module_order: ['MOD-001'], tracer_bullet_path: 'SCENARIO-001', rationale: 'test' },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: build.test_summary,
+    acceptance_result: { scenarios_verified: ['SCENARIO-001'], status: 'all_passed', source: 'critic_agent' },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001.json'],
+  }), 'utf-8');
+  fs.writeFileSync(path.join(buildDir, 'mod-001.json'), JSON.stringify({
+    module_results: [{ module_ref: 'MOD-001', status: 'completed', retry_history: [], auto_decisions: [] }],
+  }), 'utf-8');
+}
+
 afterEach(() => {
   if (tmpDir && fs.existsSync(tmpDir)) {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -393,6 +466,32 @@ describe('writeProfileFromArtifacts', () => {
     // At minimum L0 and L3 from discover.json
     expect(result.layersWritten).toContain('l0');
     expect(result.layersWritten).toContain('l3');
+  });
+
+  it('supports split discover/spec/build artifacts in greenfield mode', async () => {
+    const root = setup({
+      '.nopilot/config.json': JSON.stringify({ l2_enabled: false }),
+    });
+    const specsDir = path.join(root, 'specs');
+    fs.mkdirSync(specsDir, { recursive: true });
+    makeSplitDiscoverFiles(specsDir, {
+      requirements: [{ id: 'REQ-001', acceptance_criteria: [] }],
+      core_scenarios: [{ id: 'SCENARIO-001', description: 'test', requirement_refs: ['REQ-001'], priority: 'highest' }],
+    });
+    makeSplitSpecFiles(specsDir);
+    makeSplitBuildFiles(specsDir, {
+      test_summary: { total: 7, passed: 7, failed: 0, framework: 'vitest' },
+    });
+
+    const result = await writeProfileFromArtifacts(root, specsDir, 'greenfield');
+
+    expect(result.layersWritten).toContain('l0');
+    expect(result.layersWritten).toContain('l1');
+    expect(result.layersWritten).toContain('l3');
+
+    const l3 = readLayer(root, 'l3');
+    const data = l3.data as Record<string, unknown>;
+    expect((data.test_coverage as { total_tests: number }).total_tests).toBe(7);
   });
 
   it('TEST-069: throws ARTIFACT_NOT_FOUND when discover.json missing', async () => {

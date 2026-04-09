@@ -70,3 +70,18 @@
 - 下一步: /build 执行, 或先 review spec 产出
 - Issues: 8 个 open
 - 基线对比: 上次快照 2026-04-04 20:50 | 无代码变更, 新增 brownfield feature 设计制品
+
+## Progress Snapshot: 2026-04-09 19:55
+- 触发方式: 排查并修复 issue #78 及同类 split artifact 入口缺口
+- 代码统计: 本次修改 `lash` resolver、CLI、profile writer 与相关测试，补充 split artifact 回归覆盖
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 将 `src/lash/spec-resolver.ts` 的 artifact 入口判定统一为“语义入口”而非“物理文件/目录类型”，显式传入 `spec/index.json`、`discover/index.json` 时会归一化到 split artifact 根目录再加载
+  - 新增 `resolveTests()`，使 `lash package --tests` 支持 `tests.json`、`tests/` 与 `tests/index.json` 三种入口
+  - 新增 `resolveBuildReport()`，并让 `src/profile/writer.ts` 复用 `resolveDiscover()` / `resolveSpec()` / `resolveBuildReport()`，补齐 profile writer 对 split discover/spec/build artifact 的支持
+  - 补充回归测试: `tests/spec-resolver.test.ts`、`tests/plan-generator.test.ts`、`tests/cli.test.ts`、`src/profile/__tests__/writer.test.ts`
+  - 同步更新 `docs/zh-CN/USER_GUIDE.md` 中 `lash package` 参数说明，明确 artifact 入口路径支持单文件、目录和显式 `index.json`
+- 当前问题:
+  - `profile writer` 之前一直按单文件入口读取 stage artifact，这次已补齐 split discover/spec/build 支持，但其他非 Lash 路径若未来新增 artifact loader，仍需优先复用统一 resolver，避免再次出现入口语义分叉
+- 值得深入研究的问题:
+  - 是否将 `decisions.json`、未来的 `tests_review` / `build_review` 等 artifact 也统一纳入一层通用 resolver API，进一步消除不同子系统各自读取 JSON 的重复实现

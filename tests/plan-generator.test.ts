@@ -3,7 +3,7 @@
  * Translated from tests/test_plan_generator.py
  */
 import { describe, it, expect, beforeEach } from 'vitest';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -60,6 +60,60 @@ function makeSpec(modules: ModuleEntry[], dependencyGraph?: unknown): unknown {
     modules,
     dependency_graph: graph,
   };
+}
+
+function writeSplitSpec(rootDir: string, modules: ModuleEntry[]): string {
+  const dir = join(rootDir, 'spec');
+  mkdirSync(dir, { recursive: true });
+  const dependencyGraph = { edges: modules.flatMap((mod) => mod.depends_on.map((dep) => ({ from: mod.id, to: dep }))) };
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'spec',
+    version: '3.0',
+    status: 'approved',
+    module_refs: modules.map((mod, idx) => `mod-${String(idx + 1).padStart(3, '0')}.json`),
+    dependency_graph: dependencyGraph,
+  });
+
+  modules.forEach((mod, idx) => {
+    writeJson(join(dir, `mod-${String(idx + 1).padStart(3, '0')}.json`), {
+      id: mod.id,
+      source_root: mod.source_root,
+      owned_files: mod.owned_files,
+      depends_on: mod.depends_on,
+      requirement_refs: mod.requirement_refs,
+    });
+  });
+
+  return dir;
+}
+
+function writeSplitDiscover(rootDir: string, scenarios?: ScenarioEntry[]): string {
+  const dir = join(rootDir, 'discover');
+  mkdirSync(dir, { recursive: true });
+  const discover = makeDiscover(scenarios) as Record<string, unknown>;
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'discover',
+    version: discover.version,
+    status: discover.status,
+    mode: 'full',
+    constraints: {},
+    selected_direction: { description: 'test' },
+    design_philosophy: [],
+    child_files: {
+      requirements: 'requirements.json',
+      scenarios: 'scenarios.json',
+    },
+  });
+  writeJson(join(dir, 'requirements.json'), {
+    requirements: discover.requirements,
+  });
+  writeJson(join(dir, 'scenarios.json'), {
+    core_scenarios: discover.core_scenarios,
+  });
+
+  return dir;
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +375,20 @@ describe('plan-generator', () => {
     expect(tracer.scenario_id).toBe('SCENARIO-001');
     const tracerIds = [...tracer.module_ids].sort();
     expect(tracerIds).toEqual(['MOD-A', 'MOD-B', 'MOD-C']);
+  });
+
+  it('TEST-015: explicit split index paths produce same plan as directory paths', () => {
+    const modules: ModuleEntry[] = [
+      { id: 'MOD-A', source_root: 'src/', owned_files: ['a.py'], depends_on: [], requirement_refs: ['REQ-001'] },
+      { id: 'MOD-B', source_root: 'src/', owned_files: ['b.py'], depends_on: ['MOD-A'], requirement_refs: ['REQ-001'] },
+    ];
+    const specDir = writeSplitSpec(tmp, modules);
+    const discoverDir = writeSplitDiscover(tmp);
+
+    const planByDir = generatePlan(specDir, discoverDir);
+    const planByIndex = generatePlan(join(specDir, 'index.json'), join(discoverDir, 'index.json'));
+
+    expect(planByIndex).toEqual(planByDir);
   });
 
   // Additional: verify batch_id format BATCH-NNN
