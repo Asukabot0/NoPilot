@@ -1,3 +1,7 @@
+---
+name: lash-tracer
+description: Lash tracer bullet phase — validates module integration through end-to-end trace paths
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Feature Mode: applies in all modes (greenfield + feature) -->
 

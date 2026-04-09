@@ -1,3 +1,7 @@
+---
+name: discover
+description: Requirement space explorer — generates ideas, analyzes feasibility and produces design artifacts
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Placeholders: <%=CRITIC_PATH%> = platform path to critic skill, <%=SUPERVISOR_PATH%> = platform path to supervisor skill -->
 

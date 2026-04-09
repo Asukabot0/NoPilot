@@ -72,7 +72,7 @@ describe('nopilot init', () => {
   });
 
   it('installs skills to Claude, Codex, and OpenCode (shared)', () => {
-    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
+    const output = runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const claudeSkills = join(tmpHome, '.claude', 'skills');
     const codexSkills = join(tmpHome, '.agents', 'skills');
@@ -82,6 +82,7 @@ describe('nopilot init', () => {
     // Each skill should be installed as a subdirectory with SKILL.md
     expect(readdirSync(claudeSkills).length).toBeGreaterThan(0);
     expect(readdirSync(codexSkills).length).toBeGreaterThan(0);
+    expect(output).toContain('Skipped opencode (shares skill directory with codex)');
   });
 
   it('does NOT copy schemas to project', () => {

@@ -1,3 +1,7 @@
+---
+name: supervisor
+description: Intent guardian — verifies stage outputs match original user intent and constraints
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 
 # Supervisor Agent — Intent Guardian

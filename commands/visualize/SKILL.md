@@ -1,3 +1,7 @@
+---
+name: visualize
+description: Artifact visualization generator — renders specs and artifacts as interactive HTML pages
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 
 # /visualize — Artifact Visualization Generator

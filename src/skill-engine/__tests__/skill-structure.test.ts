@@ -24,12 +24,25 @@ function readFile(relPath: string): string {
   return fs.readFileSync(repoPath(relPath), 'utf8');
 }
 
+function stripLeadingFrontmatter(content: string): string {
+  if (!content.startsWith('---\n')) {
+    return content;
+  }
+
+  const endIndex = content.indexOf('\n---\n', 4);
+  if (endIndex === -1) {
+    return content;
+  }
+
+  return content.slice(endIndex + 5);
+}
+
 function fileExists(relPath: string): boolean {
   return fs.existsSync(repoPath(relPath));
 }
 
 function lineCount(relPath: string): number {
-  const content = readFile(relPath);
+  const content = stripLeadingFrontmatter(readFile(relPath));
   const lines = content.split('\n');
   // Match wc -l semantics: a trailing newline does not add an extra line
   if (lines[lines.length - 1] === '') {
@@ -61,38 +74,38 @@ function collectMdFiles(relDir: string): string[] {
 // ---------------------------------------------------------------------------
 
 describe('Line count limits', () => {
-  it('TEST-033: discover SKILL.md <= 250 lines', () => {
+  it('TEST-033: discover SKILL.md <= 250 lines (excluding frontmatter)', () => {
     expect(lineCount('commands/discover/SKILL.md')).toBeLessThanOrEqual(250);
   });
 
-  it('TEST-034: critic SKILL.md <= 50 lines', () => {
+  it('TEST-034: critic SKILL.md <= 50 lines (excluding frontmatter)', () => {
     expect(lineCount('commands/critic/SKILL.md')).toBeLessThanOrEqual(50);
   });
 
-  it('TEST-035: build SKILL.md <= 100 lines', () => {
+  it('TEST-035: build SKILL.md <= 100 lines (excluding frontmatter)', () => {
     expect(lineCount('commands/build/SKILL.md')).toBeLessThanOrEqual(100);
   });
 
-  it('TEST-036: visualize SKILL.md <= 70 lines', () => {
+  it('TEST-036: visualize SKILL.md <= 70 lines (excluding frontmatter)', () => {
     // Currently 100 lines — documents a real gap
     expect(lineCount('commands/visualize/SKILL.md')).toBeLessThanOrEqual(70);
   });
 
-  it('TEST-037: supervisor SKILL.md <= 40 lines', () => {
+  it('TEST-037: supervisor SKILL.md <= 40 lines (excluding frontmatter)', () => {
     // Currently 54 lines — documents a real gap
     expect(lineCount('commands/supervisor/SKILL.md')).toBeLessThanOrEqual(40);
   });
 
-  it('TEST-038: spec SKILL.md <= 100 lines', () => {
+  it('TEST-038: spec SKILL.md <= 100 lines (excluding frontmatter)', () => {
     expect(lineCount('commands/spec/SKILL.md')).toBeLessThanOrEqual(100);
   });
 
-  it('TEST-039: lash-tracer SKILL.md <= 40 lines', () => {
+  it('TEST-039: lash-tracer SKILL.md <= 40 lines (excluding frontmatter)', () => {
     // Currently 54 lines — documents a real gap
     expect(lineCount('commands/lash-tracer/SKILL.md')).toBeLessThanOrEqual(40);
   });
 
-  it('TEST-040: lash-verify SKILL.md <= 30 lines', () => {
+  it('TEST-040: lash-verify SKILL.md <= 30 lines (excluding frontmatter)', () => {
     // Currently 43 lines — documents a real gap
     expect(lineCount('commands/lash-verify/SKILL.md')).toBeLessThanOrEqual(30);
   });
@@ -281,19 +294,19 @@ describe('Feature Mode annotations', () => {
     expect(failures, `Sub-skill files missing Feature Mode annotation: ${failures.join(', ')}`).toHaveLength(0);
   });
 
-  it('TEST-043: all .md files in commands/ have nopilot-managed on first line', () => {
+  it('TEST-043: all .md files in commands/ have nopilot-managed at first content line', () => {
     const allMd = collectMdFiles('commands');
     const failures: string[] = [];
 
     for (const relPath of allMd) {
-      const content = fs.readFileSync(repoPath(relPath), 'utf8');
-      const firstLine = content.split('\n')[0] ?? '';
-      if (!firstLine.includes('nopilot-managed')) {
+      const content = stripLeadingFrontmatter(fs.readFileSync(repoPath(relPath), 'utf8'));
+      const firstContentLine = content.split('\n').find((line) => line.trim() !== '') ?? '';
+      if (!firstContentLine.includes('nopilot-managed')) {
         failures.push(relPath);
       }
     }
 
-    expect(failures, `Files missing nopilot-managed on first line: ${failures.join(', ')}`).toHaveLength(0);
+    expect(failures, `Files missing nopilot-managed at first content line: ${failures.join(', ')}`).toHaveLength(0);
   });
 });
 
@@ -391,7 +404,7 @@ describe('Property tests', () => {
 
     for (const relPath of skillFiles) {
       if (!fileExists(relPath)) continue;
-      const lines = readFile(relPath).split('\n');
+        const lines = stripLeadingFrontmatter(readFile(relPath)).split('\n');
       let consecutiveNonRouting = 0;
 
       for (const line of lines) {

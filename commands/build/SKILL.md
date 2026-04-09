@@ -1,3 +1,7 @@
+---
+name: build
+description: Autonomous TDD executor — implements modules via test-driven development cycles
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Placeholders: <%=CRITIC_PATH%> = platform path to critic skill, <%=SUPERVISOR_PATH%> = platform path to supervisor skill -->
 

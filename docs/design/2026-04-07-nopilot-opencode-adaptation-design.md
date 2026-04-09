@@ -30,6 +30,13 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 - 同时也从 `~/.claude/skills/` 加载技能
 - **不需要**单独的 `~/.opencode/skills/` 目录
 
+### OpenCode SKILL.md 元数据要求
+
+根据 OpenCode 官方 skills 文档补充确认：
+- 目录型 skill 的 `SKILL.md` 必须以 YAML frontmatter 开头
+- frontmatter 至少包含 `name` 和 `description`
+- 该要求是 OpenCode 发现 skill 的元数据约束，不改变 `~/.agents/skills/` 作为兼容加载路径的结论
+
 ### 技能模板占位符
 
 技能文件使用的占位符：
