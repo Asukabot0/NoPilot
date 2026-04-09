@@ -60,7 +60,7 @@ Dispatch a sub-agent for the tracer bullet. Pass the tracer module list and an a
 
 Use the Agent tool:
 ```
-Agent(prompt="Follow the instructions in commands/lash-tracer.md. Tracer modules: <module_ids>. Platform: <platform>. Project root: <cwd>.")
+Agent(prompt="Follow the instructions in commands/lash-tracer.md. current_phase=planning. stage_guard=tracer_only. You are only responsible for the tracer bullet phase. Stop after you return the tracer result. Do not execute batch execution, final verification, or completion steps. Tracer modules: <module_ids>. Platform: <platform>. Project root: <cwd>.")
 ```
 
 Wait for the agent to complete. Read its result.
@@ -70,7 +70,8 @@ If tracer succeeds: proceed to Step 5.
 
 Update state:
 ```
-bash "lash state update tracer_completed --data '{}'
+bash "lash state update tracer_completed --data '{}'"
+
 ```
 
 ## Step 5: Parallel Batch Execution
@@ -81,7 +82,7 @@ Assign platforms to modules using round-robin across available platforms.
 
 Dispatch a sub-agent for the batch:
 ```
-Agent(prompt="Follow the instructions in commands/lash-batch.md. Batch <N>: modules <module_ids>. Platforms: <assignments>. Completed modules: <list>. Project root: <cwd>.")
+Agent(prompt="Follow the instructions in commands/lash-batch.md. current_phase=batch_execution. stage_guard=batch_execution_only. You are only responsible for the assigned batch execution phase. Stop after you return the batch result. Do not rerun tracer work, final verification, or completion steps. Batch <N>: modules <module_ids>. Platforms: <assignments>. Completed modules: <list>. Project root: <cwd>.")
 ```
 
 If batches are independent, you MAY dispatch multiple batch agents in parallel using the Agent tool's parallel execution capability. However, each batch must complete before the next dependent batch starts (respect the topological ordering from the plan).
@@ -95,7 +96,7 @@ bash "lash state update batch_completed --data '{\"batch_id\": <N>}'"
 
 Dispatch a sub-agent for verification:
 ```
-Agent(prompt="Follow the instructions in commands/lash-verify.md. Project root: <cwd>.")
+Agent(prompt="Follow the instructions in commands/lash-verify.md. current_phase=batch_execution. stage_guard=final_verification_only. You are only responsible for final verification. Stop after you return the verification result. Do not rerun tracer work, dispatch batch execution, or mark the build completed yourself. Project root: <cwd>.")
 ```
 
 The verify agent handles: full test suite, auto-acceptance, Build Critic, Supervisor.
