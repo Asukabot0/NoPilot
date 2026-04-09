@@ -34,5 +34,20 @@ Write your assessment into `specs/build_report.json` in the `global_coherence_ch
 }
 ```
 
-If ALL three are ideal: build is complete. Update state.
-If ANY is non-ideal: pause, present diagnosis to user. Options: ACCEPT_AS_IS, BACKTRACK_SPEC, BACKTRACK_DISCOVER.
+Update build state before returning:
+
+```
+bash "lash state update supervisor_spawned --data '{}'"
+```
+
+After completing the assessment:
+
+- If ALL three are ideal, persist the successful review and return to `SKILL.md` so the parent orchestrator can mark build completion:
+  ```
+  bash "lash state update supervisor_passed --data '{}'"
+  ```
+- If ANY dimension is non-ideal, persist the failed review, then pause and present diagnosis to user. Options: ACCEPT_AS_IS, BACKTRACK_SPEC, BACKTRACK_DISCOVER.
+  ```
+  bash "lash state update supervisor_failed --data '{\"detail\": \"<description>\"}'"
+  bash "lash state update build_paused --data '{\"reason\": \"supervisor\", \"detail\": \"<description>\"}'"
+  ```
