@@ -244,36 +244,20 @@ describe('plan-generator', () => {
     expect(() => generatePlan(specPath, discoverPath)).toThrow('circular_dependency');
   });
 
-  // TEST-008: Missing owned_files stay fail-closed with warning
-  it('TEST-008: missing owned_files stay empty', () => {
+  // TEST-008: Missing owned_files must throw at plan generation (fail-closed)
+  it('TEST-008: missing owned_files throws at plan generation', () => {
     const modules = [
       { id: 'MOD-A', source_root: 'src/', depends_on: [], requirement_refs: [] },
     ];
     writeJson(specPath, makeSpec(modules as unknown as ModuleEntry[]));
     writeJson(discoverPath, makeDiscover());
 
-    const warnMessages: string[] = [];
-    const origWarn = console.warn;
-    console.warn = (...args: unknown[]) => {
-      warnMessages.push(args.join(' '));
-    };
-
-    let plan;
-    try {
-      plan = generatePlan(specPath, discoverPath);
-    } finally {
-      console.warn = origWarn;
-    }
-
-    expect(warnMessages.some((msg) => msg.includes('MOD-A'))).toBe(true);
-
-    // Missing ownership should stay fail-closed instead of inventing wildcard ownership.
-    const batchModule = plan!.batches[0].modules[0];
-    expect(batchModule.owned_files).toEqual([]);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/MOD-A/);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/missing owned_files/);
   });
 
-  // TEST-016: Missing owned_files should not create synthetic overlap via source_root/** fallback
-  it('TEST-016: missing owned_files do not serialize sibling modules', () => {
+  // TEST-016: Multiple modules missing owned_files all appear in the thrown error
+  it('TEST-016: all modules missing owned_files are listed in the error', () => {
     const modules = [
       { id: 'MOD-A', source_root: 'src/shared/', depends_on: [], requirement_refs: [] },
       { id: 'MOD-B', source_root: 'src/shared/', depends_on: [], requirement_refs: [] },
@@ -281,13 +265,8 @@ describe('plan-generator', () => {
     writeJson(specPath, makeSpec(modules as unknown as ModuleEntry[]));
     writeJson(discoverPath, makeDiscover());
 
-    const plan = generatePlan(specPath, discoverPath);
-
-    expect(plan.batches).toHaveLength(1);
-    const ids = plan.batches[0].modules.map((m) => m.module_id);
-    expect(ids).toEqual(['MOD-A', 'MOD-B']);
-    expect(plan.batches[0].modules[0].owned_files).toEqual([]);
-    expect(plan.batches[0].modules[1].owned_files).toEqual([]);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/MOD-A/);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/MOD-B/);
   });
 
   // TEST-009: Deterministic output (run twice, compare)

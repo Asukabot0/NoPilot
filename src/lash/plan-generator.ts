@@ -211,17 +211,18 @@ function reconstructCycle(
 // ---------------------------------------------------------------------------
 
 function inferOwnedFiles(modules: SpecModule[]): SpecModule[] {
-  return modules.map((mod) => {
-    if (!mod.owned_files || mod.owned_files.length === 0) {
-      const sourceRoot = mod.source_root ?? '';
-      console.warn(
-        `Module ${mod.id} has no owned_files; ` +
-        `treating ownership as empty for safety under ${JSON.stringify(sourceRoot)}`,
-      );
-      return { ...mod, owned_files: [] };
-    }
-    return { ...mod };
-  });
+  const missing = modules
+    .filter((mod) => !mod.owned_files || mod.owned_files.length === 0)
+    .map((mod) => mod.id);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Plan generation failed: module(s) missing owned_files: [${missing.join(', ')}]. ` +
+      `Add owned_files to each module's spec before running lash plan.`,
+    );
+  }
+
+  return modules.map((mod) => ({ ...mod }));
 }
 
 // ---------------------------------------------------------------------------
