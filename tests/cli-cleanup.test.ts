@@ -272,7 +272,8 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
 
   it('rejects build_completed until critic and supervisor pass events exist', () => {
     const statePath = join(tmpDir, 'specs', 'build-state.json');
-    makeSpecsDir(tmpDir);
+    const specsDir = makeSpecsDir(tmpDir);
+    writeFileSync(join(specsDir, 'spec.json'), '{"phase":"spec"}');
 
     expect(runLashInDir(
       tmpDir, 'state', 'create', '--spec-hash', 'abc123', '--state-path', statePath,
@@ -284,6 +285,9 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
       tmpDir, 'state', 'update', 'build_critic_spawned', '--state-path', statePath, '--data', '{}',
     ).returncode).toBe(0);
     expect(runLashInDir(
+      tmpDir, 'state', 'update', 'build_critic_passed', '--state-path', statePath, '--data', '{}',
+    ).returncode).toBe(0);
+    expect(runLashInDir(
       tmpDir, 'state', 'update', 'supervisor_spawned', '--state-path', statePath, '--data', '{}',
     ).returncode).toBe(0);
 
@@ -292,6 +296,7 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
     );
 
     expect(result.returncode).toBe(1);
-    expect(result.stderr).toContain('build_critic_passed');
+    expect(result.stderr).toContain('supervisor_passed');
+    expect(existsSync(join(specsDir, 'spec.json'))).toBe(true);
   });
 });

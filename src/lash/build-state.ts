@@ -123,23 +123,28 @@ function getLatestTransitionEvent(
   return null;
 }
 
+function assertLatestReviewPassed(
+  state: BuildState,
+  stageName: 'build_critic' | 'supervisor',
+  requiredEvent: BuildEvent,
+  blockedEvent: BuildEvent,
+): void {
+  const latestEvent = getLatestTransitionEvent(state.transition_log, stageName === 'build_critic'
+    ? ['build_critic_passed', 'build_critic_failed']
+    : ['supervisor_passed', 'supervisor_failed']);
+
+  if (latestEvent === requiredEvent) {
+    return;
+  }
+
+  throw new Error(
+    `invalid_transition: ${blockedEvent} requires latest ${stageName} result to be ${requiredEvent}`,
+  );
+}
+
 function assertBuildCompletionReady(state: BuildState): void {
-  const latestBuildCriticEvent = getLatestTransitionEvent(state.transition_log, [
-    'build_critic_passed',
-    'build_critic_failed',
-  ]);
-  const latestSupervisorEvent = getLatestTransitionEvent(state.transition_log, [
-    'supervisor_passed',
-    'supervisor_failed',
-  ]);
-
-  if (latestBuildCriticEvent !== 'build_critic_passed') {
-    throw new Error('invalid_transition: build_completed requires build_critic_passed');
-  }
-
-  if (latestSupervisorEvent !== 'supervisor_passed') {
-    throw new Error('invalid_transition: build_completed requires supervisor_passed');
-  }
+  assertLatestReviewPassed(state, 'build_critic', 'build_critic_passed', 'build_completed');
+  assertLatestReviewPassed(state, 'supervisor', 'supervisor_passed', 'build_completed');
 }
 
 function workerPendingAction(workerStatus: string): string {
@@ -267,6 +272,9 @@ export function recordTransition(
   const currentPhase = newState.current_phase;
 
   assertPhaseAllowed(currentPhase, event as BuildEvent);
+  if (event === 'supervisor_spawned') {
+    assertLatestReviewPassed(newState, 'build_critic', 'build_critic_passed', 'supervisor_spawned');
+  }
   if (event === 'build_completed') {
     assertBuildCompletionReady(newState);
   }

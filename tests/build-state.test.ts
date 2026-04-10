@@ -81,16 +81,23 @@ function makeValidTransitionInput(event: BuildEvent): {
 }
 
 function prepareStateForEvent(baseState: BuildState, event: BuildEvent): BuildState {
-  if (event !== 'build_completed') {
-    return baseState;
+  if (event === 'build_completed') {
+    let prepared = recordTransition(baseState, 'tracer_completed', {});
+    prepared = recordTransition(prepared, 'build_critic_spawned', {});
+    prepared = recordTransition(prepared, 'build_critic_passed', {});
+    prepared = recordTransition(prepared, 'supervisor_spawned', {});
+    prepared = recordTransition(prepared, 'supervisor_passed', {});
+    return prepared;
   }
 
-  let prepared = recordTransition(baseState, 'tracer_completed', {});
-  prepared = recordTransition(prepared, 'build_critic_spawned', {});
-  prepared = recordTransition(prepared, 'build_critic_passed', {});
-  prepared = recordTransition(prepared, 'supervisor_spawned', {});
-  prepared = recordTransition(prepared, 'supervisor_passed', {});
-  return prepared;
+  if (event === 'supervisor_spawned') {
+    let prepared = recordTransition(baseState, 'tracer_completed', {});
+    prepared = recordTransition(prepared, 'build_critic_spawned', {});
+    prepared = recordTransition(prepared, 'build_critic_passed', {});
+    return prepared;
+  }
+
+  return baseState;
 }
 
 function makeWorkerState(moduleId = 'MOD-001') {
@@ -330,9 +337,10 @@ describe('recordTransition', () => {
   });
 
   it('TEST-095: build_completed requires passing critic and supervisor verdicts', () => {
-    let missingCriticPass = recordTransition(state, 'tracer_completed', {});
-    missingCriticPass = recordTransition(missingCriticPass, 'build_critic_spawned', {});
-    missingCriticPass = recordTransition(missingCriticPass, 'supervisor_spawned', {});
+    const missingCriticPass = {
+      ...state,
+      current_phase: 'supervisor' as const,
+    };
 
     expect(() => recordTransition(missingCriticPass, 'build_completed', {})).toThrow(
       'build_critic_passed',
@@ -348,9 +356,14 @@ describe('recordTransition', () => {
     );
   });
 
-  it('TEST-095: supervisor_spawned only advances from build_critic phase', () => {
+  it('TEST-095: supervisor_spawned only advances after a passed build_critic result', () => {
     state.current_phase = 'build_critic';
-    const updated = recordTransition(state, 'supervisor_spawned', {});
+    expect(() => recordTransition(state, 'supervisor_spawned', {})).toThrow(
+      'build_critic_passed',
+    );
+
+    const reviewed = recordTransition(state, 'build_critic_passed', {});
+    const updated = recordTransition(reviewed, 'supervisor_spawned', {});
     expect(updated.current_phase).toBe('supervisor');
   });
 
