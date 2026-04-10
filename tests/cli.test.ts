@@ -380,6 +380,31 @@ describe('lash classify', () => {
 // ---------------------------------------------------------------------------
 
 describe('lash package', () => {
+  it('fails fast when --tests is omitted and prints recovery guidance', () => {
+    const tmpDir = makeTmpDir();
+    const worktreeDir = join(tmpDir, 'worktree');
+    mkdirSync(worktreeDir, { recursive: true });
+
+    const specPath = makeMinimalSpec(tmpDir);
+    const discoverPath = makeMinimalDiscover(tmpDir);
+
+    const result = runLash(
+      'package',
+      'MOD-A',
+      worktreeDir,
+      'opencode',
+      '--spec', specPath,
+      '--discover', discoverPath,
+    );
+
+    expect(result.returncode).not.toBe(0);
+
+    const data = JSON.parse(result.stderr) as { error: string };
+    expect(data.error).toContain('requires --tests <path>');
+    expect(data.error).toContain('specs/tests.json');
+    expect(data.error).toContain('test-gen');
+  });
+
   it('accepts split tests artifact via explicit index.json path', () => {
     const tmpDir = makeTmpDir();
     const worktreeDir = join(tmpDir, 'worktree');

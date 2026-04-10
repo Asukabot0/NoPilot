@@ -180,6 +180,30 @@ function makeTests(): unknown {
   };
 }
 
+function makeSpecWithoutOwnedFiles(): unknown {
+  return {
+    phase: 'spec',
+    version: '3.0',
+    status: 'approved',
+    modules: [
+      {
+        id: 'MOD-001',
+        name: 'plan_generator',
+        responsibility: 'Parse spec deps.',
+        source_root: 'lash/',
+        interfaces: [],
+        data_models: [],
+        state_machine: null,
+        nfr_constraints: {},
+        requirement_refs: ['REQ-001'],
+        invariant_refs: [],
+      },
+    ],
+    dependency_graph: { edges: [] },
+    technologies: [],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // TEST-038: Generate all required files in .lash/
 // ---------------------------------------------------------------------------
@@ -605,6 +629,114 @@ describe('Error cases', () => {
         'claude-code',
       ),
     ).toThrow('missing_tests');
+  });
+
+  it('missing_tests error includes recovery guidance', () => {
+    const emptyTests = {
+      phase: 'build',
+      artifact: 'tests',
+      version: '3.0',
+      example_cases: [],
+      property_cases: [],
+    };
+
+    let thrown: Error | null = null;
+    try {
+      generatePackage(
+        'MOD-001',
+        tmp,
+        makeSpec() as never,
+        makeDiscover() as never,
+        emptyTests as never,
+        [],
+        'claude-code',
+      );
+    } catch (error) {
+      thrown = error as Error;
+    }
+
+    expect(thrown).not.toBeNull();
+    expect(thrown?.message).toContain('--tests <path>');
+    expect(thrown?.message).toContain('test-gen');
+  });
+
+  it('missing_owned_files error when module omits ownership boundaries', () => {
+    let thrown: Error | null = null;
+    try {
+      generatePackage(
+        'MOD-001',
+        tmp,
+        makeSpecWithoutOwnedFiles() as never,
+        makeDiscover() as never,
+        makeTests() as never,
+        [],
+        'claude-code',
+      );
+    } catch (error) {
+      thrown = error as Error;
+    }
+
+    expect(thrown).not.toBeNull();
+    expect(thrown?.message).toContain('missing_owned_files');
+    expect(thrown?.message).toContain('MOD-001');
+    expect(thrown?.message).toContain('owned_files');
+  });
+
+  it('missing_owned_files error when another module in spec omits ownership boundaries', () => {
+    const specWithUnownedDependency = {
+      phase: 'spec',
+      version: '3.0',
+      status: 'approved',
+      modules: [
+        {
+          id: 'MOD-001',
+          name: 'plan_generator',
+          responsibility: 'Parse spec deps.',
+          source_root: 'lash/',
+          owned_files: ['lash/plan_generator.py'],
+          depends_on: ['MOD-002'],
+          interfaces: [],
+          data_models: [],
+          state_machine: null,
+          nfr_constraints: {},
+          requirement_refs: ['REQ-001'],
+          invariant_refs: [],
+        },
+        {
+          id: 'MOD-002',
+          name: 'platform_launcher',
+          responsibility: 'Spawn Workers.',
+          source_root: 'lash/',
+          interfaces: [],
+          data_models: [],
+          state_machine: null,
+          nfr_constraints: {},
+          requirement_refs: ['REQ-002'],
+          invariant_refs: [],
+        },
+      ],
+      dependency_graph: { edges: [{ from: 'MOD-001', to: 'MOD-002' }] },
+      technologies: [],
+    };
+
+    let thrown: Error | null = null;
+    try {
+      generatePackage(
+        'MOD-001',
+        tmp,
+        specWithUnownedDependency as never,
+        makeDiscover() as never,
+        makeTests() as never,
+        [],
+        'claude-code',
+      );
+    } catch (error) {
+      thrown = error as Error;
+    }
+
+    expect(thrown).not.toBeNull();
+    expect(thrown?.message).toContain('missing_owned_files');
+    expect(thrown?.message).toContain('MOD-002');
   });
 });
 

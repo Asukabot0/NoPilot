@@ -20,7 +20,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "name", "responsibility", "interfaces", "data_models", "requirement_refs"],
+        "required": ["id", "name", "responsibility", "owned_files", "interfaces", "data_models", "requirement_refs"],
         "properties": {
           "id": {
             "type": "string",
@@ -29,7 +29,11 @@
           "name": { "type": "string" },
           "responsibility": { "type": "string" },
           "source_root": { "type": "string" },
-          "owned_files": { "type": "array", "items": { "type": "string" } },
+          "owned_files": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
           "interfaces": {
             "type": "array",
             "items": {
