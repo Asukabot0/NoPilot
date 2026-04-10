@@ -3,6 +3,8 @@
 **日期**: 2026-04-07
 **状态**: 待审批（审阅后修订版 v2）
 
+> 历史设计快照：本文记录 2026-04-07 适配实施前的设计判断。当前仓库状态请以 `src/skill-engine/platform-registry.ts`、`src/skill-engine/skill-installer.ts` 与相关测试为准。
+
 ## 背景
 
 NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPilot 框架本身（discover/spec/build 等命令）对 OpenCode 的支持仍处于实验性状态。

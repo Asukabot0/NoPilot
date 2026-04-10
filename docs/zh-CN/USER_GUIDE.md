@@ -123,11 +123,11 @@ NoPilot 的下游参与度递减模型：
 
 ### 1.4 当前状态
 
-- **版本**: V1.2 Delivered (Schema 4.0)
-- **代码规模**: 24 个 TypeScript 源文件，约 7800 行代码
-- **测试**: 465 个测试用例（21 个测试文件）
+- **版本**: npm package `0.0.6`；工作流语义延续 V1.2 / Schema 4.0
+- **代码形态**: 以 TypeScript runtime、skills 分发与 JSON Schema 资产为主
+- **测试**: 使用 Vitest 覆盖 CLI、Lash runtime、profile、ui-taste 等核心模块
 - **分发**: `npm install -g nopilot`，提供双 CLI (`nopilot` + `lash`)
-- **Open Issues**: #17 (Lite 模式), #21 (Preview 命令)
+- **Issue 状态**: 以 GitHub Issues 为准
 
 ---
 
@@ -135,7 +135,8 @@ NoPilot 的下游参与度递减模型：
 
 ### 2.1 前置条件
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 或 Codex CLI 已安装并配置
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 已安装并配置
+- 如需共享 skills 安装或使用 Lash 多平台 Worker，可额外配置 Codex CLI 与 OpenCode CLI
 - Node.js >= 20.0.0
 - (可选) [Google Stitch MCP](https://stitch.withgoogle.com) — 用于 Discover 阶段的高保真 UI mockup 生成。未配置时系统自动降级到 AI 生成的 HTML 或文字问答模式
 
@@ -166,11 +167,12 @@ git init
 nopilot init
 ```
 
-`nopilot init` 采用 OMC 风格分发模型，会完成以下操作：
+`nopilot init` 采用统一 skills 分发模型，会完成以下操作：
 
-1. 安装包内 `commands/*.md` 到 `~/.claude/commands/`，并安装包内 `prompts/codex/*.md` 到 `~/.codex/prompts/`（全局，始终覆盖）
-2. 创建 `specs/` 目录（含 `.gitkeep`）
-3. 向已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
+1. 将包内 `commands/` 渲染安装到 Claude Code 的 `~/.claude/skills/`
+2. 将同一套 skills 渲染安装到 Codex / OpenCode 共享的 `~/.agents/skills/`（共享目录自动去重）
+3. 创建 `specs/` 目录（含 `.gitkeep`）
+4. 向已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
 > **注意：** Schema 文件和 `workflow.json` 保留在 npm 包内，不复制到项目中。使用 `nopilot paths` 命令查看它们的位置。
 
@@ -190,47 +192,44 @@ my-project/
 └── ...                      # 你的项目文件
 ```
 
-同时，以下全局文件会被安装：
+同时，以下全局 skills 会被安装：
 
 ```
-~/.claude/commands/          # Slash commands（全局共享）
-├── discover.md              # /discover 命令
-├── spec.md                  # /spec 命令
-├── build.md                 # /build 命令
-├── visualize.md             # /visualize 命令
-├── supervisor.md            # Supervisor agent
-├── critic.md                # Critic agent
-├── lash-build.md            # Lash 编排主流程
-├── lash-tracer.md           # Lash tracer bullet
-├── lash-batch.md            # Lash 批次执行
-├── lash-verify.md           # Lash 最终验证
-├── lash-conflict-resolver.md
-├── lash-orchestrator.md
-└── lash-worker-instructions.md
+~/.claude/skills/            # Claude Code 全局 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 
-~/.codex/prompts/            # Codex prompts（全局共享）
-├── discover.md
-├── spec.md
-├── build.md
-├── visualize.md
-├── supervisor.md
-├── critic.md
-├── lash-build.md
-├── lash-tracer.md
-├── lash-batch.md
-├── lash-verify.md
-├── lash-conflict-resolver.md
-├── lash-orchestrator.md
-└── lash-worker-instructions.md
+~/.agents/skills/            # Codex 与 OpenCode 共享 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 ```
 
 ### 2.4 运行第一个工作流
 
+先在你的 AI 编码工具中载入已安装的 `discover` skill。
+
 ```bash
 cd my-project
 claude                       # Claude Code 中运行 /discover
-codex                        # Codex 中运行 /prompts:discover
 ```
+
+Codex 与 OpenCode 共用 `~/.agents/skills/` 中安装的同一套 skills。
 
 每个阶段从 `specs/` 读取上游制品，写入自己的产出。所有制品都是 JSON 格式的机器可读契约。
 
@@ -1273,9 +1272,10 @@ nopilot init --force
 ```
 
 **执行动作：**
-1. 安装 `commands/*.md` → `~/.claude/commands/`，安装 `prompts/codex/*.md` → `~/.codex/prompts/`（全局，始终覆盖）
-2. 创建 `<dir>/specs/` 目录（含 `.gitkeep`）
-3. 向 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
+1. 将包内 `commands/` 渲染安装到 `~/.claude/skills/`
+2. 将同一套 skills 渲染安装到 Codex / OpenCode 共享的 `~/.agents/skills/`
+3. 创建 `<dir>/specs/` 目录（含 `.gitkeep`）
+4. 向 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
 | 选项 | 说明 |
 |------|------|
@@ -1283,7 +1283,7 @@ nopilot init --force
 
 #### `nopilot paths`
 
-打印 NoPilot 包资产的位置（schemas、Claude commands、Codex prompts、workflow.json）。
+打印 NoPilot 包资产与 skills 安装位置（schemas、commands、workflow.json、installed skills、legacy migration 目录）。
 
 ```bash
 nopilot paths
@@ -1296,16 +1296,17 @@ nopilot paths
   "package_root": "/usr/lib/node_modules/nopilot",
   "commands": "/usr/lib/node_modules/nopilot/commands",
   "codex_prompts": "/usr/lib/node_modules/nopilot/prompts/codex",
-  "source_prompt_locations": {
-    "claude": "/usr/lib/node_modules/nopilot/commands",
-    "codex": "/usr/lib/node_modules/nopilot/prompts/codex"
-  },
+  "source_skill_location": "/usr/lib/node_modules/nopilot/commands",
   "schemas": "/usr/lib/node_modules/nopilot/schemas",
   "workflow": "/usr/lib/node_modules/nopilot/workflow.json",
-  "installed_commands": "/home/user/.claude/commands",
-  "installed_command_locations": {
-    "claude": "/home/user/.claude/commands",
-    "codex": "/home/user/.codex/prompts"
+  "installed_skills": {
+    "claude": "/home/user/.claude/skills/",
+    "codex": "/home/user/.agents/skills/",
+    "opencode": "/home/user/.agents/skills/"
+  },
+  "legacy_dirs": {
+    "claude": "/home/user/.claude/commands/",
+    "codex": "/home/user/.codex/prompts/"
   }
 }
 ```
@@ -2024,35 +2025,29 @@ your-project/                        # 项目目录
 ├── CLAUDE.md                        # 项目上下文（含 Lash 触发指令）
 └── ...                              # 你的项目源码
 
-~/.claude/commands/                  # 全局 slash commands（由 nopilot init 安装）
-├── discover.md                      # /discover 命令定义
-├── spec.md                          # /spec 命令定义
-├── build.md                         # /build 命令定义
-├── visualize.md                     # /visualize 命令定义
-├── supervisor.md                    # Supervisor agent 定义
-├── critic.md                        # Critic agent 定义
-├── lash-build.md                    # Lash 编排主流程
-├── lash-tracer.md                   # Lash tracer bullet 阶段
-├── lash-batch.md                    # Lash 批次执行阶段
-├── lash-verify.md                   # Lash 最终验证阶段
-├── lash-conflict-resolver.md
-├── lash-orchestrator.md
-└── lash-worker-instructions.md
+~/.claude/skills/                    # Claude Code 全局 skills（由 nopilot init 安装）
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 
-~/.codex/prompts/                    # 全局 Codex prompts（由 nopilot init 安装）
-├── discover.md
-├── spec.md
-├── build.md
-├── visualize.md
-├── supervisor.md
-├── critic.md
-├── lash-build.md
-├── lash-tracer.md
-├── lash-batch.md
-├── lash-verify.md
-├── lash-conflict-resolver.md
-├── lash-orchestrator.md
-└── lash-worker-instructions.md
+~/.agents/skills/                    # Codex 与 OpenCode 共享 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 
 <nopilot-package>/                   # npm 包内（通过 nopilot paths 查看位置）
 ├── schemas/                         # 14 个 JSON Schema (v4.0)
@@ -2109,11 +2104,11 @@ Lash 的 Worktree Manager 在合并前会运行 `checkUnexpectedFiles` 范围检
 
 ### Q: NoPilot 必须和 Claude Code 一起使用吗？
 
-NoPilot 的三阶段工作流同时支持 Claude Code 和 Codex：
-- Claude Code：使用 `/discover` → `/spec` → `/build`
-- Codex：使用 `/prompts:discover` → `/prompts:spec` → `/prompts:build`
+不是。`nopilot init` 会把统一 skills 安装到 Claude Code 的 `~/.claude/skills/`，以及 Codex / OpenCode 共享的 `~/.agents/skills/`。
 
-Lash 构建编排器同时支持 Claude Code、Codex 和 OpenCode 作为 Worker 平台。
+- Claude Code：文档示例使用 `/discover` → `/spec` → `/build`
+- Codex / OpenCode：从各自工具的 skills 入口载入已安装的 `discover`、`spec`、`build` skills
+- Lash 构建编排器：同时支持 Claude Code、Codex、OpenCode 作为 Worker 平台
 
 ### Q: 如何在团队中使用 NoPilot？
 
@@ -2143,7 +2138,7 @@ NoPilot 支持目录拆分模式。例如，`specs/spec.json` 可以拆分为 `s
 |------|------|---------|
 | **V1.0** | 已交付 | 核心三阶段流水线，Supervisor + Critic，异常处理，回溯安全 |
 | **V1.1** | 已交付 | Schema 4.0，`/visualize`，决策账本，生成-审查分离，6Cs 框架，漂移检测 |
-| **V1.2** | 已交付 | Lash Python→TypeScript 重写，合并入 NoPilot，双 CLI，465 个测试 |
+| **V1.2** | 已交付 | Lash Python→TypeScript 重写，合并入 NoPilot，双 CLI |
 | **V1.5** | 计划中 | Lite 模式（简化流程），Brownfield 支持（已有代码库），搜索加固，预飞检查 |
 | **V2** | 计划中 | 增量回溯，MCP/Script 强制层，多模型验证，上下文管理 |
 | **V3** | 计划中 | 跨项目记忆，Spec 漂移检测，变异测试，动态约束维度 |

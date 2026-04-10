@@ -71,6 +71,181 @@
 - Issues: 8 个 open
 - 基线对比: 上次快照 2026-04-04 20:50 | 无代码变更, 新增 brownfield feature 设计制品
 
+## Progress Snapshot: 2026-04-08 21:10
+- 触发方式: benchmark 设计讨论后手动更新
+- 代码统计: 本次无源码变更，新增 benchmark 设计文档与计划文档
+- 当前版本: V0.0.6 周期内设计补充
+- 本次工作: NoPilot workflow benchmark 设计
+  - 明确 benchmark 同时服务回归守卫、平台横评、模型横评
+  - 确定三层结构: case layer / run layer / evaluation layer
+  - 确定评分模型: process 50 / outcome 30 / efficiency 20
+  - 确定首批 12 个 case，覆盖 discover/spec/build 的主要失效模式
+  - 确定 run 产物结构、event-log 抽取和 oracle 判分流程
+  - 新增设计文档: `docs/design/2026-04-08-nopilot-benchmark-design.md`
+  - 新增计划文档: `docs/plans/2026-04-08-nopilot-benchmark-plan.md`
+- 当前问题:
+  - transcript 到 event-log 的抽取规则仍需进一步形式化
+  - 多平台 transcript 差异较大，第一期需要限制输入格式范围
+  - 部分高层流程语义难以完全自动判分
+- 值得深入研究的问题:
+  - 是否单独定义 trace schema 作为平台无关中间层
+  - 是否为 benchmark 引入重复运行与稳定性统计
+  - 是否对 case 难度进行显式校准，避免排行榜被简单 case 主导
+
+## Progress Snapshot: 2026-04-08 22:25
+- 触发方式: benchmark 设计评审后手动修补
+- 代码统计: 本次无源码变更，修订 benchmark 设计与计划文档
+- 当前版本: V0.0.6 周期内设计修补
+- 本次工作:
+  - 将 benchmark 事件定义从直接绑定 transcript 细节改为 `observation events -> semantic events` 两层 trace schema
+  - 为 `oracle.json` 断言改用 semantic events，降低平台私有 transcript 差异对判分的影响
+  - 补入评分封顶规则：核心流程违规限制 process 分上限，并阻断 efficiency 抬分
+  - 补充 `F10/F11` 失败分类，覆盖 trace 不足不可判与 artifact 合同不匹配
+  - 将 `Stage Heatmap` 收敛为 `discover/spec/build`，并单独提出 `Review Heatmap`
+  - 在 MVP 路线中前置人工复核入口，避免高层语义误判后直接写死结论
+  - 同步更新计划文档，加入 `trace-schema.json`、artifact format profile 和人工复核回写流程
+- 当前问题:
+  - semantic event 的判定依据仍需在 schema 层进一步形式化，否则实现时仍可能漂移
+  - process fail run 的 efficiency 展示方式仍需在评分器中锁定，避免误导榜单解读
+- 值得深入研究的问题:
+  - contract case 与 prompt behavior case 是否需要分开维护与分开统计
+  - trace extractor 是否应作为独立模块版本化发布，便于回归比较
+
+## Progress Snapshot: 2026-04-08 21:45
+- 触发方式: 手动配置 OpenCode 自定义 API 源
+- 代码统计: 本次无仓库源码变更，修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 在 OpenCode 全局配置中新增 `provider.openai`，指向主人提供的兼容接口地址
+  - 保留现有 `vllm-local` provider 与默认模型配置，不改变当前默认模型选择
+  - 计划: 先完成 provider 注册并验证配置可被 `opencode debug config` 正常解析
+- 当前问题:
+  - 新 provider 仅注册了连接信息，尚未声明模型清单；若后续要直接切换使用，还需要补 `provider.custom-openai.models` 或手动指定可用模型 ID
+- 值得深入研究的问题:
+  - OpenCode 对兼容 OpenAI 接口在未显式声明 `models` 时的模型发现与选择行为是否稳定一致
+
+## Progress Snapshot: 2026-04-08 21:52
+- 触发方式: 消除 OpenAI OAuth 与自定义 API 源歧义
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 将自定义 provider 从 `openai` 改为独立命名 `custom-openai`
+  - 为该 provider 显式补充 `name` 与 `npm: @ai-sdk/openai-compatible`，避免与内建 `openai` provider 混用
+  - 保留现有默认模型不变，后续可按需显式使用 `custom-openai/<model-id>`
+- 当前问题:
+  - 自定义源最初未声明 `models` 列表，OpenCode 无法识别 `custom-openai/<model-id>`；需补显式模型映射
+- 值得深入研究的问题:
+  - OpenCode 对自定义 openai-compatible provider 的模型发现是否依赖服务端 `/models` 返回格式
+
+## Progress Snapshot: 2026-04-08 21:58
+- 触发方式: 修复自定义 provider 模型不可识别问题
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 通过请求自定义接口 `/v1/models` 确认服务端实际暴露的模型 ID
+  - 为 `custom-openai` 显式补充最小模型清单：`gpt-5.4`、`gpt-5.4-mini`、`gpt-5.3-codex`、`gpt-5-codex`
+  - 计划: 用 `opencode run -m custom-openai/gpt-5.4-mini` 做一次端到端验证
+- 当前问题:
+  - 当前仅录入最小常用模型，若主人要用其他模型，还需要继续补充到配置
+- 值得深入研究的问题:
+  - 是否需要写一个小脚本根据 `/v1/models` 自动同步 OpenCode 配置中的模型清单
+
+## Progress Snapshot: 2026-04-08 22:10
+- 触发方式: 主人要求统一提高 OpenCode 全部已声明模型的推理强度
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 查阅 OpenCode provider 文档与 AI SDK OpenAI-compatible 文档，确认聊天模型使用 `options.reasoningEffort`
+  - 为当前配置中全部已声明模型统一设置 `options.reasoningEffort: "high"`
+  - 覆盖范围: `vllm-local` 下 2 个 Qwen 模型，`custom-openai` 下 4 个 GPT/Codex 模型
+  - 计划: 用 `opencode debug config` 复核配置已被正确解析
+- 当前问题:
+  - 该配置仅覆盖 `opencode.jsonc` 中已显式声明的模型；后续新增模型不会自动继承，仍需补同字段
+  - 不同后端对 `reasoningEffort: "high"` 的实际支持程度可能不同，不支持的服务端可能忽略该字段
+- 值得深入研究的问题:
+  - 是否需要在 OpenCode 层增加统一的全局默认 providerOptions，避免逐模型重复配置
+  - 是否需要为本地 vLLM 服务核实其对 `reasoningEffort` 的透传和生效行为
+
+## Progress Snapshot: 2026-04-08 22:14
+- 触发方式: 主人要求将全部已声明模型的推理强度进一步改为 `xhigh`
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 将 `vllm-local` 与 `custom-openai` 下全部已声明模型的 `options.reasoningEffort` 从 `high` 改为 `xhigh`
+  - 计划: 继续使用 `opencode debug config` 验证配置文件可正常解析
+- 当前问题:
+  - `xhigh` 不是前面查到的公开示例值；OpenCode 配置层会透传该字段，但具体后端是否识别需要以服务端实现为准
+- 值得深入研究的问题:
+  - 自定义兼容接口与 vLLM 后端各自接受的 `reasoningEffort` 枚举是否一致，是否需要按 provider 分别配置
+
+## Progress Snapshot: 2026-04-08 22:16
+- 触发方式: 主人要求进入 `/discover`，锁定 benchmark feature 的 MVP 与 requirement lock
+- 代码统计: 本次无源码变更，新增 benchmark feature discover 制品
+- 当前版本: V0.0.6 设计深化
+- 当前分支: `discussion/nopilot-benchmark`
+- 本次工作:
+  - 按 `feature mode` 完成 NoPilot benchmark 的 discover 收敛，未额外生成设计哲学
+  - 锁定第一期目标: 同时服务工作流回归守卫与平台/模型横评
+  - 锁定第一期边界: 自动运行、适配器运行器、单一标准 run profile、合成 fixture 为主、仅本地平台 CLI、仅本地运行
+  - 明确第一期非目标: 暂缓网页 Dashboard 与 case authoring UI
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/index.json`
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/requirements.json`
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/scenarios.json`
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/history.json`
+- 当前问题:
+  - 当前仓库没有现成 profile/discover 制品可供该 feature 继承，discover index 仅保留 `profile_ref: ".nopilot/profile/"` 与空 `design_philosophy` 数组，后续若仍缺 profile，`/spec` 将按绿地式无代码画像路径继续
+  - phase 1 已锁单一 run profile，但标准字段与 adapter contract 仍需在 spec 阶段形式化
+  - 平台准入已锁定为“只接完整 trace 平台”，但完整性的最低字段门槛仍需在 spec 阶段明确
+  - 评分锁定规则已补到 discover requirement：`process_score < 25` 触发 `process_fail`，`F1-F4` 命中时 process 分封顶 `20/50`
+  - failure taxonomy 的名称与 `needs_review/F10` 映射已补入 discover requirement，后续 spec 仍需把字段落到 scorer 与 verdict schema
+- 值得深入研究的问题:
+  - benchmark adapter contract 是否应单独版本化，避免 runner 与 scorer 演进不同步
+  - phase 2 引入 CI 子集门禁时，如何在时长、稳定性与回归覆盖之间取得平衡
+  - `trace_insufficient` 的最小触发条件是否需要按 semantic event 类型拆分，避免不同 case 共用过粗粒度规则
+
+## Progress Snapshot: 2026-04-08 22:39
+- 触发方式: 主人要求进入 `/spec`，对 benchmark feature 做模块级设计展开
+- 代码统计: 本次无源码实现变更，新增 benchmark feature spec 制品
+- 当前版本: V0.0.6 设计深化
+- 当前分支: `discussion/nopilot-benchmark`
+- 本次工作:
+  - 基于 `feat-nopilot-benchmark` discover 制品完成 `/spec` 展开
+  - 新增 `spec.json`，将 benchmark 拆成 8 个模块: CLI surface、contracts、suite catalog、runner、trace pipeline、evaluator、review store、reporting
+  - 明确 benchmark 接入点在 `nopilot` CLI，而不是 `lash` CLI
+  - 明确 phase-1 运行资产与运行时边界: 版本化 case 置于 `benchmark/`，本地 run 产物置于 `.nopilot/benchmark/runs/`
+  - 明确 phase-1 只支持一个标准 run profile: `phase1-local-cli-v1`
+  - 明确 adapter / trace / scorer / review 的模块边界，作为后续 `/build` 输入
+  - 新增 spec 制品: `specs/features/feat-nopilot-benchmark/spec.json`
+  - 新增 decisions 制品: `specs/features/feat-nopilot-benchmark/decisions.json`
+  - 新增 spec review 制品: `specs/features/feat-nopilot-benchmark/spec_review.json`
+- 当前问题:
+  - spec 已锁 `benchmark/` 与 `.nopilot/benchmark/runs/` 两条路径，但是否需要额外 gitignore 规则仍要在实现时确认
+  - 当前 spec 依赖本地平台 CLI 提供足够 transcript 记录；不同平台如何稳定映射到 `phase1-local-cli-v1` 仍是 build 阶段最高风险
+  - discover 中已声明 `.nopilot/profile/`，但现有 profile 没有 benchmark 相关模块画像；后续如果希望 feature mode 强继承 benchmark 既有架构，还需要在 profile 体系里补位
+  - 第一轮独立 spec 审阅指出的四个核心契约缺口已补齐：run metadata 必填字段、official suite 的 profile/平台准入、F1-F11 taxonomy 枚举化、needs_review 到 review-store 的显式衔接
+- 值得深入研究的问题:
+  - `phase1-local-cli-v1` 是否应单独做成公开 schema 版本线，便于历史 run 横向兼容与升级迁移
+  - benchmark suite manifest 是否需要区分 contract cases 与 prompt-behavior cases，避免同榜混淆
+  - adapter 记录的 transcript 粒度是否要统一到 message/tool/artifact 三种最小事件，还是允许更细粒度记录后再降采样
+
+## Progress Snapshot: 2026-04-08 22:48
+- 触发方式: 主人要求先用 `/build` Step 2 为 benchmark feature 生成 tests 制品，以满足 `lash-build` 前置条件
+- 代码统计: 本次无源码实现变更，新增 benchmark feature tests 制品
+- 当前版本: V0.0.6 设计深化
+- 当前分支: `discussion/nopilot-benchmark`
+- 本次工作:
+  - 读取 `/build` 与 `test-gen` 合同，确认 feature mode 下 tests 应写到 `specs/features/feat-nopilot-benchmark/tests.json`
+  - 基于 benchmark spec 生成单文件 `tests.json`，覆盖 10 个 example cases 与 5 个 property cases
+  - 覆盖重点包括: CLI surface、run metadata、phase1-local-cli-v1、official suite >=10 case、F1-F11 taxonomy、process_fail、needs_review->review-store、JSON/Markdown 报告
+  - 新增独立 tests review 制品: `specs/features/feat-nopilot-benchmark/tests_review.json`
+- 当前问题:
+  - 现有仓库在 single-file `tests.schema.json` 与 split `tests_index.schema.json` 的 `phase` 字段上存在不一致；本次为降低合同风险，先采用单文件 tests artifact
+  - 当前 `tests_review.json` 是基于已锁定 spec 的人工生成审阅结果，尚未经过独立 tests Critic 子代理复核
+  - `lash-build` 文档默认引用 greenfield 路径，后续正式进入编排时仍需显式使用 feature 路径，避免误读 `specs/` 根目录
+- 值得深入研究的问题:
+  - 是否需要在 phase 2 统一修复 single/split tests artifact 的 `phase` 字段合同不一致问题
+  - benchmark tests 是否应再细分一组专门针对 adapter 认证失败与非 ranked platform 的 acceptance cases
+
 ## Progress Snapshot: 2026-04-09 19:55
 - 触发方式: 排查并修复 issue #78 及同类 split artifact 入口缺口
 - 代码统计: 本次修改 `lash` resolver、CLI、profile writer 与相关测试，补充 split artifact 回归覆盖
@@ -86,12 +261,26 @@
 - 值得深入研究的问题:
   - 是否将 `decisions.json`、未来的 `tests_review` / `build_review` 等 artifact 也统一纳入一层通用 resolver API，进一步消除不同子系统各自读取 JSON 的重复实现
 
+## Progress Snapshot: 2026-04-09 20:40
+- 触发方式: PR #79 审查后修复 split build artifact 入口契约偏差
+- 代码统计: 本次修正 `profile writer` 的 build artifact 入口解析，并补齐 build resolver 回归测试
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 将 `src/profile/writer.ts` 的 artifact 入口解析改为显式区分单文件名与 split 目录名，避免把 `build_report.json` 错当成 `build_report/` 目录合同
+  - 将 split build profile 测试 fixture 从错误的 `build_report/index.json` 改为合同规定的 `build/index.json`
+  - 在 `tests/spec-resolver.test.ts` 新增 `resolveBuildReport()` 的单文件、目录、显式 `index.json` 与缺子文件回归覆盖
+  - 在 `src/profile/__tests__/writer.test.ts` 补充 `framework` 断言，确认 L3 测试覆盖率信息完整保留
+- 当前问题:
+  - `framework` 仍属于 build report 中的弱契约字段，extractor 会读取，但 schema 尚未将其声明为必需或可选属性
+- 值得深入研究的问题:
+  - 是否应让 profile writer 完全复用 `findArtifactPath()` 一类统一入口发现逻辑，进一步减少路径合同分叉风险
+
 ## Progress Snapshot: 2026-04-09 21:05
 - 触发方式: 子 agent 复审后修补 split child payload 静默降级缺陷
 - 代码统计: 本次修改 `spec-resolver` 与回归测试，新增 malformed split child 负向覆盖
 - 当前版本: V0.0.6 缺陷修复中
 - 本次工作:
-  - 将 `resolveTests()` / `resolveBuildReport()` 对 split child payload 的数组字段读取从“非数组则吞掉”改为“明确抛出 `INVALID_CHILD_PAYLOAD`”
+  - 将 `resolveTests()` / `resolveBuildReport()` 对 split child payload 的数组字段读取从”非数组则吞掉”改为”明确抛出 `INVALID_CHILD_PAYLOAD`”
   - 新增 `tests/spec-resolver.test.ts` 负向用例，覆盖 split tests child 与 split build child 字段类型错误场景
   - 收紧错误语义，避免上游生成畸形 split child 文件时出现 silent data loss
 - 当前问题:
