@@ -9,7 +9,7 @@
 
 ## Input
 
-- `specs/discover.json` or `specs/discover/index.json`
+- `specs/discover.json` or `specs/discover/index.json`, or the feature-scoped equivalent under `specs/features/feat-{featureSlug}/`
 
 ---
 
@@ -62,7 +62,7 @@ For EACH acceptance criterion (`REQ-xxx-AC-n`):
 
 ## Output
 
-Write to `specs/discover_review.json`:
+Write to `specs/discover_review.json` in greenfield mode, or `specs/features/feat-{featureSlug}/discover_review.json` in feature mode:
 
 ```json
 {
@@ -153,7 +153,7 @@ Note: `global_coherence_check` is filled by the Supervisor agent, not by you. Le
 ## On Issue
 
 1. Attempt to fix the discover artifact — adjust unclear requirements, add missing invariants, tighten vague acceptance criteria.
-2. **You may ONLY modify the discover artifact (`specs/discover.json` or files under `specs/discover/`). You must NEVER invent new requirements or change the user's intent — only sharpen existing ones.**
+2. **You may ONLY modify the current discover artifact root (`specs/discover.json` or files under `specs/discover/`, or the feature-scoped equivalent under `specs/features/feat-{featureSlug}/`). You must NEVER invent new requirements or change the user's intent — only sharpen existing ones.**
 3. After fix, a fresh Critic instance re-runs verification from the top (no prior-cycle context).
 4. If fix succeeds: record what was fixed in `self_fix_log`, mark all checks as passed.
 5. If still failing after reaching the self-fix cap:

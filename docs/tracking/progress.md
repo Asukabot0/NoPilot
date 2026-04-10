@@ -111,3 +111,58 @@
   - `resolveDiscover()` 仍未对 split child 内容做 schema 级结构校验，只保证文件存在且 JSON 可解析
 - 值得深入研究的问题:
   - 是否应在 resolver 层统一接入 artifact schema 校验，以便将 discover/spec/tests/build 的结构错误统一前置到加载阶段
+
+## Progress Snapshot: 2026-04-10 14:45
+- 触发方式: 修复 discover review gate 相关 issue #69 / #70 / #48 / #58
+- 代码统计: 本次未改运行时代码，收紧 `discover` prompt 合同并补充结构测试
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 将 `commands/discover/SKILL.md` 明确改为：Layer 3 与 artifact 写入后不得视为 discover 完成，下一步必须进入 Critic + Supervisor review gate
+  - 将 `commands/discover/critic-supervisor.md` 明确改为：禁止主代理内联 Critic/Supervisor、禁止手工写 `passed/aligned` 通过、Critic 自修复后必须由 fresh Critic 复检
+  - 将 `commands/discover/artifact-writer.md` 去掉提前提示 `Run /spec to continue.` 的放行文案，改为仅回传写入确认并等待 review gate 完成
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 增加回归断言，锁定上述 discover review 合同
+  - 根据独立复核继续收紧边界：`artifact-writer` 不再宣称写入 `discover_review.json`，且 `critic-supervisor` 明确“用户手工处理发现的问题后也必须先拿到 fresh Critic pass，才能进入 Supervisor”
+- 下一步计划:
+  - 重新运行 `skill-structure` 定向测试与类型检查，确认 Oracle 指出的剩余两处合同缺口已被锁定
+  - 若重新验证通过，再复核全量测试 / build 结果与变更概况
+- 当前问题:
+  - `README_AGENT.md` 与部分旧说明仍保留 lite/spec 的 same-session Critic 叙述；本次 issue 目标集中在 discover，后续是否统一口径仍需单独决策
+- 值得深入研究的问题:
+  - 是否应把“主流程不得手工写 passed/aligned、必须等待独立 review artifact”沉淀成跨 discover/spec/build 的统一结构测试模板
+  - 是否需要在 `workflow.json` 或 schema 层新增更显式的 review-gate 完成信号，减少 prompt 文本与 artifact 状态机之间的歧义
+
+## Progress Snapshot: 2026-04-10 18:45
+- 触发方式: 根据 PR #80 review 与 Oracle 复核继续修补 merge blocker
+- 代码统计: 本次继续修改 prompt contract 与结构测试，未触碰 TypeScript 运行时代码
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 在 `commands/spec/SKILL.md` 增加 discover review 硬门禁：`/spec` 现在必须读取同一 artifact root 下的 `discover_review.json`，并校验四个 Critic pass 字段与 `global_coherence_check.intent_alignment == "aligned"`
+  - 将 `commands/discover/SKILL.md`、`commands/discover/critic-supervisor.md`、`commands/critic/discover.md` 的 discover review 输入/输出路径统一为 greenfield 与 feature 共用“current artifact root”模型
+  - 将 `commands/spec/schema.md`、`commands/spec/review-runner.md`、`commands/spec/decisions.md`、`commands/critic/spec.md` 改为沿用当前 artifact root，避免 feature discover 驱动下仍回写全局 `specs/`
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 补充 `/spec` gate、feature-aware review path、spec artifact root 一致性的结构回归断言
+- 下一步计划:
+  - 先运行 `skill-structure` 定向测试，确认新增合同断言全部落地
+  - 若定向测试通过，再运行 `pnpm test`、`pnpm lint`、`pnpm build`，最后交给子代理做代码审查
+- 当前问题:
+  - LSP 本地缺少 `typescript-language-server`，无法用 LSP 直接做 TypeScript 诊断，只能依赖测试与构建验证
+- 值得深入研究的问题:
+  - 是否应在 `workflow.json` 与用户文档中把 `/spec` 的输入依赖显式提升为“discover artifact + discover review artifact”
+  - 是否应为 discover/spec review artifact 增加 root/hash 绑定，防止人工修改 discover 后继续复用陈旧 review
+
+## Progress Snapshot: 2026-04-10 19:20
+- 触发方式: 为 ULTRAWORK 完成性验收补充可审计证据
+- 代码统计: 本次未改业务合同，仅补充验证与 review 证据记录
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 再次执行并通过定向结构测试：`pnpm test src/skill-engine/__tests__/skill-structure.test.ts`
+  - 在当前 worktree 再次执行并通过全量验证：`pnpm test`、`pnpm lint`、`pnpm build`
+  - 清理本地产生的 `.benchmark/` 未跟踪测试产物，确认工作树恢复干净状态
+  - 追加子代理终审证据：快速子代理复核认为 PR #80 当前阻塞已关闭、范围内无新 blocker，且 GitHub 状态为 `mergeStateStatus: CLEAN`
+  - 记录 Oracle 终审的关键结论：代码修补方向正确，先前未通过完成性验收的原因是“审计证据不足”，而非“仍有代码阻塞”
+- 当前问题:
+  - GitHub 侧仍显示 `gh pr checks 80` 为 `no checks reported`；本轮验收依赖本地完整验证日志与子代理/Oracle 复核证据，而非远端 CI 记录
+- 值得深入研究的问题:
+  - 是否需要把 review 子代理与本地验证结果自动沉淀为仓库内标准化验收记录，避免后续 ULTRAWORK/Oracle 验收时再次因“证据不集中”被卡住

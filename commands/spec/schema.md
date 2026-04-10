@@ -2,10 +2,12 @@
 
 # spec/schema — Phase 2 Artifact Generation
 
+When `/spec` is running from a feature-scoped discover artifact, write all spec artifacts to the same feature artifact root (`specs/features/feat-{featureSlug}/`). Greenfield mode writes to `specs/`.
+
 Write the spec artifact. For small projects, use a single file. For larger projects with many modules, use a directory structure:
 
-- **Single file:** `specs/spec.json` — suitable when the module count is small
-- **Directory structure:** `specs/spec/index.json` + `specs/spec/mod-{id}-{name}.json` — suitable when the module count is large. `index.json` contains the top-level structure (dependency_graph, external_dependencies, global_error_strategy, auto_decisions, contract_amendments, context_dependencies) and a `module_refs` array listing the module file names. Each `mod-{id}-{name}.json` contains a single module definition.
+- **Single file:** `spec.json` under the current artifact root — suitable when the module count is small
+- **Directory structure:** `spec/index.json` + `spec/mod-{id}-{name}.json` under the current artifact root — suitable when the module count is large. `index.json` contains the top-level structure (dependency_graph, external_dependencies, global_error_strategy, auto_decisions, contract_amendments, context_dependencies) and a `module_refs` array listing the module file names. Each `mod-{id}-{name}.json` contains a single module definition.
 
 Use the following structure (shown as single-file format; directory format splits modules into separate files):
 
@@ -81,7 +83,7 @@ Use the following structure (shown as single-file format; directory format split
     }
   ],
   "contract_amendments": [],
-  "context_dependencies": ["specs/discover.json or specs/discover/index.json"]
+  "context_dependencies": ["discover.json or discover/index.json under the current artifact root"]
 }
 ```
 
