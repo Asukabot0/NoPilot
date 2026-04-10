@@ -17,6 +17,12 @@ These are the ANCHOR — the user's original intent.
 
 Read `specs/build_report.json` — this is the OUTPUT.
 
+Mark the supervisor review as started before you generate the final coherence assessment:
+
+```
+bash "lash state update supervisor_spawned --data '{}'"
+```
+
 Evaluate three dimensions:
 1. **Intent alignment**: Does the build output serve the stated direction? Or has it drifted?
 2. **Complexity growth**: Is the implementation proportional to requirements? Or over-engineered?
@@ -34,5 +40,14 @@ Write your assessment into `specs/build_report.json` in the `global_coherence_ch
 }
 ```
 
-If ALL three are ideal: build is complete. Update state.
-If ANY is non-ideal: pause, present diagnosis to user. Options: ACCEPT_AS_IS, BACKTRACK_SPEC, BACKTRACK_DISCOVER.
+After completing the assessment:
+
+- If ALL three are ideal, persist the successful review and return to `SKILL.md` so the parent orchestrator can mark build completion:
+  ```
+  bash "lash state update supervisor_passed --data '{}'"
+  ```
+- If ANY dimension is non-ideal, persist the failed review, then pause and present diagnosis to user. Options: ACCEPT_AS_IS, BACKTRACK_SPEC, BACKTRACK_DISCOVER.
+  ```
+  bash "lash state update supervisor_failed --data '{\"detail\": \"<description>\"}'"
+  bash "lash state update build_paused --data '{\"reason\": \"supervisor\", \"detail\": \"<description>\"}'"
+  ```

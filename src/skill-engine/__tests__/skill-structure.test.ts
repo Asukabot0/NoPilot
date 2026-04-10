@@ -255,6 +255,39 @@ describe('Sub-skill references', () => {
     expect(count).toBeGreaterThanOrEqual(2);
   });
 
+  it('TEST-067: lash-verify sub-skills persist build_critic and supervisor state transitions', () => {
+    const buildCritic = readFile('commands/lash-verify/build-critic.md');
+    const supervisor = readFile('commands/lash-verify/supervisor.md');
+
+    expect(buildCritic).toContain('build_critic_spawned');
+    expect(buildCritic).toContain('build_critic_passed');
+    expect(buildCritic).toContain('build_critic_failed');
+    expect(buildCritic).toContain('build_paused');
+    expect(supervisor).toContain('supervisor_spawned');
+    expect(supervisor).toContain('supervisor_passed');
+    expect(supervisor).toContain('supervisor_failed');
+    expect(supervisor).toContain('build_paused');
+  });
+
+  it('TEST-067: lash-verify spawn transitions are documented before result files are written', () => {
+    const buildCritic = readFile('commands/lash-verify/build-critic.md');
+    const supervisor = readFile('commands/lash-verify/supervisor.md');
+
+    expect(buildCritic.indexOf('build_critic_spawned')).toBeLessThan(
+      buildCritic.indexOf('Write `specs/build_review.json`:'),
+    );
+    expect(supervisor.indexOf('supervisor_spawned')).toBeLessThan(
+      supervisor.indexOf('Write your assessment into `specs/build_report.json`'),
+    );
+  });
+
+  it('TEST-066: lash-tracer L2 pause uses reason field expected by build-state', () => {
+    const content = readFile('commands/lash-tracer/test-handler.md');
+    expect(content).toContain('\\"reason\\": \\"l2\\"');
+    expect(content).toContain('build_paused --data');
+    expect(content).not.toContain('pause_reason');
+  });
+
   // --- lash integration ---
 
   it('TEST-068: lash-build.md or lash-orchestrator.md references both lash-tracer and lash-verify', () => {
@@ -267,6 +300,15 @@ describe('Sub-skill references', () => {
 
     expect(combined).toMatch(/lash-tracer/);
     expect(combined).toMatch(/lash-verify/);
+  });
+
+  it('TEST-069: lash-build.md passes explicit phase and stage guards to child agent dispatches', () => {
+    const content = readFile('commands/lash-build.md');
+    expect(content).toContain('current_phase=planning');
+    expect(content).toContain('stage_guard=tracer_only');
+    expect(content).toContain('current_phase=batch_execution');
+    expect(content).toContain('stage_guard=batch_execution_only');
+    expect(content).toContain('stage_guard=final_verification_only');
   });
 });
 
