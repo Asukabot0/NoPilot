@@ -16,7 +16,13 @@ Supervisor (intent guardian) and Critic (independent challenger) are core guardr
 `/discover`、`/spec`、`/build`、`/lash-build`、`/visualize` 是工作流执行入口，触发会创建或修改 `specs/` 产物。
 检测到相关意图时，**必须先询问用户确认**，不得自动触发。
 只有用户明确表示"开始"、"执行"、"是的"后，才加载对应 skill。
-显式输入 `/discover` 等命令视为已确认，直接执行。
+显式输入 `/discover`、`/spec`、`/build` 或等价阶段指令（如“进 discover”“开始 spec”）视为已确认，直接执行，不得重复反问是否开始。
+
+当用户指出流程偏差、遗漏步骤或阶段判断错误时：
+1. MUST 重新加载当前阶段的 SKILL.md；
+2. MUST 重新读取该阶段的权威流程定义并核对当前状态；
+3. MUST 输出当前 **已完成 / 待执行 / 下一步** 摘要后再继续；
+4. Do NOT 凭记忆补做，MUST 以阶段 SKILL.md、相关子技能和状态产物为权威来源。
 
 ## Lash (Auto-triggered Multi-Agent Build Orchestrator)
 

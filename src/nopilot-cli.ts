@@ -55,6 +55,7 @@ const PACKAGE_ROOT = resolve(__dirname, '..');
 const DEFAULT_BENCHMARK_ROOT = resolve(PACKAGE_ROOT, 'benchmark');
 const DEFAULT_TRACE_EXTRACTOR_VERSION = 'benchmark-trace-v1';
 
+const DOMAIN_TRIGGER_MARKER = '## NoPilot Domain Skill 触发规则';
 const LASH_DIRECTIVE_MARKER = '## Lash (Auto-triggered Multi-Agent Build Orchestrator)';
 
 function extractLashDirective(): string {
@@ -62,14 +63,24 @@ function extractLashDirective(): string {
   try {
     const content = readFileSync(claudeDevPath, 'utf-8');
     const lines = content.split('\n');
-    const startIdx = lines.findIndex(line => line.startsWith(LASH_DIRECTIVE_MARKER));
-    if (startIdx === -1) {
+    const domainStartIdx = lines.findIndex(line => line.startsWith(DOMAIN_TRIGGER_MARKER));
+    const lashStartIdx = lines.findIndex(line => line.startsWith(LASH_DIRECTIVE_MARKER));
+    if (lashStartIdx === -1) {
       err(`Warning: ${LASH_DIRECTIVE_MARKER} not found in CLAUDE.dev.md`);
       return '';
     }
-    const endIdx = lines.findIndex((line, idx) => idx > startIdx && line.startsWith('## '));
-    const lashLines = lines.slice(startIdx, endIdx === -1 ? undefined : endIdx);
-    return '\n' + lashLines.join('\n');
+
+    const sections: string[] = [];
+
+    if (domainStartIdx !== -1 && domainStartIdx < lashStartIdx) {
+      const domainEndIdx = lines.findIndex((line, idx) => idx > domainStartIdx && line.startsWith('## '));
+      sections.push(lines.slice(domainStartIdx, domainEndIdx === -1 ? undefined : domainEndIdx).join('\n'));
+    }
+
+    const lashEndIdx = lines.findIndex((line, idx) => idx > lashStartIdx && line.startsWith('## '));
+    sections.push(lines.slice(lashStartIdx, lashEndIdx === -1 ? undefined : lashEndIdx).join('\n'));
+
+    return '\n' + sections.join('\n\n');
   } catch {
     err(`Error: Failed to read CLAUDE.dev.md from ${claudeDevPath}`);
     return '';
