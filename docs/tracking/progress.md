@@ -71,6 +71,181 @@
 - Issues: 8 个 open
 - 基线对比: 上次快照 2026-04-04 20:50 | 无代码变更, 新增 brownfield feature 设计制品
 
+## Progress Snapshot: 2026-04-08 21:10
+- 触发方式: benchmark 设计讨论后手动更新
+- 代码统计: 本次无源码变更，新增 benchmark 设计文档与计划文档
+- 当前版本: V0.0.6 周期内设计补充
+- 本次工作: NoPilot workflow benchmark 设计
+  - 明确 benchmark 同时服务回归守卫、平台横评、模型横评
+  - 确定三层结构: case layer / run layer / evaluation layer
+  - 确定评分模型: process 50 / outcome 30 / efficiency 20
+  - 确定首批 12 个 case，覆盖 discover/spec/build 的主要失效模式
+  - 确定 run 产物结构、event-log 抽取和 oracle 判分流程
+  - 新增设计文档: `docs/design/2026-04-08-nopilot-benchmark-design.md`
+  - 新增计划文档: `docs/plans/2026-04-08-nopilot-benchmark-plan.md`
+- 当前问题:
+  - transcript 到 event-log 的抽取规则仍需进一步形式化
+  - 多平台 transcript 差异较大，第一期需要限制输入格式范围
+  - 部分高层流程语义难以完全自动判分
+- 值得深入研究的问题:
+  - 是否单独定义 trace schema 作为平台无关中间层
+  - 是否为 benchmark 引入重复运行与稳定性统计
+  - 是否对 case 难度进行显式校准，避免排行榜被简单 case 主导
+
+## Progress Snapshot: 2026-04-08 22:25
+- 触发方式: benchmark 设计评审后手动修补
+- 代码统计: 本次无源码变更，修订 benchmark 设计与计划文档
+- 当前版本: V0.0.6 周期内设计修补
+- 本次工作:
+  - 将 benchmark 事件定义从直接绑定 transcript 细节改为 `observation events -> semantic events` 两层 trace schema
+  - 为 `oracle.json` 断言改用 semantic events，降低平台私有 transcript 差异对判分的影响
+  - 补入评分封顶规则：核心流程违规限制 process 分上限，并阻断 efficiency 抬分
+  - 补充 `F10/F11` 失败分类，覆盖 trace 不足不可判与 artifact 合同不匹配
+  - 将 `Stage Heatmap` 收敛为 `discover/spec/build`，并单独提出 `Review Heatmap`
+  - 在 MVP 路线中前置人工复核入口，避免高层语义误判后直接写死结论
+  - 同步更新计划文档，加入 `trace-schema.json`、artifact format profile 和人工复核回写流程
+- 当前问题:
+  - semantic event 的判定依据仍需在 schema 层进一步形式化，否则实现时仍可能漂移
+  - process fail run 的 efficiency 展示方式仍需在评分器中锁定，避免误导榜单解读
+- 值得深入研究的问题:
+  - contract case 与 prompt behavior case 是否需要分开维护与分开统计
+  - trace extractor 是否应作为独立模块版本化发布，便于回归比较
+
+## Progress Snapshot: 2026-04-08 21:45
+- 触发方式: 手动配置 OpenCode 自定义 API 源
+- 代码统计: 本次无仓库源码变更，修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 在 OpenCode 全局配置中新增 `provider.openai`，指向主人提供的兼容接口地址
+  - 保留现有 `vllm-local` provider 与默认模型配置，不改变当前默认模型选择
+  - 计划: 先完成 provider 注册并验证配置可被 `opencode debug config` 正常解析
+- 当前问题:
+  - 新 provider 仅注册了连接信息，尚未声明模型清单；若后续要直接切换使用，还需要补 `provider.custom-openai.models` 或手动指定可用模型 ID
+- 值得深入研究的问题:
+  - OpenCode 对兼容 OpenAI 接口在未显式声明 `models` 时的模型发现与选择行为是否稳定一致
+
+## Progress Snapshot: 2026-04-08 21:52
+- 触发方式: 消除 OpenAI OAuth 与自定义 API 源歧义
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 将自定义 provider 从 `openai` 改为独立命名 `custom-openai`
+  - 为该 provider 显式补充 `name` 与 `npm: @ai-sdk/openai-compatible`，避免与内建 `openai` provider 混用
+  - 保留现有默认模型不变，后续可按需显式使用 `custom-openai/<model-id>`
+- 当前问题:
+  - 自定义源最初未声明 `models` 列表，OpenCode 无法识别 `custom-openai/<model-id>`；需补显式模型映射
+- 值得深入研究的问题:
+  - OpenCode 对自定义 openai-compatible provider 的模型发现是否依赖服务端 `/models` 返回格式
+
+## Progress Snapshot: 2026-04-08 21:58
+- 触发方式: 修复自定义 provider 模型不可识别问题
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 通过请求自定义接口 `/v1/models` 确认服务端实际暴露的模型 ID
+  - 为 `custom-openai` 显式补充最小模型清单：`gpt-5.4`、`gpt-5.4-mini`、`gpt-5.3-codex`、`gpt-5-codex`
+  - 计划: 用 `opencode run -m custom-openai/gpt-5.4-mini` 做一次端到端验证
+- 当前问题:
+  - 当前仅录入最小常用模型，若主人要用其他模型，还需要继续补充到配置
+- 值得深入研究的问题:
+  - 是否需要写一个小脚本根据 `/v1/models` 自动同步 OpenCode 配置中的模型清单
+
+## Progress Snapshot: 2026-04-08 22:10
+- 触发方式: 主人要求统一提高 OpenCode 全部已声明模型的推理强度
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 查阅 OpenCode provider 文档与 AI SDK OpenAI-compatible 文档，确认聊天模型使用 `options.reasoningEffort`
+  - 为当前配置中全部已声明模型统一设置 `options.reasoningEffort: "high"`
+  - 覆盖范围: `vllm-local` 下 2 个 Qwen 模型，`custom-openai` 下 4 个 GPT/Codex 模型
+  - 计划: 用 `opencode debug config` 复核配置已被正确解析
+- 当前问题:
+  - 该配置仅覆盖 `opencode.jsonc` 中已显式声明的模型；后续新增模型不会自动继承，仍需补同字段
+  - 不同后端对 `reasoningEffort: "high"` 的实际支持程度可能不同，不支持的服务端可能忽略该字段
+- 值得深入研究的问题:
+  - 是否需要在 OpenCode 层增加统一的全局默认 providerOptions，避免逐模型重复配置
+  - 是否需要为本地 vLLM 服务核实其对 `reasoningEffort` 的透传和生效行为
+
+## Progress Snapshot: 2026-04-08 22:14
+- 触发方式: 主人要求将全部已声明模型的推理强度进一步改为 `xhigh`
+- 代码统计: 本次无仓库源码变更，继续修改用户级配置 `~/.config/opencode/opencode.jsonc`
+- 当前版本: V0.0.6 使用环境补充
+- 本次工作:
+  - 将 `vllm-local` 与 `custom-openai` 下全部已声明模型的 `options.reasoningEffort` 从 `high` 改为 `xhigh`
+  - 计划: 继续使用 `opencode debug config` 验证配置文件可正常解析
+- 当前问题:
+  - `xhigh` 不是前面查到的公开示例值；OpenCode 配置层会透传该字段，但具体后端是否识别需要以服务端实现为准
+- 值得深入研究的问题:
+  - 自定义兼容接口与 vLLM 后端各自接受的 `reasoningEffort` 枚举是否一致，是否需要按 provider 分别配置
+
+## Progress Snapshot: 2026-04-08 22:16
+- 触发方式: 主人要求进入 `/discover`，锁定 benchmark feature 的 MVP 与 requirement lock
+- 代码统计: 本次无源码变更，新增 benchmark feature discover 制品
+- 当前版本: V0.0.6 设计深化
+- 当前分支: `discussion/nopilot-benchmark`
+- 本次工作:
+  - 按 `feature mode` 完成 NoPilot benchmark 的 discover 收敛，未额外生成设计哲学
+  - 锁定第一期目标: 同时服务工作流回归守卫与平台/模型横评
+  - 锁定第一期边界: 自动运行、适配器运行器、单一标准 run profile、合成 fixture 为主、仅本地平台 CLI、仅本地运行
+  - 明确第一期非目标: 暂缓网页 Dashboard 与 case authoring UI
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/index.json`
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/requirements.json`
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/scenarios.json`
+  - 新增 discover 制品: `specs/features/feat-nopilot-benchmark/discover/history.json`
+- 当前问题:
+  - 当前仓库没有现成 profile/discover 制品可供该 feature 继承，discover index 仅保留 `profile_ref: ".nopilot/profile/"` 与空 `design_philosophy` 数组，后续若仍缺 profile，`/spec` 将按绿地式无代码画像路径继续
+  - phase 1 已锁单一 run profile，但标准字段与 adapter contract 仍需在 spec 阶段形式化
+  - 平台准入已锁定为“只接完整 trace 平台”，但完整性的最低字段门槛仍需在 spec 阶段明确
+  - 评分锁定规则已补到 discover requirement：`process_score < 25` 触发 `process_fail`，`F1-F4` 命中时 process 分封顶 `20/50`
+  - failure taxonomy 的名称与 `needs_review/F10` 映射已补入 discover requirement，后续 spec 仍需把字段落到 scorer 与 verdict schema
+- 值得深入研究的问题:
+  - benchmark adapter contract 是否应单独版本化，避免 runner 与 scorer 演进不同步
+  - phase 2 引入 CI 子集门禁时，如何在时长、稳定性与回归覆盖之间取得平衡
+  - `trace_insufficient` 的最小触发条件是否需要按 semantic event 类型拆分，避免不同 case 共用过粗粒度规则
+
+## Progress Snapshot: 2026-04-08 22:39
+- 触发方式: 主人要求进入 `/spec`，对 benchmark feature 做模块级设计展开
+- 代码统计: 本次无源码实现变更，新增 benchmark feature spec 制品
+- 当前版本: V0.0.6 设计深化
+- 当前分支: `discussion/nopilot-benchmark`
+- 本次工作:
+  - 基于 `feat-nopilot-benchmark` discover 制品完成 `/spec` 展开
+  - 新增 `spec.json`，将 benchmark 拆成 8 个模块: CLI surface、contracts、suite catalog、runner、trace pipeline、evaluator、review store、reporting
+  - 明确 benchmark 接入点在 `nopilot` CLI，而不是 `lash` CLI
+  - 明确 phase-1 运行资产与运行时边界: 版本化 case 置于 `benchmark/`，本地 run 产物置于 `.nopilot/benchmark/runs/`
+  - 明确 phase-1 只支持一个标准 run profile: `phase1-local-cli-v1`
+  - 明确 adapter / trace / scorer / review 的模块边界，作为后续 `/build` 输入
+  - 新增 spec 制品: `specs/features/feat-nopilot-benchmark/spec.json`
+  - 新增 decisions 制品: `specs/features/feat-nopilot-benchmark/decisions.json`
+  - 新增 spec review 制品: `specs/features/feat-nopilot-benchmark/spec_review.json`
+- 当前问题:
+  - spec 已锁 `benchmark/` 与 `.nopilot/benchmark/runs/` 两条路径，但是否需要额外 gitignore 规则仍要在实现时确认
+  - 当前 spec 依赖本地平台 CLI 提供足够 transcript 记录；不同平台如何稳定映射到 `phase1-local-cli-v1` 仍是 build 阶段最高风险
+  - discover 中已声明 `.nopilot/profile/`，但现有 profile 没有 benchmark 相关模块画像；后续如果希望 feature mode 强继承 benchmark 既有架构，还需要在 profile 体系里补位
+  - 第一轮独立 spec 审阅指出的四个核心契约缺口已补齐：run metadata 必填字段、official suite 的 profile/平台准入、F1-F11 taxonomy 枚举化、needs_review 到 review-store 的显式衔接
+- 值得深入研究的问题:
+  - `phase1-local-cli-v1` 是否应单独做成公开 schema 版本线，便于历史 run 横向兼容与升级迁移
+  - benchmark suite manifest 是否需要区分 contract cases 与 prompt-behavior cases，避免同榜混淆
+  - adapter 记录的 transcript 粒度是否要统一到 message/tool/artifact 三种最小事件，还是允许更细粒度记录后再降采样
+
+## Progress Snapshot: 2026-04-08 22:48
+- 触发方式: 主人要求先用 `/build` Step 2 为 benchmark feature 生成 tests 制品，以满足 `lash-build` 前置条件
+- 代码统计: 本次无源码实现变更，新增 benchmark feature tests 制品
+- 当前版本: V0.0.6 设计深化
+- 当前分支: `discussion/nopilot-benchmark`
+- 本次工作:
+  - 读取 `/build` 与 `test-gen` 合同，确认 feature mode 下 tests 应写到 `specs/features/feat-nopilot-benchmark/tests.json`
+  - 基于 benchmark spec 生成单文件 `tests.json`，覆盖 10 个 example cases 与 5 个 property cases
+  - 覆盖重点包括: CLI surface、run metadata、phase1-local-cli-v1、official suite >=10 case、F1-F11 taxonomy、process_fail、needs_review->review-store、JSON/Markdown 报告
+  - 新增独立 tests review 制品: `specs/features/feat-nopilot-benchmark/tests_review.json`
+- 当前问题:
+  - 现有仓库在 single-file `tests.schema.json` 与 split `tests_index.schema.json` 的 `phase` 字段上存在不一致；本次为降低合同风险，先采用单文件 tests artifact
+  - 当前 `tests_review.json` 是基于已锁定 spec 的人工生成审阅结果，尚未经过独立 tests Critic 子代理复核
+  - `lash-build` 文档默认引用 greenfield 路径，后续正式进入编排时仍需显式使用 feature 路径，避免误读 `specs/` 根目录
+- 值得深入研究的问题:
+  - 是否需要在 phase 2 统一修复 single/split tests artifact 的 `phase` 字段合同不一致问题
+  - benchmark tests 是否应再细分一组专门针对 adapter 认证失败与非 ranked platform 的 acceptance cases
+
 ## Progress Snapshot: 2026-04-09 19:55
 - 触发方式: 排查并修复 issue #78 及同类 split artifact 入口缺口
 - 代码统计: 本次修改 `lash` resolver、CLI、profile writer 与相关测试，补充 split artifact 回归覆盖
@@ -86,12 +261,26 @@
 - 值得深入研究的问题:
   - 是否将 `decisions.json`、未来的 `tests_review` / `build_review` 等 artifact 也统一纳入一层通用 resolver API，进一步消除不同子系统各自读取 JSON 的重复实现
 
+## Progress Snapshot: 2026-04-09 20:40
+- 触发方式: PR #79 审查后修复 split build artifact 入口契约偏差
+- 代码统计: 本次修正 `profile writer` 的 build artifact 入口解析，并补齐 build resolver 回归测试
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 将 `src/profile/writer.ts` 的 artifact 入口解析改为显式区分单文件名与 split 目录名，避免把 `build_report.json` 错当成 `build_report/` 目录合同
+  - 将 split build profile 测试 fixture 从错误的 `build_report/index.json` 改为合同规定的 `build/index.json`
+  - 在 `tests/spec-resolver.test.ts` 新增 `resolveBuildReport()` 的单文件、目录、显式 `index.json` 与缺子文件回归覆盖
+  - 在 `src/profile/__tests__/writer.test.ts` 补充 `framework` 断言，确认 L3 测试覆盖率信息完整保留
+- 当前问题:
+  - `framework` 仍属于 build report 中的弱契约字段，extractor 会读取，但 schema 尚未将其声明为必需或可选属性
+- 值得深入研究的问题:
+  - 是否应让 profile writer 完全复用 `findArtifactPath()` 一类统一入口发现逻辑，进一步减少路径合同分叉风险
+
 ## Progress Snapshot: 2026-04-09 21:05
 - 触发方式: 子 agent 复审后修补 split child payload 静默降级缺陷
 - 代码统计: 本次修改 `spec-resolver` 与回归测试，新增 malformed split child 负向覆盖
 - 当前版本: V0.0.6 缺陷修复中
 - 本次工作:
-  - 将 `resolveTests()` / `resolveBuildReport()` 对 split child payload 的数组字段读取从“非数组则吞掉”改为“明确抛出 `INVALID_CHILD_PAYLOAD`”
+  - 将 `resolveTests()` / `resolveBuildReport()` 对 split child payload 的数组字段读取从”非数组则吞掉”改为”明确抛出 `INVALID_CHILD_PAYLOAD`”
   - 新增 `tests/spec-resolver.test.ts` 负向用例，覆盖 split tests child 与 split build child 字段类型错误场景
   - 收紧错误语义，避免上游生成畸形 split child 文件时出现 silent data loss
 - 当前问题:
@@ -118,7 +307,7 @@
 - 当前版本: V0.0.6 缺陷修复中
 - 当前分支: fix/issues-74-75
 - 本次工作:
-  - 在 `commands/discover|spec|build/SKILL.md` 明确“显式阶段命令或等价指令视为已确认，直接进入，不得重复确认”
+  - 在 `commands/discover|spec|build/SKILL.md` 明确”显式阶段命令或等价指令视为已确认，直接进入，不得重复确认”
   - 新增 `commands/discover/recovery.md`、`commands/spec/recovery.md`、`commands/build/recovery.md`，要求用户纠偏后必须重新加载阶段技能并输出 **已完成 / 待执行 / 下一步** 摘要
   - 更新 `CLAUDE.dev.md` 与仓库 `CLAUDE.md`，使阶段入口与纠偏恢复规则在模板和维护文档中一致
   - 调整 `src/nopilot-cli.ts` 的 directive 提取逻辑，使 `nopilot init` 注入项目 `CLAUDE.md` 时同时带上阶段触发规则与 Lash 段落
@@ -127,3 +316,137 @@
   - `spec` / `build` 主技能原本就贴近行数上限，后续若继续增加入口协议，应优先放到子技能，避免再次触发结构性超限
 - 值得深入研究的问题:
   - 是否需要在运行时状态层新增更强的 phase reset 事件，还是继续以阶段技能 + `lash state resume` 的权威回读为主
+
+## Progress Snapshot: 2026-04-10 00:35
+- 触发方式: 修复 issue #64 的 plan-generator ownership fallback 缺口
+- 代码统计: 本次修改 `src/lash/plan-generator.ts`、`tests/plan-generator.test.ts`、`tests/worktree-manager.test.ts` 与 `docs/zh-CN/USER_GUIDE.md`
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-64-plan-generator-batches`
+- 本次工作:
+  - 将 `plan-generator` 在缺失 `owned_files` 时的行为改为在 plan 生成阶段直接抛错（fail-closed），列出所有缺失 `owned_files` 的模块 ID
+  - 新增 `tests/plan-generator.test.ts` 回归覆盖，确认缺失 ownership 不再伪造 wildcard ownership，也不会把同目录 sibling 模块被动串行化
+  - 新增 `tests/worktree-manager.test.ts` 回归覆盖，明确 `checkUnexpectedFiles` 仍按显式文件路径做 merge 前边界检查，`src/**` 这类字符串不会被当成授权模式
+  - 同步更新 `docs/zh-CN/USER_GUIDE.md`，补充缺失 `owned_files` 的 fail-closed 语义与边界检查说明
+- 当前问题:
+  - 现有 schema 仍只把 `owned_files` 视为可选字段，没有进一步约束“缺失 ownership 是否应阻断构建”；当前修复仅保证语义一致，不额外引入新的 hard fail
+- 值得深入研究的问题:
+  - 是否应在后续版本把 `owned_files` 提升为更强合同（例如 spec 阶段必填，或在 `lash plan` 中将缺失 ownership 升级为显式错误），从源头消除 ownership 不完整问题
+
+
+## Progress Snapshot: 2026-04-10 01:45
+- 触发方式: 修复 GitHub issues #63 与 #67（`lash package`/`/lash-build` 前置条件与文档契约）
+- 代码统计: 本次修改 `src/lash/cli.ts`、`src/lash/task-packager.ts` 与对应回归测试，并同步更新 `commands/`、schema 与中文用户指南
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - `lash package` 在缺失 `--tests` 时改为 fail-fast，直接返回带恢复指引的错误，而不再静默构造空 tests 载荷
+  - `generatePackage()` 在模块缺失 `owned_files` 时明确抛出 `missing_owned_files`，避免生成空的 `.lash/owned_files.txt` 破坏 Worker 边界
+  - `missing_tests` 报错补充恢复指引，明确 `--tests <path>`、`specs/tests.json` / `specs/tests/` / `specs/tests/index.json` 以及 `/build` Step 2 / `commands/build/test-gen.md` 的生成路径
+  - 同步更新 `/lash-build` 前置条件、`spec` 模板、`spec.schema.json` 与 `docs/zh-CN/USER_GUIDE.md`，将 `owned_files` 与 tests artifact 都提升为显式上游契约
+- 计划 / 下一步:
+  - 运行受影响测试、TypeScript 诊断、全量测试与构建验证，确认无回归后拆分提交并创建 PR
+- 当前问题:
+  - `plan-generator` 仍对缺失 `owned_files` 保留兼容性推断；当前修复选择在 package/build 入口硬阻断，在计划层保持向后兼容，后续可再评估是否统一收紧
+- 值得深入研究的问题:
+  - 是否应把 spec artifact 的 schema 校验前移到 `/spec` 写出阶段或 resolver 层，从而在 `owned_files` 等关键字段缺失时更早阻断，而不是等到 `lash package` / `/lash-build` 才暴露问题
+
+## Progress Snapshot: 2026-04-10 02:02
+- 触发方式: Oracle 最终审查后的契约收口
+- 本次工作:
+  - 根据 Oracle 审查补充 `tests/spec-schema.test.ts`，锁定 `schemas/spec.schema.json` 对空 `owned_files` 的拒绝行为
+  - 将 `schemas/spec.schema.json` 的 `owned_files` 约束从“字段存在”收紧为“字段存在且至少包含 1 个条目”
+  - 同步更新 `commands/spec/schema.md` 与中文用户指南，将 `owned_files` 的口径统一为“缺失或为空都会阻断执行”
+- 当前问题:
+  - 无新的阻断性问题；等待重跑验证与最终 Oracle 放行
+
+## Progress Snapshot: 2026-04-10 14:45
+- 触发方式: 修复 discover review gate 相关 issue #69 / #70 / #48 / #58
+- 代码统计: 本次未改运行时代码，收紧 `discover` prompt 合同并补充结构测试
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 将 `commands/discover/SKILL.md` 明确改为：Layer 3 与 artifact 写入后不得视为 discover 完成，下一步必须进入 Critic + Supervisor review gate
+  - 将 `commands/discover/critic-supervisor.md` 明确改为：禁止主代理内联 Critic/Supervisor、禁止手工写 `passed/aligned` 通过、Critic 自修复后必须由 fresh Critic 复检
+  - 将 `commands/discover/artifact-writer.md` 去掉提前提示 `Run /spec to continue.` 的放行文案，改为仅回传写入确认并等待 review gate 完成
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 增加回归断言，锁定上述 discover review 合同
+  - 根据独立复核继续收紧边界：`artifact-writer` 不再宣称写入 `discover_review.json`，且 `critic-supervisor` 明确“用户手工处理发现的问题后也必须先拿到 fresh Critic pass，才能进入 Supervisor”
+- 下一步计划:
+  - 重新运行 `skill-structure` 定向测试与类型检查，确认 Oracle 指出的剩余两处合同缺口已被锁定
+  - 若重新验证通过，再复核全量测试 / build 结果与变更概况
+- 当前问题:
+  - `README_AGENT.md` 与部分旧说明仍保留 lite/spec 的 same-session Critic 叙述；本次 issue 目标集中在 discover，后续是否统一口径仍需单独决策
+- 值得深入研究的问题:
+  - 是否应把“主流程不得手工写 passed/aligned、必须等待独立 review artifact”沉淀成跨 discover/spec/build 的统一结构测试模板
+  - 是否需要在 `workflow.json` 或 schema 层新增更显式的 review-gate 完成信号，减少 prompt 文本与 artifact 状态机之间的歧义
+
+## Progress Snapshot: 2026-04-10 18:45
+- 触发方式: 根据 PR #80 review 与 Oracle 复核继续修补 merge blocker
+- 代码统计: 本次继续修改 prompt contract 与结构测试，未触碰 TypeScript 运行时代码
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 在 `commands/spec/SKILL.md` 增加 discover review 硬门禁：`/spec` 现在必须读取同一 artifact root 下的 `discover_review.json`，并校验四个 Critic pass 字段与 `global_coherence_check.intent_alignment == "aligned"`
+  - 将 `commands/discover/SKILL.md`、`commands/discover/critic-supervisor.md`、`commands/critic/discover.md` 的 discover review 输入/输出路径统一为 greenfield 与 feature 共用“current artifact root”模型
+  - 将 `commands/spec/schema.md`、`commands/spec/review-runner.md`、`commands/spec/decisions.md`、`commands/critic/spec.md` 改为沿用当前 artifact root，避免 feature discover 驱动下仍回写全局 `specs/`
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 补充 `/spec` gate、feature-aware review path、spec artifact root 一致性的结构回归断言
+- 下一步计划:
+  - 先运行 `skill-structure` 定向测试，确认新增合同断言全部落地
+  - 若定向测试通过，再运行 `pnpm test`、`pnpm lint`、`pnpm build`，最后交给子代理做代码审查
+- 当前问题:
+  - LSP 本地缺少 `typescript-language-server`，无法用 LSP 直接做 TypeScript 诊断，只能依赖测试与构建验证
+- 值得深入研究的问题:
+  - 是否应在 `workflow.json` 与用户文档中把 `/spec` 的输入依赖显式提升为“discover artifact + discover review artifact”
+  - 是否应为 discover/spec review artifact 增加 root/hash 绑定，防止人工修改 discover 后继续复用陈旧 review
+
+## Progress Snapshot: 2026-04-10 19:20
+- 触发方式: 为 ULTRAWORK 完成性验收补充可审计证据
+- 代码统计: 本次未改业务合同，仅补充验证与 review 证据记录
+- 当前版本: V0.0.6 缺陷修复中
+- 当前分支: `fix/issue-48-58-69-70-discover-review`
+- 本次工作:
+  - 再次执行并通过定向结构测试：`pnpm test src/skill-engine/__tests__/skill-structure.test.ts`
+  - 在当前 worktree 再次执行并通过全量验证：`pnpm test`、`pnpm lint`、`pnpm build`
+  - 清理本地产生的 `.benchmark/` 未跟踪测试产物，确认工作树恢复干净状态
+  - 追加子代理终审证据：快速子代理复核认为 PR #80 当前阻塞已关闭、范围内无新 blocker，且 GitHub 状态为 `mergeStateStatus: CLEAN`
+  - 记录 Oracle 终审的关键结论：代码修补方向正确，先前未通过完成性验收的原因是“审计证据不足”，而非“仍有代码阻塞”
+- 当前问题:
+  - GitHub 侧仍显示 `gh pr checks 80` 为 `no checks reported`；本轮验收依赖本地完整验证日志与子代理/Oracle 复核证据，而非远端 CI 记录
+- 值得深入研究的问题:
+  - 是否需要把 review 子代理与本地验证结果自动沉淀为仓库内标准化验收记录，避免后续 ULTRAWORK/Oracle 验收时再次因“证据不集中”被卡住
+
+## Progress Snapshot: 2026-04-10 01:35
+- 触发方式: 修复 issue #65 / #66（lash phase 泄漏与 build-state phase 门禁）
+- 代码统计: 本次修改 `src/lash` 状态机、`commands/lash-build.md` 调度约束、回归测试与跟踪文档
+- 当前版本: V0.0.6 缺陷修复中
+- 本次计划:
+  - 为 `build-state` 补齐 `tracer_completed` 事件与最小 phase 前置条件校验
+  - 为 `lash-build` 子 agent dispatch 显式传递 `current_phase` / `stage_guard`，防止 tracer、batch、verify 串阶段
+  - 运行受影响测试、全量测试、lint 与 build，整理为可合并 PR
+- 本次工作:
+  - 在 `src/lash/types.ts` / `src/lash/build-state.ts` 中引入 `tracer_completed` 与 phase guard 语义，阻止从 `planning` 直接进入 batch / critic / completion
+  - 更新 `tests/build-state.test.ts` 与 `tests/cli-cleanup.test.ts`，补齐 phase-aware 回归覆盖与 CLI `state update tracer_completed` 入口验证
+  - 更新 `commands/lash-build.md`，为 tracer / batch / verify 子 agent dispatch 添加显式 `current_phase` 与 `stage_guard` 约束，并修正 tracer 状态更新命令示例的引号闭合
+  - 在 `src/skill-engine/__tests__/skill-structure.test.ts` 增补 lash-build dispatch guard 断言，避免后续回归
+  - 补齐 `commands/lash-verify/build-critic.md` 与 `commands/lash-verify/supervisor.md` 的状态写回说明，使 `build_critic_*` / `supervisor_*` 事件与 `current_phase` 真正形成闭环
+  - 修正 `commands/lash-tracer/test-handler.md` 的 L2 暂停字段名，使其与 `build-state` 识别的 `reason` 契约一致
+  - 更新 `docs/zh-CN/USER_GUIDE.md` 中 build-state 事件数、`tracer_completed` 与 phase 前置条件说明，补齐用户侧文档
+  - 收紧 `build_completed` 的完成条件，要求最近一次 Build Critic / Supervisor verdict 都为 passed，避免 review 未通过也能完成构建
+  - 让 `build_critic_failed` / `supervisor_failed` 在未进入 pause 前先落到顶层 failed 状态，并把 verify spawn 事件前移到产物写入之前，补齐审计时序
+- 当前问题:
+  - `lash-build` 的 `stage_guard` 目前仍属于 prompt 级软约束；若后续需要更强保证，可继续演进为结构化 runtime contract
+- 值得深入研究的问题:
+  - 是否应将 Lash 各阶段 dispatch 从“自由文本提示”继续收敛为统一的结构化上下文契约（phase/stage_guard/input/output），并由结构测试统一校验
+
+## Progress Snapshot: 2026-04-10 04:05
+- 触发方式: 跟进 PR #84 二轮 review，补齐 review pass 结果与 supervisor 进入门禁的最后缺口
+- 代码统计: 本次继续修改 `src/lash/build-state.ts`、回归测试、verify 提示契约与用户文档
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 为 `supervisor_spawned` 增加 runtime 硬门禁，要求最近一次 Build Critic 结果必须为 `build_critic_passed`，避免仅凭进入 `build_critic` phase 就可推进到 Supervisor
+  - 调整 `tests/build-state.test.ts` 与 `tests/cli-cleanup.test.ts` 的负向用例，使其对齐新的 runtime 语义，并补充 artifact 不应被误清理的断言
+  - 补充 `commands/lash-verify/build-critic.md` 的 L3 路径暂停写回，确保 human-blocking 路径不会停留在 `in_progress`
+  - 更新 `commands/lash-build.md`、`src/skill-engine/__tests__/skill-structure.test.ts` 与 `docs/zh-CN/USER_GUIDE.md`，同步 completion gate / spawn 顺序 / paused 契约
+  - 运行定向回归、全量测试、lint 与 build，验证当前修补未引入新增回归
+- 当前问题:
+  - `lash-build` 仍通过 prompt 合同驱动 verify orchestration；若后续引入结构化 runtime contract，可进一步减少文档与实现漂移风险
+- 值得深入研究的问题:
+  - 是否应在 `build-state.json` 中显式持久化”最近一次 review verdict”而不是完全依赖 `transition_log` 倒推 gate，以降低未来状态机复杂度

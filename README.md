@@ -20,7 +20,8 @@ NoPilot is a three-stage workflow that takes you from requirement exploration to
 
 ### Prerequisites
 
-- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) or Codex CLI installed and configured
+- [Claude Code](https://docs.anthropic.com/en/docs/claude-code) installed and configured
+- Codex CLI and OpenCode CLI are also supported for shared skill installation and Lash workers
 - Node.js >= 20.0.0
 
 ### Install
@@ -40,14 +41,17 @@ cd your-project
 nopilot init
 ```
 
-This installs Claude command files from `commands/` to `~/.claude/commands/` and Codex prompt files from `prompts/codex/` to `~/.codex/prompts/`, creates `specs/` directory, and appends Lash auto-trigger context to any existing `CLAUDE.md`, `AGENTS.md`, or `opencode.md`. Schemas and `workflow.json` stay in the npm package — run `nopilot paths` to locate them.
+This renders the package skills from `commands/` into `~/.claude/skills/` for Claude Code and `~/.agents/skills/` for Codex/OpenCode (shared), creates the `specs/` directory, and appends Lash auto-trigger context to any existing `CLAUDE.md`, `AGENTS.md`, or `opencode.md`. Schemas and `workflow.json` stay in the npm package — run `nopilot paths` to locate them.
 
 ### Start using
 
+Open your AI coding tool and start from the installed `discover` skill.
+
 ```bash
 claude   # Claude Code: then run /discover
-codex    # Codex: then run /prompts:discover
 ```
+
+Codex and OpenCode share the installed skills under `~/.agents/skills/`.
 
 ## Why This Approach
 
@@ -139,32 +143,38 @@ your-project/
 Global files installed by `nopilot init`:
 
 ```
-~/.claude/commands/          # Slash commands (global, shared across projects)
-├── discover.md              # /discover
-├── spec.md                  # /spec
-├── build.md                 # /build
-├── visualize.md             # /visualize
-├── supervisor.md            # Supervisor agent
-├── critic.md                # Critic agent
-└── lash-*.md                # 7 Lash orchestration prompts
+~/.claude/skills/            # Claude Code skills (global, shared across projects)
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 
-~/.codex/prompts/            # Codex prompt files (global, shared across projects)
-├── discover.md
-├── spec.md
-├── build.md
-├── visualize.md
-├── supervisor.md
-├── critic.md
-└── lash-*.md
+~/.agents/skills/            # Shared by Codex and OpenCode
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 ```
 
-Claude installs from package `commands/`. Codex installs from package `prompts/codex/`.
+Package source skills live under `commands/` and are rendered into platform-specific skill directories by `nopilot init`.
 
 Schemas (14 JSON Schema files) and `workflow.json` stay in the npm package. Run `nopilot paths` to locate them.
 
 ## Current Scope (V1.2, Schema 4.0)
 
-**Included:** Three-stage workflow on Claude Code and Codex, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor with drift detection, Critic with AI bias catalog), generation-review separation, progressive idea collection, design philosophy extraction, completeness tracking, domain model and NFR outputs, artifact visualization, directory-split support for large projects, integrated Lash multi-agent build engine (TypeScript), dual CLI (`nopilot` + `lash`), npm distribution.
+**Included:** Three-stage workflow with unified skill distribution for Claude Code, Codex, and OpenCode, Greenfield projects, pure prompt engineering, full core guardrails (Supervisor with drift detection, Critic with AI bias catalog), generation-review separation, progressive idea collection, design philosophy extraction, completeness tracking, domain model and NFR outputs, artifact visualization, directory-split support for large projects, integrated Lash multi-agent build engine (TypeScript), dual CLI (`nopilot` + `lash`), npm distribution.
 
 **Not included:** Brownfield/incremental iteration, agent consensus (declared, not yet wired), iOS remote agent, multi-model routing.
 

@@ -9,8 +9,8 @@
 
 ## Input
 
-- `specs/discover.json` or `specs/discover/index.json`
-- `specs/spec.json` or `specs/spec/index.json`
+- `discover.json` or `discover/index.json` under the current artifact root
+- `spec.json` or `spec/index.json` under the current artifact root
 
 ---
 
@@ -38,7 +38,7 @@ Scan the spec artifact for any user-facing behavior (not technical behavior like
 
 ## Output
 
-Write to `specs/spec_review.json`:
+Write to `spec_review.json` under the current artifact root (`specs/spec_review.json` in greenfield mode, or `specs/features/feat-{featureSlug}/spec_review.json` in feature mode):
 
 ```json
 {
@@ -123,7 +123,7 @@ Perform an additional **Impact Audit** after the standard backward verification:
 3. **Dependency Direction Changes**: Check whether any new `dependency_graph` edges in the spec introduce direction reversals (A→B where B→A already exists in L1) or new cross-layer dependencies.
 4. **Breaking Changes**: Any change that would require callers of an existing interface to be updated is a breaking change.
 
-Record the impact audit result in `specs/features/feat-xxx/spec_review.json` under the `impact_audit` field:
+Record the impact audit result in the current artifact root's `spec_review.json` under the `impact_audit` field:
 
 ```json
 {
@@ -148,7 +148,7 @@ This step applies only when `mode=feature` and L1 profile is available. In green
 ## On Issue
 
 1. Attempt to fix the spec artifact to align with the discover artifact.
-2. **You may ONLY modify the spec artifact (`specs/spec.json` or files under `specs/spec/`). You must NEVER modify upstream artifacts.**
+2. **You may ONLY modify the current spec artifact root (`specs/spec.json` or files under `specs/spec/`, or the feature-scoped equivalent under `specs/features/feat-{featureSlug}/`). You must NEVER modify upstream artifacts.**
 3. After fix, a fresh Critic instance re-runs verification from the top (no prior-cycle context).
 4. If fix succeeds: record what was fixed in `self_fix_log`, mark passed.
 5. If still failing after reaching the self-fix cap:

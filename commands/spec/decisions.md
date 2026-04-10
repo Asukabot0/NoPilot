@@ -2,7 +2,7 @@
 
 # spec/decisions — Phase 5: Decision Ledger
 
-Append this stage's auto_decisions to `specs/decisions.json` (create if not exists). This file is the unified decision audit trail across all stages.
+Append this stage's auto_decisions to `decisions.json` under the current artifact root (`specs/decisions.json` in greenfield mode, or `specs/features/feat-{featureSlug}/decisions.json` in feature mode). Create the file if it does not exist. This file is the unified decision audit trail across all stages within that artifact root.
 
 ```json
 {
@@ -25,4 +25,4 @@ If the file already exists (e.g., from a previous /discover run), **append** to 
 
 After appending:
 
-> "spec artifacts written to specs/. Generate visualization by running: open specs/views/spec.html (or run /visualize for full dashboard). Run /build to continue."
+> "spec artifacts written to the current artifact root. Run /visualize for the dashboard, then run /build to continue."

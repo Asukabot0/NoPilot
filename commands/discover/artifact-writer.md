@@ -5,13 +5,16 @@
 
 You are a subagent. Your job: read the current discover artifact state and finalize all JSON files. Do NOT interact with the user directly. Return a brief confirmation summary to the main agent.
 
+This step does **not** complete `/discover`. Do NOT tell the user to run `/spec`, do NOT emit a completion message, and do NOT bypass the mandatory Critic + Supervisor review gate that follows.
+
 ### Feature Mode: Artifact Output Path
 
-**If `mode=feature`**: Write all artifacts to `specs/features/feat-{featureSlug}/` instead of `specs/`. Specifically:
+**If `mode=feature`**: Write the discover-stage artifacts to `specs/features/feat-{featureSlug}/` instead of `specs/`. Specifically:
 - `specs/features/feat-{featureSlug}/discover.json` (or split: `specs/features/feat-{featureSlug}/discover/index.json`)
 - `specs/features/feat-{featureSlug}/discover_history.json`
-- `specs/features/feat-{featureSlug}/discover_review.json`
 - Mockups (if UI Taste ran): `specs/features/feat-{featureSlug}/mockups/`
+
+`specs/features/feat-{featureSlug}/discover_review.json` is **not** written by this artifact writer. It is created later by the mandatory independent Critic + Supervisor review gate.
 
 In the discover artifact, add a `profile_ref` field pointing to the project profile:
 ```json
@@ -20,7 +23,7 @@ In the discover artifact, add a `profile_ref` field pointing to the project prof
 Feature artifacts reference the profile by path — they do not copy profile data into the feature artifact.
 
 After writing, output:
-> "Feature discover artifacts written to specs/features/feat-{featureSlug}/. Run /spec to continue."
+> "Feature discover artifacts written to specs/features/feat-{featureSlug}/. Main agent must now trigger Critic + Supervisor review before presenting completion or `/spec`."
 
 **If `mode=greenfield`**: Write artifacts to `specs/` as defined below.
 
@@ -207,4 +210,4 @@ written: [list of file paths written]
 format: single | split
 ```
 
-Keep total output under 500 chars. The main agent will present the completion message to the user.
+Keep total output under 500 chars. The main agent may present the completion message to the user only after Critic + Supervisor both pass.

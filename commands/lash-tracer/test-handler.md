@@ -38,7 +38,7 @@ Read the `level` from the JSON output. Use this as a hint, but make your own fin
 
 - **L2 (contract impact)**: behavior contradicts spec. STOP. Update state:
   ```
-  bash "lash state update build_paused --data '{\"pause_reason\": \"l2\", \"detail\": \"<description>\"}'"
+  bash "lash state update build_paused --data '{\"reason\": \"l2\", \"detail\": \"<description>\"}'"
   ```
   Present the user with product-level options: ACCEPT_DEGRADATION, CUT_FEATURE, MODIFY_SPEC, RETRY_DIFFERENT_APPROACH, BACKTRACK_DISCOVER.
 

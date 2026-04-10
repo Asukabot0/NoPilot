@@ -19,6 +19,12 @@ Then compare your results with the `acceptance_result` from `specs/build_report.
 - If they agree: alignment confirmed
 - If they DISAGREE: flag the divergence — this means the auto-acceptance has bias
 
+Mark the review as started before you generate outputs:
+
+```
+bash "lash state update build_critic_spawned --data '{}'"
+```
+
 Write `specs/build_review.json`:
 ```json
 {
@@ -33,6 +39,19 @@ Write `specs/build_review.json`:
 }
 ```
 
-If recommendation is `pass`: return to `SKILL.md` and proceed to Step 4 (supervisor).
-If `L2`: pause, present product-level options to user.
-If `L3`: halt, present backtrack options.
+After completing the review:
+
+- If recommendation is `pass`, persist the successful review and then return to `SKILL.md` and proceed to Step 4 (supervisor):
+  ```
+  bash "lash state update build_critic_passed --data '{}'"
+  ```
+- If recommendation is `L2`, persist the failed review, then pause and present product-level options to user:
+  ```
+  bash "lash state update build_critic_failed --data '{\"detail\": \"<description>\"}'"
+  bash "lash state update build_paused --data '{\"reason\": \"critic\", \"detail\": \"<description>\"}'"
+  ```
+- If recommendation is `L3`, persist the failed review and halt with backtrack options:
+  ```
+  bash "lash state update build_critic_failed --data '{\"detail\": \"<description>\"}'"
+  bash "lash state update build_paused --data '{\"reason\": \"critic\", \"detail\": \"<description>\"}'"
+  ```

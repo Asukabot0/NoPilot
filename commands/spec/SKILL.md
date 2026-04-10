@@ -23,9 +23,11 @@ You are performing constrained design expansion. Module decomposition, interface
 
 ## Input
 
-Verify that a discover artifact exists (`specs/discover.json` or `specs/discover/index.json`). If missing, inform the user: "Run /discover first to generate the discover artifact." and halt.
+Verify that a discover artifact exists (`specs/discover.json`, `specs/discover/index.json`, `specs/features/feat-{featureSlug}/discover.json`, or `specs/features/feat-{featureSlug}/discover/index.json`). If missing, inform the user: "Run /discover first to generate the discover artifact." and halt.
 
-Read the discover artifact. If it is split, read `specs/discover/index.json` first, then load `requirements.json`, `scenarios.json`, and `history.json` as needed. Check the artifact's `mode` to determine full or lite behavior.
+Read the discover artifact from its artifact root. Use that same artifact root for all `/spec` outputs (`spec.json`, `spec_review.json`, and `decisions.json`). Before Phase 1, read the matching `discover_review.json` from that root (`specs/discover_review.json` or `specs/features/feat-{featureSlug}/discover_review.json`). If it is missing, or if any of `6cs_audit.passed`, `invariant_verification.passed`, `acceptance_criteria_verification.passed`, or `coverage_verification.passed` is not `true`, or if `global_coherence_check.intent_alignment != "aligned"`, inform the user: "Finish `/discover` review before running `/spec`." and halt.
+
+If the discover artifact is split, read `index.json` first, then load `requirements.json`, `scenarios.json`, and `history.json` as needed. Check the artifact's `mode` to determine full or lite behavior.
 If `specs/build_report.json` or `specs/build/index.json` exists (backtrack from /build), read it too for diagnostic context.
 
 ### Feature Mode: Code Awareness

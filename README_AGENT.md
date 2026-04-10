@@ -1,37 +1,44 @@
 # NoPilot — Agent Reference
 
-NoPilot is an AI Native three-stage development workflow (`discover` → `spec` → `build`) running as Claude Code slash commands or Codex prompt files.
+NoPilot is an AI Native three-stage development workflow (`discover` → `spec` → `build`) distributed as installed skills for Claude Code, Codex, and OpenCode.
 
 ## Installation
 
-### 1. Copy files into the target project
+### 1. Install and initialize
 
 ```bash
-cp -r .claude/commands/ /path/to/project/.claude/commands/
-cp workflow.json /path/to/project/
-mkdir -p /path/to/project/specs
+npm install -g nopilot
+cd /path/to/project
+nopilot init
 ```
 
-For Codex, copy `prompts/codex/` to `~/.codex/prompts/` instead of `.claude/commands/`.
+`nopilot init` will:
+
+- render package skills from `commands/` into `~/.claude/skills/` for Claude Code
+- render the same skill set into `~/.agents/skills/` for Codex and OpenCode
+- create `specs/` with `.gitkeep`
+- append Lash auto-trigger context to any existing `CLAUDE.md`, `AGENTS.md`, or `opencode.md`
 
 Result:
 
 ```
 project/
-├── .claude/commands/
-│   ├── discover.md
-│   ├── spec.md
-│   ├── build.md
-│   ├── supervisor.md
-│   ├── critic.md
-│   └── visualize.md
-├── specs/               # Runtime artifacts (empty until first run)
-└── workflow.json
+├── specs/
+│   └── .gitkeep
+├── CLAUDE.md            # Existing project context file, if present
+└── ...
 ```
 
-### 2. Add context to the project's CLAUDE.md
+Global skill directories populated by `nopilot init`:
 
-Append to the project's `CLAUDE.md` (create if absent):
+```
+~/.claude/skills/        # Claude Code
+~/.agents/skills/        # Shared by Codex and OpenCode
+```
+
+### 2. Reference: injected context block
+
+`nopilot init` appends this block to any existing project `CLAUDE.md`, `AGENTS.md`, or `opencode.md`:
 
 ```markdown
 ## NoPilot
@@ -50,7 +57,7 @@ Supervisor (intent guardian) and Critic (independent challenger) are core guardr
 
 ### 3. Done
 
-No dependencies. No build step. No config beyond the above.
+Schemas and `workflow.json` remain in the npm package. Run `nopilot paths` to locate them.
 
 ---
 
@@ -65,7 +72,7 @@ No dependencies. No build step. No config beyond the above.
 | `/build` | `specs/spec.json` or `specs/spec/index.json`, `specs/discover.json` or `specs/discover/index.json` | `specs/tests.json` or `specs/tests/index.json`, `specs/tests_review.json`, `specs/build_report.json` or `specs/build/index.json`, `specs/build_review.json` |
 | `/visualize` | Runtime artifacts in `specs/` | `specs/views/dashboard.html` plus phase pages |
 
-Claude command files live in `commands/<name>.md`. Codex prompt files live in `prompts/codex/<name>.md`. Read the relevant file for full behavior.
+Source skills live under `commands/` as a mix of directory skills (for example `discover/`, `spec/`, `build/`, `visualize/`, `supervisor/`, `critic/`, `lash-tracer/`, `lash-verify/`) and standalone markdown entrypoints (for example `lash-build.md`, `lash-batch.md`, `lash-orchestrator.md`). `nopilot init` renders them into each platform's `skillsDir`.
 
 ### Workflow Definition
 
@@ -80,10 +87,10 @@ Claude command files live in `commands/<name>.md`. Codex prompt files live in `p
 
 Two sub-agents spawned by commands. Both **core guardrails** (cannot be disabled):
 
-| Agent | Prompt | Role | Spawned By |
-|-------|--------|------|------------|
-| Supervisor | `commands/supervisor.md` or `prompts/codex/supervisor.md` | Global coherence (forest) | discover, spec, build |
-| Critic | `commands/critic.md` or `prompts/codex/critic.md` | Independent quality verification (trees) | discover, spec, build |
+| Agent | Source Skill | Role | Spawned By |
+|-------|--------------|------|------------|
+| Supervisor | `commands/supervisor/SKILL.md` | Global coherence (forest) | discover, spec, build |
+| Critic | `commands/critic/SKILL.md` | Independent quality verification (trees) | discover, spec, build |
 
 **Supervisor input:** discover artifact anchor (`constraints` + `selected_direction` + `tech_direction`) + current stage output.
 
