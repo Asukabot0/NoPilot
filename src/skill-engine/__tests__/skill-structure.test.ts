@@ -262,9 +262,11 @@ describe('Sub-skill references', () => {
     expect(buildCritic).toContain('build_critic_spawned');
     expect(buildCritic).toContain('build_critic_passed');
     expect(buildCritic).toContain('build_critic_failed');
+    expect(buildCritic).toContain('build_paused');
     expect(supervisor).toContain('supervisor_spawned');
     expect(supervisor).toContain('supervisor_passed');
     expect(supervisor).toContain('supervisor_failed');
+    expect(supervisor).toContain('build_paused');
   });
 
   it('TEST-067: lash-verify spawn transitions are documented before result files are written', () => {

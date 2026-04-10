@@ -53,4 +53,5 @@ After completing the review:
 - If recommendation is `L3`, persist the failed review and halt with backtrack options:
   ```
   bash "lash state update build_critic_failed --data '{\"detail\": \"<description>\"}'"
+  bash "lash state update build_paused --data '{\"reason\": \"critic\", \"detail\": \"<description>\"}'"
   ```

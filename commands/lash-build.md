@@ -103,7 +103,7 @@ The verify agent handles: full test suite, auto-acceptance, Build Critic, Superv
 
 ## Step 7: Completion
 
-If verify succeeds:
+If verify succeeds and `specs/build-state.json` already records both `build_critic_passed` and `supervisor_passed`:
 ```
 bash "lash state update build_completed"
 ```
