@@ -282,6 +282,15 @@ describe('checkUnexpectedFiles (TEST-036)', () => {
     expect(result.unexpected_files).not.toContain('lash/worktree_manager.py');
   });
 
+  it('treats wildcard-like owned files as out of scope', async () => {
+    queueOk('src/foo.ts\n');
+
+    const result = await checkUnexpectedFiles('MOD-003', ['src/**'], PROJECT_ROOT);
+
+    expect(result.clean).toBe(false);
+    expect(result.unexpected_files).toEqual(['src/foo.ts']);
+  });
+
   it('empty diff is clean', async () => {
     queueOk('');
 

@@ -244,32 +244,29 @@ describe('plan-generator', () => {
     expect(() => generatePlan(specPath, discoverPath)).toThrow('circular_dependency');
   });
 
-  // TEST-008: Missing owned_files → infer from source_root + warning
-  it('TEST-008: missing owned_files infer from source_root', () => {
+  // TEST-008: Missing owned_files must throw at plan generation (fail-closed)
+  it('TEST-008: missing owned_files throws at plan generation', () => {
     const modules = [
       { id: 'MOD-A', source_root: 'src/', depends_on: [], requirement_refs: [] },
     ];
     writeJson(specPath, makeSpec(modules as unknown as ModuleEntry[]));
     writeJson(discoverPath, makeDiscover());
 
-    const warnMessages: string[] = [];
-    const origWarn = console.warn;
-    console.warn = (...args: unknown[]) => {
-      warnMessages.push(args.join(' '));
-    };
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/MOD-A/);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/missing owned_files/);
+  });
 
-    let plan;
-    try {
-      plan = generatePlan(specPath, discoverPath);
-    } finally {
-      console.warn = origWarn;
-    }
+  // TEST-016: Multiple modules missing owned_files all appear in the thrown error
+  it('TEST-016: all modules missing owned_files are listed in the error', () => {
+    const modules = [
+      { id: 'MOD-A', source_root: 'src/shared/', depends_on: [], requirement_refs: [] },
+      { id: 'MOD-B', source_root: 'src/shared/', depends_on: [], requirement_refs: [] },
+    ];
+    writeJson(specPath, makeSpec(modules as unknown as ModuleEntry[]));
+    writeJson(discoverPath, makeDiscover());
 
-    expect(warnMessages.some((msg) => msg.includes('MOD-A'))).toBe(true);
-
-    // owned_files should be inferred as source_root + "**"
-    const batchModule = plan!.batches[0].modules[0];
-    expect(batchModule.owned_files).toEqual(['src/**']);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/MOD-A/);
+    expect(() => generatePlan(specPath, discoverPath)).toThrow(/MOD-B/);
   });
 
   // TEST-009: Deterministic output (run twice, compare)
