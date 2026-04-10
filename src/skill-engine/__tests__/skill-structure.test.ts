@@ -267,6 +267,18 @@ describe('Sub-skill references', () => {
     expect(supervisor).toContain('supervisor_failed');
   });
 
+  it('TEST-067: lash-verify spawn transitions are documented before result files are written', () => {
+    const buildCritic = readFile('commands/lash-verify/build-critic.md');
+    const supervisor = readFile('commands/lash-verify/supervisor.md');
+
+    expect(buildCritic.indexOf('build_critic_spawned')).toBeLessThan(
+      buildCritic.indexOf('Write `specs/build_review.json`:'),
+    );
+    expect(supervisor.indexOf('supervisor_spawned')).toBeLessThan(
+      supervisor.indexOf('Write your assessment into `specs/build_report.json`'),
+    );
+  });
+
   it('TEST-066: lash-tracer L2 pause uses reason field expected by build-state', () => {
     const content = readFile('commands/lash-tracer/test-handler.md');
     expect(content).toContain('\\"reason\\": \\"l2\\"');

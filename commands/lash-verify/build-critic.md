@@ -19,6 +19,12 @@ Then compare your results with the `acceptance_result` from `specs/build_report.
 - If they agree: alignment confirmed
 - If they DISAGREE: flag the divergence — this means the auto-acceptance has bias
 
+Mark the review as started before you generate outputs:
+
+```
+bash "lash state update build_critic_spawned --data '{}'"
+```
+
 Write `specs/build_review.json`:
 ```json
 {
@@ -31,12 +37,6 @@ Write `specs/build_review.json`:
   "recommendation": "pass|L2|L3",
   "detail": null
 }
-```
-
-Update build state before returning:
-
-```
-bash "lash state update build_critic_spawned --data '{}'"
 ```
 
 After completing the review:

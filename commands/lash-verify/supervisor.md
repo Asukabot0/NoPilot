@@ -17,6 +17,12 @@ These are the ANCHOR — the user's original intent.
 
 Read `specs/build_report.json` — this is the OUTPUT.
 
+Mark the supervisor review as started before you generate the final coherence assessment:
+
+```
+bash "lash state update supervisor_spawned --data '{}'"
+```
+
 Evaluate three dimensions:
 1. **Intent alignment**: Does the build output serve the stated direction? Or has it drifted?
 2. **Complexity growth**: Is the implementation proportional to requirements? Or over-engineered?
@@ -32,12 +38,6 @@ Write your assessment into `specs/build_report.json` in the `global_coherence_ch
     "detail": "explanation if any non-ideal"
   }
 }
-```
-
-Update build state before returning:
-
-```
-bash "lash state update supervisor_spawned --data '{}'"
 ```
 
 After completing the assessment:
