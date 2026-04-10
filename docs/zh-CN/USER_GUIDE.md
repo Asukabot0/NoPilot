@@ -1070,7 +1070,8 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 - 只有在 `batch_execution` 中才允许触发 `batch_completed` 与 `build_critic_spawned`
 - 只有在 `build_critic` 中才允许触发 `build_critic_passed` / `build_critic_failed` / `supervisor_spawned`
 - 只有在 `supervisor` 中才允许触发 `supervisor_passed` / `supervisor_failed`
-- `build_completed` 只能在 `supervisor` phase 中触发，确保 Build Critic 与 Supervisor 都已留下状态痕迹后才进入 `acceptance`
+- `build_completed` 只能在 `supervisor` phase 中触发，且最近一次 Build Critic / Supervisor verdict 必须分别为 `build_critic_passed` 与 `supervisor_passed`
+- `build_critic_failed` 与 `supervisor_failed` 会先把顶层构建状态记为 `failed`；若后续要等待人工决策，必须再发送 `build_paused`
 
 **7 种构建状态：**
 

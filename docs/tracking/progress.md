@@ -413,6 +413,8 @@
   - 补齐 `commands/lash-verify/build-critic.md` 与 `commands/lash-verify/supervisor.md` 的状态写回说明，使 `build_critic_*` / `supervisor_*` 事件与 `current_phase` 真正形成闭环
   - 修正 `commands/lash-tracer/test-handler.md` 的 L2 暂停字段名，使其与 `build-state` 识别的 `reason` 契约一致
   - 更新 `docs/zh-CN/USER_GUIDE.md` 中 build-state 事件数、`tracer_completed` 与 phase 前置条件说明，补齐用户侧文档
+  - 收紧 `build_completed` 的完成条件，要求最近一次 Build Critic / Supervisor verdict 都为 passed，避免 review 未通过也能完成构建
+  - 让 `build_critic_failed` / `supervisor_failed` 在未进入 pause 前先落到顶层 failed 状态，并把 verify spawn 事件前移到产物写入之前，补齐审计时序
 - 当前问题:
   - `lash-build` 的 `stage_guard` 目前仍属于 prompt 级软约束；若后续需要更强保证，可继续演进为结构化 runtime contract
 - 值得深入研究的问题:
