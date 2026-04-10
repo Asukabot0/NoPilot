@@ -419,3 +419,18 @@
   - `lash-build` 的 `stage_guard` 目前仍属于 prompt 级软约束；若后续需要更强保证，可继续演进为结构化 runtime contract
 - 值得深入研究的问题:
   - 是否应将 Lash 各阶段 dispatch 从“自由文本提示”继续收敛为统一的结构化上下文契约（phase/stage_guard/input/output），并由结构测试统一校验
+
+## Progress Snapshot: 2026-04-10 04:05
+- 触发方式: 跟进 PR #84 二轮 review，补齐 review pass 结果与 supervisor 进入门禁的最后缺口
+- 代码统计: 本次继续修改 `src/lash/build-state.ts`、回归测试、verify 提示契约与用户文档
+- 当前版本: V0.0.6 缺陷修复中
+- 本次工作:
+  - 为 `supervisor_spawned` 增加 runtime 硬门禁，要求最近一次 Build Critic 结果必须为 `build_critic_passed`，避免仅凭进入 `build_critic` phase 就可推进到 Supervisor
+  - 调整 `tests/build-state.test.ts` 与 `tests/cli-cleanup.test.ts` 的负向用例，使其对齐新的 runtime 语义，并补充 artifact 不应被误清理的断言
+  - 补充 `commands/lash-verify/build-critic.md` 的 L3 路径暂停写回，确保 human-blocking 路径不会停留在 `in_progress`
+  - 更新 `commands/lash-build.md`、`src/skill-engine/__tests__/skill-structure.test.ts` 与 `docs/zh-CN/USER_GUIDE.md`，同步 completion gate / spawn 顺序 / paused 契约
+  - 运行定向回归、全量测试、lint 与 build，验证当前修补未引入新增回归
+- 当前问题:
+  - `lash-build` 仍通过 prompt 合同驱动 verify orchestration；若后续引入结构化 runtime contract，可进一步减少文档与实现漂移风险
+- 值得深入研究的问题:
+  - 是否应在 `build-state.json` 中显式持久化“最近一次 review verdict”而不是完全依赖 `transition_log` 倒推 gate，以降低未来状态机复杂度

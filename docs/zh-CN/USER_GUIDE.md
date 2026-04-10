@@ -1068,7 +1068,7 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 
 - 只有 `tracer_completed` 能把 phase 从 `planning` 推进到 `batch_execution`
 - 只有在 `batch_execution` 中才允许触发 `batch_completed` 与 `build_critic_spawned`
-- 只有在 `build_critic` 中才允许触发 `build_critic_passed` / `build_critic_failed` / `supervisor_spawned`
+- 只有在 `build_critic` 中才允许触发 `build_critic_passed` / `build_critic_failed` / `supervisor_spawned`，且 `supervisor_spawned` 还要求最近一次 Build Critic verdict 为 `build_critic_passed`
 - 只有在 `supervisor` 中才允许触发 `supervisor_passed` / `supervisor_failed`
 - `build_completed` 只能在 `supervisor` phase 中触发，且最近一次 Build Critic / Supervisor verdict 必须分别为 `build_critic_passed` 与 `supervisor_passed`
 - `build_critic_failed` 与 `supervisor_failed` 会先把顶层构建状态记为 `failed`；若后续要等待人工决策，必须再发送 `build_paused`
