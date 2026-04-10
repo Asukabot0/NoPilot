@@ -202,10 +202,20 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
     );
     expect(criticResult.returncode).toBe(0);
 
+    const criticPassedResult = runLashInDir(
+      tmpDir, 'state', 'update', 'build_critic_passed', '--state-path', statePath, '--data', '{}',
+    );
+    expect(criticPassedResult.returncode).toBe(0);
+
     const supervisorResult = runLashInDir(
       tmpDir, 'state', 'update', 'supervisor_spawned', '--state-path', statePath, '--data', '{}',
     );
     expect(supervisorResult.returncode).toBe(0);
+
+    const supervisorPassedResult = runLashInDir(
+      tmpDir, 'state', 'update', 'supervisor_passed', '--state-path', statePath, '--data', '{}',
+    );
+    expect(supervisorPassedResult.returncode).toBe(0);
 
     // Trigger build_completed
     const result = runLashInDir(
@@ -258,5 +268,30 @@ describe('TC-009: state update build_completed triggers cleanup', () => {
     const stateOutput = JSON.parse(result.stdout);
     expect(stateOutput.current_phase).toBe('batch_execution');
     expect(stateOutput.tracer.status).toBe('completed');
+  });
+
+  it('rejects build_completed until critic and supervisor pass events exist', () => {
+    const statePath = join(tmpDir, 'specs', 'build-state.json');
+    makeSpecsDir(tmpDir);
+
+    expect(runLashInDir(
+      tmpDir, 'state', 'create', '--spec-hash', 'abc123', '--state-path', statePath,
+    ).returncode).toBe(0);
+    expect(runLashInDir(
+      tmpDir, 'state', 'update', 'tracer_completed', '--state-path', statePath, '--data', '{}',
+    ).returncode).toBe(0);
+    expect(runLashInDir(
+      tmpDir, 'state', 'update', 'build_critic_spawned', '--state-path', statePath, '--data', '{}',
+    ).returncode).toBe(0);
+    expect(runLashInDir(
+      tmpDir, 'state', 'update', 'supervisor_spawned', '--state-path', statePath, '--data', '{}',
+    ).returncode).toBe(0);
+
+    const result = runLashInDir(
+      tmpDir, 'state', 'update', 'build_completed', '--state-path', statePath,
+    );
+
+    expect(result.returncode).toBe(1);
+    expect(result.stderr).toContain('build_critic_passed');
   });
 });

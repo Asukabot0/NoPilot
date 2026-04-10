@@ -80,6 +80,19 @@ function makeValidTransitionInput(event: BuildEvent): {
   }
 }
 
+function prepareStateForEvent(baseState: BuildState, event: BuildEvent): BuildState {
+  if (event !== 'build_completed') {
+    return baseState;
+  }
+
+  let prepared = recordTransition(baseState, 'tracer_completed', {});
+  prepared = recordTransition(prepared, 'build_critic_spawned', {});
+  prepared = recordTransition(prepared, 'build_critic_passed', {});
+  prepared = recordTransition(prepared, 'supervisor_spawned', {});
+  prepared = recordTransition(prepared, 'supervisor_passed', {});
+  return prepared;
+}
+
 function makeWorkerState(moduleId = 'MOD-001') {
   return {
     module_id: moduleId,
@@ -257,19 +270,27 @@ describe('recordTransition', () => {
   });
 
   it('TEST-094: build_completed updates state status', () => {
-    state.current_phase = 'supervisor';
-    const updated = recordTransition(state, 'build_completed', {});
+    let readyState = recordTransition(state, 'tracer_completed', {});
+    readyState = recordTransition(readyState, 'build_critic_spawned', {});
+    readyState = recordTransition(readyState, 'build_critic_passed', {});
+    readyState = recordTransition(readyState, 'supervisor_spawned', {});
+    readyState = recordTransition(readyState, 'supervisor_passed', {});
+
+    const updated = recordTransition(readyState, 'build_completed', {});
     expect(updated.status).toBe('completed');
-    expect(updated.transition_log).toHaveLength(1);
-    expect(updated.transition_log[0].event).toBe('build_completed');
+    expect(updated.transition_log).toHaveLength(6);
+    expect(updated.transition_log[5].event).toBe('build_completed');
   });
 
   it('TEST-095: all 22 events are recognized when phase prerequisites are satisfied', () => {
     for (const event of VALID_EVENTS) {
-      const s = makeBaseState();
+      let s = makeBaseState();
       s.batches = [makeBatchState()];
       const { phase, data } = makeValidTransitionInput(event);
-      s.current_phase = phase;
+      s = prepareStateForEvent(s, event);
+      if (event !== 'build_completed') {
+        s.current_phase = phase;
+      }
       expect(() => recordTransition(s, event, data)).not.toThrow();
     }
   });
@@ -296,12 +317,35 @@ describe('recordTransition', () => {
     updated = recordTransition(updated, 'build_critic_spawned', {});
     expect(updated.current_phase).toBe('build_critic');
 
+    updated = recordTransition(updated, 'build_critic_passed', {});
+
     updated = recordTransition(updated, 'supervisor_spawned', {});
     expect(updated.current_phase).toBe('supervisor');
+
+    updated = recordTransition(updated, 'supervisor_passed', {});
 
     updated = recordTransition(updated, 'build_completed', {});
     expect(updated.current_phase).toBe('acceptance');
     expect(updated.status).toBe('completed');
+  });
+
+  it('TEST-095: build_completed requires passing critic and supervisor verdicts', () => {
+    let missingCriticPass = recordTransition(state, 'tracer_completed', {});
+    missingCriticPass = recordTransition(missingCriticPass, 'build_critic_spawned', {});
+    missingCriticPass = recordTransition(missingCriticPass, 'supervisor_spawned', {});
+
+    expect(() => recordTransition(missingCriticPass, 'build_completed', {})).toThrow(
+      'build_critic_passed',
+    );
+
+    let missingSupervisorPass = recordTransition(state, 'tracer_completed', {});
+    missingSupervisorPass = recordTransition(missingSupervisorPass, 'build_critic_spawned', {});
+    missingSupervisorPass = recordTransition(missingSupervisorPass, 'build_critic_passed', {});
+    missingSupervisorPass = recordTransition(missingSupervisorPass, 'supervisor_spawned', {});
+
+    expect(() => recordTransition(missingSupervisorPass, 'build_completed', {})).toThrow(
+      'supervisor_passed',
+    );
   });
 
   it('TEST-095: supervisor_spawned only advances from build_critic phase', () => {
@@ -323,9 +367,11 @@ describe('recordTransition', () => {
     s = recordTransition(s, 'test_passed', { module_id: 'MOD-001', batch_id: 'BATCH-001' });
     s = recordTransition(s, 'tracer_completed', {});
     s = recordTransition(s, 'build_critic_spawned', {});
+    s = recordTransition(s, 'build_critic_passed', {});
     s = recordTransition(s, 'supervisor_spawned', {});
+    s = recordTransition(s, 'supervisor_passed', {});
     s = recordTransition(s, 'build_completed', {});
-    expect(s.transition_log).toHaveLength(6);
+    expect(s.transition_log).toHaveLength(8);
   });
 
   it('transition log entry has valid timestamp', () => {
@@ -352,9 +398,21 @@ describe('recordTransition', () => {
   it('build_paused with reason=l2 sets paused_l2 status', () => {
     const s = makeBaseState();
     const updated = recordTransition(s, 'build_paused', { reason: 'l2' });
-    expect(['paused_l2', 'paused_critic', 'paused_supervisor', 'in_progress']).toContain(
-      updated.status,
-    );
+    expect(updated.status).toBe('paused_l2');
+  });
+
+  it('build_critic_failed marks the build as failed until a pause event overrides it', () => {
+    const s = makeBaseState();
+    s.current_phase = 'build_critic';
+    const updated = recordTransition(s, 'build_critic_failed', { detail: 'review failed' });
+    expect(updated.status).toBe('failed');
+  });
+
+  it('supervisor_failed marks the build as failed until a pause event overrides it', () => {
+    const s = makeBaseState();
+    s.current_phase = 'supervisor';
+    const updated = recordTransition(s, 'supervisor_failed', { detail: 'review failed' });
+    expect(updated.status).toBe('failed');
   });
 
   it('build_backtracked sets backtracked status', () => {

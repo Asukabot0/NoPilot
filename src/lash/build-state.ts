@@ -109,6 +109,39 @@ function assertPhaseAllowed(phase: BuildPhase, event: BuildEvent): void {
   );
 }
 
+function getLatestTransitionEvent(
+  transitionLog: readonly TransitionLogEntry[],
+  events: readonly BuildEvent[],
+): BuildEvent | null {
+  for (let index = transitionLog.length - 1; index >= 0; index -= 1) {
+    const candidate = transitionLog[index]?.event;
+    if (candidate !== undefined && events.includes(candidate)) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
+function assertBuildCompletionReady(state: BuildState): void {
+  const latestBuildCriticEvent = getLatestTransitionEvent(state.transition_log, [
+    'build_critic_passed',
+    'build_critic_failed',
+  ]);
+  const latestSupervisorEvent = getLatestTransitionEvent(state.transition_log, [
+    'supervisor_passed',
+    'supervisor_failed',
+  ]);
+
+  if (latestBuildCriticEvent !== 'build_critic_passed') {
+    throw new Error('invalid_transition: build_completed requires build_critic_passed');
+  }
+
+  if (latestSupervisorEvent !== 'supervisor_passed') {
+    throw new Error('invalid_transition: build_completed requires supervisor_passed');
+  }
+}
+
 function workerPendingAction(workerStatus: string): string {
   const mapping: Record<string, string> = {
     pending: 'spawn_worker',
@@ -234,6 +267,9 @@ export function recordTransition(
   const currentPhase = newState.current_phase;
 
   assertPhaseAllowed(currentPhase, event as BuildEvent);
+  if (event === 'build_completed') {
+    assertBuildCompletionReady(newState);
+  }
 
   // --- Apply state-level transitions ---
   if (event === 'tracer_completed') {
@@ -243,6 +279,9 @@ export function recordTransition(
     toStatus = 'completed';
     newState.status = 'completed';
     newState.current_phase = 'acceptance';
+  } else if (event === 'build_critic_failed' || event === 'supervisor_failed') {
+    toStatus = 'failed';
+    newState.status = 'failed';
   } else if (event === 'build_backtracked') {
     toStatus = 'backtracked';
     newState.status = 'backtracked' as BuildStatus;
