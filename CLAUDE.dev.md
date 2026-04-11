@@ -40,6 +40,8 @@ When ALL of the following conditions are met:
 When conditions 1-2 are met but user has not expressed build intent:
 → Mention that Lash is available: "Specs are ready. I can start a multi-agent parallel build whenever you are ready."
 
+**`/build` vs `/lash-build` 区分**: `/build` = 单代理顺序 TDD 执行，仅在 Lash 前置条件不满足时使用（tests artifact 或 owned_files 缺失）。若用户显式输入 `/build` 但所有 Lash 前置条件（spec + discover + tests + owned_files）均已满足，告知用户应改用 `/lash-build` 并引导重新加载。
+
 Lash treats each AI coding platform (Claude Code, Codex, OpenCode) as a Worker agent. Spawns Workers via CLI, isolates them in git worktrees, runs tests externally, and applies Module Critic + Build Critic + Supervisor quality gates per NoPilot contract. Lash auto-detects single-file vs split-directory format for spec and discover artifacts.
 
 NoPilot schemas and workflow definition are in the npm package. Run `nopilot paths` to locate them.
