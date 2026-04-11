@@ -19,7 +19,8 @@ NoPilot 是一个三阶段工作流，从需求探索到代码交付，下游人
 
 ### 前置条件
 
-- 已安装并配置 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 或 Codex CLI
+- 已安装并配置 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- 如需共享 skills 安装或使用 Lash 多平台 Worker，可额外配置 Codex CLI 与 OpenCode CLI
 - Node.js >= 20.0.0
 
 ### 安装
@@ -39,17 +40,20 @@ cd your-project
 nopilot init
 ```
 
-自动完成：将包内 `commands/` 安装到 `~/.claude/commands/`，将包内 `prompts/codex/` 安装到 `~/.codex/prompts/`，创建 `specs/` 目录，并将 Lash 自动触发指令追加到已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md`。
+自动完成：将包内 `commands/` 渲染安装到 Claude Code 的 `~/.claude/skills/`，并将同一套 skills 安装到 Codex / OpenCode 共享的 `~/.agents/skills/`，创建 `specs/` 目录，并将 Lash 自动触发指令追加到已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md`。
 
 Schema 和 workflow.json 保留在 npm 包内，通过 `nopilot paths` 查看位置。
 
 ### 开始使用
 
+先在你的 AI 编码工具中载入已安装的 `discover` skill。
+
 ```bash
 cd your-project
 claude   # Claude Code 中运行 /discover
-codex    # Codex 中运行 /prompts:discover
 ```
+
+Codex 与 OpenCode 共用 `~/.agents/skills/` 中安装的同一套 skills。
 
 ## 为什么这样设计
 
@@ -76,6 +80,8 @@ codex    # Codex 中运行 /prompts:discover
 每个命令从 `specs/` 读取上游制品并写入自己的产出。所有制品都是 JSON 契约。
 
 ## 架构
+
+仓库级正式架构总览见：[`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ### Supervisor + Critic 双 Agent
 
@@ -128,30 +134,36 @@ your-project/
 ├── CLAUDE.md            # 项目上下文（含 Lash 触发指令）
 └── ...
 
-~/.claude/commands/      # 全局 slash commands（由 nopilot init 安装）
-├── discover.md          # /discover
-├── spec.md              # /spec
-├── build.md             # /build
-├── visualize.md         # /visualize
-├── supervisor.md        # Supervisor agent
-├── critic.md            # Critic agent
-└── lash-*.md            # 7 个 Lash 编排命令
+~/.claude/skills/        # Claude Code 全局 skills（由 nopilot init 安装）
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 
-~/.codex/prompts/        # 全局 Codex prompts（由 nopilot init 安装）
-├── discover.md
-├── spec.md
-├── build.md
-├── visualize.md
-├── supervisor.md
-├── critic.md
-└── lash-*.md
+~/.agents/skills/        # Codex 与 OpenCode 共享 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 ```
 
-Claude 版本来自包内 `commands/`，Codex 版本来自包内 `prompts/codex/`。
+包内源 skills 位于 `commands/`，由 `nopilot init` 渲染到各平台的 skills 目录。
 
 ## 当前范围 (V1.2, Schema 4.0)
 
-**包含：** 三阶段工作流跑在 Claude Code 和 Codex 上，仅 Greenfield 项目，纯 prompt engineering，完整核心护栏（Supervisor 漂移检测、Critic AI 偏差目录），生成-审查分离，渐进式想法收集，设计哲学提取，完整性追踪，领域模型和 NFR 输出，制品可视化，大项目目录拆分，集成 Lash 多 Agent 构建引擎（TypeScript），双 CLI（`nopilot` + `lash`），npm 分发。
+**包含：** 面向 Claude Code、Codex、OpenCode 的统一 skills 分发，仅 Greenfield 项目，纯 prompt engineering，完整核心护栏（Supervisor 漂移检测、Critic AI 偏差目录），生成-审查分离，渐进式想法收集，设计哲学提取，完整性追踪，领域模型和 NFR 输出，制品可视化，大项目目录拆分，集成 Lash 多 Agent 构建引擎（TypeScript），双 CLI（`nopilot` + `lash`），npm 分发。
 
 **不包含：** Brownfield/增量迭代、Agent 共识机制（已声明未接线）、iOS 远程 Agent、多模型路由。
 

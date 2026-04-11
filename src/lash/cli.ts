@@ -123,9 +123,9 @@ worktreeCmd
 program
   .command('package <module_id> <worktree_path> <platform>')
   .description('Generate .lash/ task package for a worker')
-  .option('--spec <path>', 'Path to spec.json (auto-detected if omitted)')
-  .option('--discover <path>', 'Path to discover.json (auto-detected if omitted)')
-  .option('--tests <path>', 'Path to tests.json')
+  .option('--spec <path>', 'Path to spec artifact (spec.json, spec/, or spec/index.json)')
+  .option('--discover <path>', 'Path to discover artifact (discover.json, discover/, or discover/index.json)')
+  .option('--tests <path>', 'Path to tests artifact (tests.json, tests/, or tests/index.json)')
   .option('--completed <m1,m2>', 'Comma-separated completed module IDs')
   .action(async (
     moduleId: string,
@@ -134,9 +134,13 @@ program
     opts: { spec?: string; discover?: string; tests?: string; completed?: string },
   ) => {
     const { generatePackage } = await import('./task-packager.js');
-    const { readFileSync } = await import('node:fs');
-    const { resolveSpec, resolveDiscover, resolveArtifactPaths } = await import('./spec-resolver.js');
+    const { resolveSpec, resolveDiscover, resolveTests, resolveArtifactPaths } = await import('./spec-resolver.js');
     try {
+      if (!opts.tests) {
+        throw new Error(
+          'lash package requires --tests <path>. Generate the tests artifact first via commands/build/test-gen.md or /build Step 2, then rerun with --tests specs/tests.json. Split artifact paths like specs/tests/ and specs/tests/index.json are also supported.'
+        );
+      }
       if (!opts.spec || !opts.discover) {
         const resolved = resolveArtifactPaths();
         opts.spec = opts.spec ?? resolved.specPath;
@@ -144,17 +148,7 @@ program
       }
       const { spec } = resolveSpec(opts.spec) as { spec: Record<string, unknown> };
       const { discover } = resolveDiscover(opts.discover) as { discover: Record<string, unknown> };
-      let tests: Record<string, unknown>;
-      if (opts.tests) {
-        tests = JSON.parse(readFileSync(opts.tests, 'utf-8'));
-      } else {
-        tests = {
-          example_cases: [],
-          property_cases: [],
-          coverage_summary: {},
-          coverage_guards: {},
-        };
-      }
+      const tests = resolveTests(opts.tests).tests as Record<string, unknown>;
       const completed = opts.completed
         ? opts.completed.split(',').map((m) => m.trim())
         : [];

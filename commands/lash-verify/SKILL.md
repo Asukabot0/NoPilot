@@ -1,3 +1,7 @@
+---
+name: lash-verify
+description: Lash final verification phase — runs acceptance checks and produces build verdicts
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Feature Mode: applies in all modes (greenfield + feature) -->
 

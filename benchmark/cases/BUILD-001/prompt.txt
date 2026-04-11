@@ -1,0 +1,1 @@
+Execute the synthetic build benchmark case BUILD-001 under the standard local phase-1 profile.

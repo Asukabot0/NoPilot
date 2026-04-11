@@ -1,9 +1,14 @@
+---
+name: spec
+description: Constrained design expansion — converts requirements into modular architecture specs
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Placeholders: <%=CRITIC_PATH%> = platform path to critic skill, <%=SUPERVISOR_PATH%> = platform path to supervisor skill -->
 
 # /spec — Constrained Design Expansion
 
-> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的（而非用户显式输入 `/spec`），请先询问："检测到你可能需要进入 /spec 流程，要现在开始吗？" 仅在用户确认后继续。
+> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的，请先询问："检测到你可能需要进入 /spec 流程，要现在开始吗？" 仅在用户确认后继续。若用户显式输入 `/spec`、`进 spec`、`开始 spec` 等阶段指令，视为已确认，直接继续。
+> **[纠偏恢复]** 当用户指出 spec 流程偏差、遗漏步骤或阶段判断错误时，MUST 重新锚定权威流程后再继续：`Use the Skill tool to load: commands/spec/recovery.md`
 
 You are performing constrained design expansion. Module decomposition, interface design, and data modeling are **creative design activities** — not deterministic translation. Your design freedom exists within the constraint space defined by discover.json.
 
@@ -18,9 +23,11 @@ You are performing constrained design expansion. Module decomposition, interface
 
 ## Input
 
-Verify that a discover artifact exists (`specs/discover.json` or `specs/discover/index.json`). If missing, inform the user: "Run /discover first to generate the discover artifact." and halt.
+Verify that a discover artifact exists (`specs/discover.json`, `specs/discover/index.json`, `specs/features/feat-{featureSlug}/discover.json`, or `specs/features/feat-{featureSlug}/discover/index.json`). If missing, inform the user: "Run /discover first to generate the discover artifact." and halt.
 
-Read the discover artifact. If it is split, read `specs/discover/index.json` first, then load `requirements.json`, `scenarios.json`, and `history.json` as needed. Check the artifact's `mode` to determine full or lite behavior.
+Read the discover artifact from its artifact root. Use that same artifact root for all `/spec` outputs (`spec.json`, `spec_review.json`, and `decisions.json`). Before Phase 1, read the matching `discover_review.json` from that root (`specs/discover_review.json` or `specs/features/feat-{featureSlug}/discover_review.json`). If it is missing, or if any of `6cs_audit.passed`, `invariant_verification.passed`, `acceptance_criteria_verification.passed`, or `coverage_verification.passed` is not `true`, or if `global_coherence_check.intent_alignment != "aligned"`, inform the user: "Finish `/discover` review before running `/spec`." and halt.
+
+If the discover artifact is split, read `index.json` first, then load `requirements.json`, `scenarios.json`, and `history.json` as needed. Check the artifact's `mode` to determine full or lite behavior.
 If `specs/build_report.json` or `specs/build/index.json` exists (backtrack from /build), read it too for diagnostic context.
 
 ### Feature Mode: Code Awareness

@@ -1,0 +1,7 @@
+{
+  "verdict": "pass",
+  "checks": [
+    "build",
+    "trace"
+  ]
+}

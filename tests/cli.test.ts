@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -87,6 +87,49 @@ function makeMinimalDiscover(tmpDir: string): string {
   return path;
 }
 
+function makeSplitTests(tmpDir: string): string {
+  const testsDir = join(tmpDir, 'tests');
+  mkdirSync(testsDir, { recursive: true });
+
+  writeJson(join(testsDir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: [],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+    modules: ['mod-a.json'],
+  });
+
+  writeJson(join(testsDir, 'mod-a.json'), {
+    example_cases: [
+      {
+        id: 'TEST-001',
+        suite_type: 'unit',
+        module_ref: 'MOD-A',
+        requirement_refs: ['REQ-001'],
+        description: 'Generate execution plan from valid spec.json',
+        category: 'normal',
+        ears_ref: 'REQ-001-AC-1',
+        derivation: 'direct_from_ears',
+        input: 'spec.json with 1 module',
+        expected_output: 'ExecutionPlan JSON',
+        setup: 'Create temp spec.json',
+      },
+    ],
+    property_cases: [],
+  });
+
+  return join(testsDir, 'index.json');
+}
+
 function makeTestResultFile(tmpDir: string, stderr = 'AssertionError: expected 1 got 2'): string {
   const testResult = {
     passed: false,
@@ -146,6 +189,62 @@ describe('lash plan', () => {
     const result = runLash('plan', specPath, discoverPath);
     const data = JSON.parse(result.stdout);
     expect(data.batches.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('accepts explicit split index.json paths', () => {
+    const tmpDir = makeTmpDir();
+    const specDir = join(tmpDir, 'spec');
+    mkdirSync(specDir, { recursive: true });
+    writeJson(join(specDir, 'index.json'), {
+      phase: 'spec',
+      version: '4.0',
+      status: 'approved',
+      module_refs: ['mod-a.json'],
+      dependency_graph: { edges: [] },
+    });
+    writeJson(join(specDir, 'mod-a.json'), {
+      id: 'MOD-A',
+      source_root: 'src/',
+      owned_files: ['a.ts'],
+      depends_on: [],
+      requirement_refs: ['REQ-001'],
+    });
+
+    const discoverDir = join(tmpDir, 'discover');
+    mkdirSync(discoverDir, { recursive: true });
+    writeJson(join(discoverDir, 'index.json'), {
+      phase: 'discover',
+      version: '4.0',
+      status: 'approved',
+      mode: 'full',
+      constraints: {},
+      selected_direction: { description: 'Default' },
+      design_philosophy: [],
+      child_files: {
+        requirements: 'requirements.json',
+        scenarios: 'scenarios.json',
+      },
+    });
+    writeJson(join(discoverDir, 'requirements.json'), {
+      requirements: [{ id: 'REQ-001' }],
+    });
+    writeJson(join(discoverDir, 'scenarios.json'), {
+      core_scenarios: [
+        {
+          id: 'SCENARIO-001',
+          description: 'Default',
+          requirement_refs: ['REQ-001'],
+          priority: 'highest',
+        },
+      ],
+    });
+
+    const result = runLash('plan', join(specDir, 'index.json'), join(discoverDir, 'index.json'));
+    expect(result.returncode).toBe(0);
+
+    const data = JSON.parse(result.stdout);
+    expect(data.batches).toHaveLength(1);
+    expect(data.tracer.scenario_id).toBe('SCENARIO-001');
   });
 });
 
@@ -277,7 +376,66 @@ describe('lash classify', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. lash worktree --help
+// 7. lash package — split tests artifact
+// ---------------------------------------------------------------------------
+
+describe('lash package', () => {
+  it('fails fast when --tests is omitted and prints recovery guidance', () => {
+    const tmpDir = makeTmpDir();
+    const worktreeDir = join(tmpDir, 'worktree');
+    mkdirSync(worktreeDir, { recursive: true });
+
+    const specPath = makeMinimalSpec(tmpDir);
+    const discoverPath = makeMinimalDiscover(tmpDir);
+
+    const result = runLash(
+      'package',
+      'MOD-A',
+      worktreeDir,
+      'opencode',
+      '--spec', specPath,
+      '--discover', discoverPath,
+    );
+
+    expect(result.returncode).not.toBe(0);
+
+    const data = JSON.parse(result.stderr) as { error: string };
+    expect(data.error).toContain('requires --tests <path>');
+    expect(data.error).toContain('specs/tests.json');
+    expect(data.error).toContain('test-gen');
+  });
+
+  it('accepts split tests artifact via explicit index.json path', () => {
+    const tmpDir = makeTmpDir();
+    const worktreeDir = join(tmpDir, 'worktree');
+    mkdirSync(worktreeDir, { recursive: true });
+
+    const specPath = makeMinimalSpec(tmpDir);
+    const discoverPath = makeMinimalDiscover(tmpDir);
+    const testsPath = makeSplitTests(tmpDir);
+
+    const result = runLash(
+      'package',
+      'MOD-A',
+      worktreeDir,
+      'opencode',
+      '--spec', specPath,
+      '--discover', discoverPath,
+      '--tests', testsPath,
+    );
+    expect(result.returncode).toBe(0);
+
+    const data = JSON.parse(result.stdout);
+    expect(Array.isArray(data.files_written)).toBe(true);
+
+    const packagedTests = JSON.parse(readFileSync(join(worktreeDir, '.lash', 'tests.json'), 'utf-8'));
+    expect(packagedTests.example_cases).toHaveLength(1);
+    expect(packagedTests.example_cases[0].module_ref).toBe('MOD-A');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. lash worktree --help
 // ---------------------------------------------------------------------------
 
 describe('lash worktree --help', () => {
@@ -296,7 +454,7 @@ describe('lash worktree --help', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. lash state --help
+// 9. lash state --help
 // ---------------------------------------------------------------------------
 
 describe('lash state --help', () => {

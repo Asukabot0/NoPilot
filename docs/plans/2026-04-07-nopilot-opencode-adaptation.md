@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> 历史计划快照：该计划所描述的 OpenCode 激活工作已经在当前仓库落地。本文保留为实现记录，不应再视为待执行任务清单。
+
 **Goal:** 将 OpenCode 从 experimental 提升为 active 状态，使其与 Codex 共享 `~/.agents/skills/` 目录，支持 `nopilot init` 自动安装技能。
 
 **Architecture:** 修改平台注册表配置，添加安装去重逻辑，更新 CLI 输出，补充测试覆盖。
@@ -410,7 +412,7 @@ git commit -m "chore: remove deprecated feat-universal-skill-engine spec directo
 
 ---
 
-**Plan complete and saved to `docs/superpowers/plans/2026-04-07-nopilot-opencode-adaptation.md`.**
+**Plan complete and saved to `docs/plans/2026-04-07-nopilot-opencode-adaptation.md`.**
 
 **Two execution options:**
 

@@ -1,9 +1,18 @@
+---
+name: discover
+description: Requirement space explorer — generates ideas, analyzes feasibility and produces design artifacts
+---
 <!-- nopilot-managed v<%=VERSION%> -->
 <!-- Placeholders: <%=CRITIC_PATH%> = platform path to critic skill, <%=SUPERVISOR_PATH%> = platform path to supervisor skill -->
 
 # /discover — Requirement Space Explorer
 
-> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的（而非用户显式输入 `/discover`），请先询问："检测到你可能需要进入 /discover 流程，要现在开始吗？" 仅在用户确认后继续。
+> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的，请先询问："检测到你可能需要进入 /discover 流程，要现在开始吗？" 仅在用户确认后继续。若用户显式输入 `/discover`、`进 discover`、`开始 discover` 等阶段指令，视为已确认，直接继续。
+
+> **[纠偏恢复]** 当用户指出 discover 流程偏差、遗漏步骤或阶段判断错误时，MUST 重新锚定权威流程后再继续：
+> ```
+> Use the Skill tool to load: commands/discover/recovery.md
+> ```
 
 > **[Dedup Guard]** If this skill has already been injected, do NOT re-inject. Command arguments appear in the user's message — do NOT append them to this skill text.
 
@@ -145,20 +154,26 @@ After Layer 3 approved → Artifact Generation:
   on_error: standard
 -->
 
-Dispatch subagent → `commands/discover/artifact-writer.md`. Present confirmation.
+Dispatch subagent → `commands/discover/artifact-writer.md`. Present only the file-write confirmation.
+
+**Do NOT stop here.** Discover is **not complete** after Layer 3 or artifact writing. Do NOT generate extra files, do NOT inline any review, and do NOT tell the user to run `/spec` yet.
+
+**Next: mandatory Critic + Supervisor dispatch.** The very next step after artifact writing is the independent review gate below.
 
 ### Critic + Supervisor Dispatch
 
 <!-- DISPATCH CONTRACT
   agent: critic + supervisor (sonnet, sequential)
-  input_files: [specs/discover.json OR specs/discover/index.json]
-  output_file: specs/discover_review.json
+  input_files: [specs/discover.json OR specs/discover/index.json OR specs/features/feat-{featureSlug}/discover.json OR specs/features/feat-{featureSlug}/discover/index.json]
+  output_file: specs/discover_review.json OR specs/features/feat-{featureSlug}/discover_review.json
   output_summary: { passed, block_count, warn_count, drift_detected, aligned } (max 20 logical entries)
   on_error: pause and present findings to user; wait for resolution
 -->
 ```
 Use the Skill tool to load: commands/discover/critic-supervisor.md
 ```
+
+Only after a **fresh independent Critic pass** and an **aligned Supervisor result** may the main agent present discover as complete and mention `/spec` as the next stage.
 
 **Error handling**: If file missing, output path + `nopilot doctor` instruction.
 

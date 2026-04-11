@@ -7,7 +7,7 @@ import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { resolveSpec, resolveDiscover, detectFormat, resolveArtifactPaths, findArtifactPath } from '../src/lash/spec-resolver.js';
+import { resolveSpec, resolveDiscover, resolveTests, resolveBuildReport, detectFormat, resolveArtifactPaths, findArtifactPath } from '../src/lash/spec-resolver.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -118,6 +118,323 @@ function makeSplitDiscover(tmpDir: string, opts?: { missingChild?: boolean }): s
   return dir;
 }
 
+function makeSingleTests(tmpDir: string): string {
+  const p = join(tmpDir, 'tests.json');
+  writeJson(p, {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    example_cases: [
+      { id: 'TEST-001', module_ref: 'MOD-001' },
+    ],
+    property_cases: [
+      { id: 'PROP-001', module_ref: 'MOD-001' },
+    ],
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: [],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+  });
+  return p;
+}
+
+function makeSplitTests(tmpDir: string, opts?: { missingChild?: boolean }): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+    modules: ['mod-001-alpha.json', 'mod-002-beta.json'],
+  });
+
+  if (!opts?.missingChild) {
+    writeJson(join(dir, 'mod-001-alpha.json'), {
+      example_cases: [{ id: 'TEST-001', module_ref: 'MOD-001' }],
+      property_cases: [{ id: 'PROP-001', module_ref: 'MOD-001' }],
+    });
+    writeJson(join(dir, 'mod-002-beta.json'), {
+      example_cases: [{ id: 'TEST-002', module_ref: 'MOD-002' }],
+      property_cases: [{ id: 'PROP-002', module_ref: 'MOD-002' }],
+    });
+  }
+
+  return dir;
+}
+
+function makeSplitTestsWithMalformedChild(tmpDir: string): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+    modules: ['mod-001-alpha.json'],
+  });
+
+  writeJson(join(dir, 'mod-001-alpha.json'), {
+    example_cases: { id: 'TEST-001', module_ref: 'MOD-001' },
+    property_cases: [{ id: 'PROP-001', module_ref: 'MOD-001' }],
+  });
+
+  return dir;
+}
+
+function makeSplitTestsWithoutModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+  });
+
+  return dir;
+}
+
+function makeSplitTestsWithInvalidModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'tests');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    artifact: 'tests',
+    version: '4.0',
+    coverage_summary: {
+      requirements_covered: ['REQ-001'],
+      requirements_uncovered: [],
+      invariants_covered: ['INV-001'],
+      invariants_uncovered: [],
+    },
+    coverage_guards: {
+      invariants_uncovered_must_be_empty: true,
+      requirements_uncovered_must_be_empty: true,
+    },
+    modules: ['mod-001-alpha.json', 7],
+  });
+
+  return dir;
+}
+
+function makeSingleBuildReport(tmpDir: string): string {
+  const p = join(tmpDir, 'build_report.json');
+  writeJson(p, {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    module_results: [
+      { module_ref: 'MOD-001', status: 'completed', retry_history: [], auto_decisions: [] },
+    ],
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+  });
+  return p;
+}
+
+function makeSplitBuildReport(tmpDir: string, opts?: { missingChild?: boolean }): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001', 'MOD-002'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 3,
+      passed: 3,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001-alpha.json', 'mod-002-beta.json'],
+  });
+
+  if (!opts?.missingChild) {
+    writeJson(join(dir, 'mod-001-alpha.json'), {
+      module_results: [{ module_ref: 'MOD-001', status: 'completed', retry_history: [], auto_decisions: [] }],
+    });
+    writeJson(join(dir, 'mod-002-beta.json'), {
+      module_results: [{ module_ref: 'MOD-002', status: 'degraded', retry_history: [], auto_decisions: [] }],
+    });
+  }
+
+  return dir;
+}
+
+function makeSplitBuildReportWithMalformedChild(tmpDir: string): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001-alpha.json'],
+  });
+
+  writeJson(join(dir, 'mod-001-alpha.json'), {
+    module_results: { module_ref: 'MOD-001', status: 'completed' },
+  });
+
+  return dir;
+}
+
+function makeSplitBuildReportWithoutModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+  });
+
+  return dir;
+}
+
+function makeSplitBuildReportWithInvalidModules(tmpDir: string): string {
+  const dir = join(tmpDir, 'build');
+  mkdirSync(dir, { recursive: true });
+
+  writeJson(join(dir, 'index.json'), {
+    phase: 'build',
+    version: '4.0',
+    execution_plan: {
+      module_order: ['MOD-001'],
+      tracer_bullet_path: 'SCENARIO-001',
+      rationale: 'test',
+    },
+    tracer_bullet_result: { status: 'passed' },
+    test_summary: {
+      total: 1,
+      passed: 1,
+      failed: 0,
+      skipped: 0,
+      framework: 'vitest',
+    },
+    acceptance_result: {
+      scenarios_verified: ['SCENARIO-001'],
+      status: 'all_passed',
+      source: 'critic_agent',
+    },
+    contract_amendments: [],
+    auto_decisions: [],
+    unresolved_issues: [],
+    modules: ['mod-001-alpha.json', ''],
+  });
+
+  return dir;
+}
 // ---------------------------------------------------------------------------
 // detectFormat
 // ---------------------------------------------------------------------------
@@ -133,6 +450,12 @@ describe('detectFormat', () => {
     const tmp = makeTmpDir();
     const specDir = makeSplitSpec(tmp);
     expect(detectFormat(specDir)).toBe('split_directory');
+  });
+
+  it('TEST-026-018: returns split_directory for explicit index.json path', () => {
+    const tmp = makeTmpDir();
+    const specDir = makeSplitSpec(tmp);
+    expect(detectFormat(join(specDir, 'index.json'))).toBe('split_directory');
   });
 
   it('TEST-026-003: throws PATH_NOT_FOUND for non-existent path', () => {
@@ -225,6 +548,17 @@ describe('resolveSpec', () => {
     expect(hash1).toBe(hash2);
     expect(hash1).toHaveLength(64);
   });
+
+  it('TEST-026-019: explicit split spec index path matches directory behavior', () => {
+    const tmp = makeTmpDir();
+    const specDir = makeSplitSpec(tmp);
+
+    const byDir = resolveSpec(specDir);
+    const byIndex = resolveSpec(join(specDir, 'index.json'));
+
+    expect(byIndex.spec).toEqual(byDir.spec);
+    expect(byIndex.specHash).toBe(byDir.specHash);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -269,6 +603,134 @@ describe('resolveDiscover', () => {
     const tmp = makeTmpDir();
     const discoverDir = makeSplitDiscover(tmp, { missingChild: true });
     expect(() => resolveDiscover(discoverDir)).toThrow('CHILD_FILE_MISSING');
+  });
+
+  it('TEST-026-020: explicit split discover index path matches directory behavior', () => {
+    const tmp = makeTmpDir();
+    const discoverDir = makeSplitDiscover(tmp);
+
+    const byDir = resolveDiscover(discoverDir);
+    const byIndex = resolveDiscover(join(discoverDir, 'index.json'));
+
+    expect(byIndex.discover).toEqual(byDir.discover);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveTests
+// ---------------------------------------------------------------------------
+
+describe('resolveTests', () => {
+  it('TEST-026-021: loads single file tests artifact', () => {
+    const tmp = makeTmpDir();
+    const testsPath = makeSingleTests(tmp);
+    const { tests } = resolveTests(testsPath);
+
+    expect(tests.example_cases).toHaveLength(1);
+    expect(tests.property_cases).toHaveLength(1);
+    expect(tests.coverage_summary).toBeDefined();
+  });
+
+  it('TEST-026-022: loads split tests artifact and merges module files', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTests(tmp);
+    const { tests } = resolveTests(testsDir);
+
+    expect(tests.example_cases).toHaveLength(2);
+    expect(tests.property_cases).toHaveLength(2);
+    expect(tests.coverage_guards).toBeDefined();
+  });
+
+  it('TEST-026-023: explicit split tests index path matches directory behavior', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTests(tmp);
+
+    const byDir = resolveTests(testsDir);
+    const byIndex = resolveTests(join(testsDir, 'index.json'));
+
+    expect(byIndex.tests).toEqual(byDir.tests);
+  });
+
+  it('TEST-026-024: throws CHILD_FILE_MISSING for missing split tests module file', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTests(tmp, { missingChild: true });
+    expect(() => resolveTests(testsDir)).toThrow('CHILD_FILE_MISSING');
+  });
+
+  it('TEST-026-029: throws INVALID_CHILD_PAYLOAD when split tests child fields are malformed', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTestsWithMalformedChild(tmp);
+    expect(() => resolveTests(testsDir)).toThrow('INVALID_CHILD_PAYLOAD');
+  });
+
+  it('TEST-026-031: throws INVALID_INDEX_PAYLOAD when split tests index omits modules', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTestsWithoutModules(tmp);
+    expect(() => resolveTests(testsDir)).toThrow('INVALID_INDEX_PAYLOAD');
+  });
+
+  it('TEST-026-032: throws INVALID_INDEX_PAYLOAD when split tests index modules contains invalid entries', () => {
+    const tmp = makeTmpDir();
+    const testsDir = makeSplitTestsWithInvalidModules(tmp);
+    expect(() => resolveTests(testsDir)).toThrow('INVALID_INDEX_PAYLOAD');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// resolveBuildReport
+// ---------------------------------------------------------------------------
+
+describe('resolveBuildReport', () => {
+  it('TEST-026-025: loads single file build report artifact', () => {
+    const tmp = makeTmpDir();
+    const buildPath = makeSingleBuildReport(tmp);
+    const { buildReport } = resolveBuildReport(buildPath);
+
+    expect(buildReport.module_results).toHaveLength(1);
+    expect(buildReport.test_summary).toBeDefined();
+  });
+
+  it('TEST-026-026: loads split build report artifact and merges module files', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReport(tmp);
+    const { buildReport } = resolveBuildReport(buildDir);
+
+    expect(buildReport.module_results).toHaveLength(2);
+    expect(buildReport.test_summary).toBeDefined();
+  });
+
+  it('TEST-026-027: explicit split build index path matches directory behavior', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReport(tmp);
+
+    const byDir = resolveBuildReport(buildDir);
+    const byIndex = resolveBuildReport(join(buildDir, 'index.json'));
+
+    expect(byIndex.buildReport).toEqual(byDir.buildReport);
+  });
+
+  it('TEST-026-028: throws CHILD_FILE_MISSING for missing split build module file', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReport(tmp, { missingChild: true });
+    expect(() => resolveBuildReport(buildDir)).toThrow('CHILD_FILE_MISSING');
+  });
+
+  it('TEST-026-030: throws INVALID_CHILD_PAYLOAD when split build child fields are malformed', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReportWithMalformedChild(tmp);
+    expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_CHILD_PAYLOAD');
+  });
+
+  it('TEST-026-033: throws INVALID_INDEX_PAYLOAD when split build index omits modules', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReportWithoutModules(tmp);
+    expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_INDEX_PAYLOAD');
+  });
+
+  it('TEST-026-034: throws INVALID_INDEX_PAYLOAD when split build index modules contains invalid entries', () => {
+    const tmp = makeTmpDir();
+    const buildDir = makeSplitBuildReportWithInvalidModules(tmp);
+    expect(() => resolveBuildReport(buildDir)).toThrow('INVALID_INDEX_PAYLOAD');
   });
 });
 

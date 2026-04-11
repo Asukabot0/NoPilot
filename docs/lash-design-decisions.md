@@ -2,7 +2,7 @@
 
 ## Overview
 
-Lash is a cross-platform multi-agent orchestration engine that replaces NoPilot's `/build` phase. It runs as prompts and helper scripts (zero dependencies) within existing AI coding platforms (Claude Code, Codex, OpenCode), treating each platform as a callable Worker Agent via CLI process spawning.
+Lash is a cross-platform multi-agent orchestration engine integrated into NoPilot's build workflow. It ships as the `lash` TypeScript CLI inside the `nopilot` npm package, combines skill-driven orchestration with deterministic runtime helpers, and treats each AI coding platform (Claude Code, Codex, OpenCode) as a callable Worker Agent via CLI process spawning.
 
 ---
 
@@ -12,7 +12,7 @@ Lash's architecture is grounded in five core principles:
 
 1. **Platform-as-Agent, not Framework**: No custom runtime, no MCP server, no framework-specific adapters. Any CLI coding tool becomes a Worker. This enables heterogeneous agent teams (different platforms and models for different tasks) and zero platform switching costs.
 
-2. **Orchestration via Prompt Engineering + Scripts**: Lash matches NoPilot's philosophy of pure prompt engineering. It avoids building yet another framework that competes with existing platforms. Instead, it orchestrates existing platforms as Workers—as portable as a set of text files.
+2. **Orchestration via Skills + Deterministic Runtime**: Lash matches NoPilot's philosophy of letting AI platforms do the creative work while the runtime handles deterministic mechanics. It avoids building deep platform-specific adapters. Instead, it orchestrates existing platforms as Workers while keeping the deterministic layer in a small packaged CLI.
 
 3. **External Verification, Not Self-Reports**: All test pass/fail decisions are based on Lash's external test execution in the Worker's worktree, never on the Worker's self-reported results. This eliminates same-model bias and ensures objective verification.
 
@@ -33,7 +33,7 @@ Lash's architecture is grounded in five core principles:
 - Runs on host LLM platform (Claude Code, Codex, or OpenCode)
 - Interprets specs and makes trade-off decisions during build
 
-**Deterministic Helper Layer (Python modules):**
+**Deterministic Helper Layer (TypeScript runtime modules):**
 - Handles mechanical operations: DAG topological sort, git operations, test runner detection, JSON parsing
 - Produces deterministic, repeatable output for the same input
 - Non-blocking; can be called synchronously without spawning new agents
@@ -48,7 +48,7 @@ Lash's architecture is grounded in five core principles:
 
 Lash uses **thin per-platform launchers** (not deep adapters):
 - CC: `claude -p <task> --session-id <uuid> --permission-mode bypassPermissions --append-system-prompt-file .lash/worker-instructions.md`
-- Codex: `codex exec -c approval_policy=auto-edit <task>`
+- Codex: `codex exec --full-auto -c system_prompt_file=.lash/worker-instructions.md <task>`
 - OpenCode: `opencode run <task> --agent coder`
 
 **Rationale**: Adding a new platform costs hours (write CLI wrapper), not weeks. Version updates to platform CLIs are localized to launcher constants.
@@ -57,7 +57,7 @@ Lash uses **thin per-platform launchers** (not deep adapters):
 
 ## 3. Module Architecture
 
-Lash consists of 8 Python modules + CLI orchestrator:
+Lash consists of the following core runtime modules plus the CLI orchestrator:
 
 ### MOD-001: Plan Generator
 **Responsibility**: Parse spec.json dependency graph, validate file ownership, topologically sort modules into parallelizable batches (deterministic ordering, ties broken by module ID), select tracer bullet scenario, derive tracer module set.
@@ -174,7 +174,7 @@ All subcommands output JSON to stdout; errors as JSON to stderr with process exi
 
 ### Core Data Flow
 
-1. **Input**: specs/discover.json (requirements, scenarios, design philosophy) + specs/spec.json (modules, interfaces, data models)
+1. **Input**: `specs/discover.json` or `specs/discover/index.json` + `specs/spec.json` or `specs/spec/index.json`
 2. **Plan Generation**: MOD-001 → specs/execution-plan.json (batches, tracer config)
 3. **Task Packages**: MOD-004 generates `.lash/` per worktree (task.md, module-spec.json, interfaces.json, tests.json, etc.)
 4. **Tests**: MOD-005 generates specs/tests.json per NoPilot schema
@@ -285,13 +285,16 @@ Lash maintains deterministic execution state in specs/build-state.json with 21 d
 
 ## 10. Integration with NoPilot Workflow
 
-Lash **replaces** NoPilot's `/build` phase:
+Lash integrates with NoPilot's build workflow through `/lash-build`:
 
 ```
-/discover → /spec → /lash-build → (orchestrator manages Workers in parallel)
+/discover → /spec → /build
+                   ↘ /lash-build → (orchestrator manages Workers in parallel)
 ```
 
-**Inputs**: specs/discover.json (locked requirements), specs/spec.json (locked design)
+`/build` remains the general build-stage workflow entry. `/lash-build` is the multi-agent orchestration path used when the repository and project instructions opt into Lash.
+
+**Inputs**: `specs/discover.json` or `specs/discover/index.json`, plus `specs/spec.json` or `specs/spec/index.json`
 **Outputs**: 
 - specs/execution-plan.json (batch plan)
 - specs/tests.json (generated tests per NoPilot schema)
@@ -305,4 +308,3 @@ Lash **replaces** NoPilot's `/build` phase:
 - Acceptance criteria verification via EARS model
 - State machine transitions per workflow.json
 - Backtrack triggers: spec_interface_infeasible (→BACKTRACK_SPEC), requirement_level_fundamental_issue (→BACKTRACK_DISCOVER)
-

@@ -9,7 +9,7 @@
  */
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { cwd as processCwd } from 'node:process';
 
 // ---------------------------------------------------------------------------
@@ -43,6 +43,36 @@ interface Discover {
   [key: string]: unknown;
 }
 
+interface TestsArtifact {
+  phase?: string;
+  artifact?: string;
+  example_cases?: Array<Record<string, unknown>>;
+  property_cases?: Array<Record<string, unknown>>;
+  coverage_summary?: Record<string, unknown>;
+  coverage_guards?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+interface BuildReportArtifact {
+  phase?: string;
+  execution_plan?: Record<string, unknown>;
+  tracer_bullet_result?: Record<string, unknown>;
+  test_summary?: Record<string, unknown>;
+  acceptance_result?: Record<string, unknown>;
+  contract_amendments?: Array<Record<string, unknown>>;
+  auto_decisions?: Array<Record<string, unknown>>;
+  unresolved_issues?: unknown[];
+  module_results?: Array<Record<string, unknown>>;
+  [key: string]: unknown;
+}
+
+type ArtifactFormat = 'single_file' | 'split_directory';
+
+interface ResolvedArtifactInput {
+  format: ArtifactFormat;
+  normalizedPath: string;
+}
+
 // ---------------------------------------------------------------------------
 // detectFormat
 // ---------------------------------------------------------------------------
@@ -52,6 +82,10 @@ interface Discover {
  * @throws Error with PATH_NOT_FOUND or INDEX_MISSING
  */
 export function detectFormat(inputPath: string): 'single_file' | 'split_directory' {
+  return resolveArtifactInput(inputPath).format;
+}
+
+function resolveArtifactInput(inputPath: string): ResolvedArtifactInput {
   const abs = resolve(inputPath);
 
   if (!existsSync(abs)) {
@@ -61,7 +95,11 @@ export function detectFormat(inputPath: string): 'single_file' | 'split_director
   const stat = statSync(abs);
 
   if (stat.isFile()) {
-    return 'single_file';
+    if (basename(abs) === 'index.json') {
+      const dirPath = dirname(abs);
+      return { format: 'split_directory', normalizedPath: dirPath };
+    }
+    return { format: 'single_file', normalizedPath: abs };
   }
 
   if (stat.isDirectory()) {
@@ -69,7 +107,7 @@ export function detectFormat(inputPath: string): 'single_file' | 'split_director
     if (!existsSync(indexPath)) {
       throw new Error(`[INDEX_MISSING] Directory does not contain index.json (path: ${abs})`);
     }
-    return 'split_directory';
+    return { format: 'split_directory', normalizedPath: abs };
   }
 
   throw new Error(`[PATH_NOT_FOUND] Path is neither a file nor directory (path: ${abs})`);
@@ -85,13 +123,13 @@ export function detectFormat(inputPath: string): 'single_file' | 'split_director
  * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, MODULE_FILE_MISSING, INVALID_JSON, INVALID_DEPENDENCY_REF
  */
 export function resolveSpec(specPath: string): { spec: Spec; specHash: string } {
-  const format = detectFormat(specPath);
+  const { format, normalizedPath } = resolveArtifactInput(specPath);
 
   if (format === 'single_file') {
-    return loadSingleSpec(specPath);
+    return loadSingleSpec(normalizedPath);
   }
 
-  return loadSplitSpec(specPath);
+  return loadSplitSpec(normalizedPath);
 }
 
 function loadSingleSpec(filePath: string): { spec: Spec; specHash: string } {
@@ -166,19 +204,18 @@ function loadSplitSpec(dirPath: string): { spec: Spec; specHash: string } {
 
 /**
  * Load a discover artifact from a single file or split directory.
- * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON
+ * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON, INVALID_INDEX_PAYLOAD, INVALID_CHILD_PAYLOAD
  */
 export function resolveDiscover(discoverPath: string): { discover: Discover } {
-  const format = detectFormat(discoverPath);
+  const { format, normalizedPath } = resolveArtifactInput(discoverPath);
 
   if (format === 'single_file') {
-    const abs = resolve(discoverPath);
-    const text = readFileSync(abs, 'utf8');
-    const discover: Discover = parseJson(text, abs);
+    const text = readFileSync(normalizedPath, 'utf8');
+    const discover: Discover = parseJson(text, normalizedPath);
     return { discover };
   }
 
-  return loadSplitDiscover(discoverPath);
+  return loadSplitDiscover(normalizedPath);
 }
 
 function loadSplitDiscover(dirPath: string): { discover: Discover } {
@@ -206,6 +243,108 @@ function loadSplitDiscover(dirPath: string): { discover: Discover } {
 }
 
 // ---------------------------------------------------------------------------
+// resolveTests
+// ---------------------------------------------------------------------------
+
+/**
+ * Load a tests artifact from a single file or split directory.
+ * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON
+ */
+export function resolveTests(testsPath: string): { tests: TestsArtifact } {
+  const { format, normalizedPath } = resolveArtifactInput(testsPath);
+
+  if (format === 'single_file') {
+    const text = readFileSync(normalizedPath, 'utf8');
+    const tests: TestsArtifact = parseJson(text, normalizedPath);
+    return { tests };
+  }
+
+  return loadSplitTests(normalizedPath);
+}
+
+function loadSplitTests(dirPath: string): { tests: TestsArtifact } {
+  const abs = resolve(dirPath);
+  const indexPath = join(abs, 'index.json');
+  const indexText = readFileSync(indexPath, 'utf8');
+  const index = parseJson(indexText, indexPath) as Record<string, unknown>;
+
+  const moduleFiles = requireStringArray(index.modules, indexPath, 'modules');
+  const merged: TestsArtifact = {
+    ...index,
+    example_cases: [],
+    property_cases: [],
+  };
+
+  delete merged.modules;
+
+  for (const filename of moduleFiles) {
+    const childPath = join(abs, filename);
+    if (!existsSync(childPath)) {
+      throw new Error(`[CHILD_FILE_MISSING] Referenced child file not found (path: ${childPath})`);
+    }
+    const childText = readFileSync(childPath, 'utf8');
+    const childData = parseJson(childText, childPath) as Record<string, unknown>;
+    merged.example_cases!.push(
+      ...requireObjectArray(childData.example_cases, childPath, 'example_cases')
+    );
+    merged.property_cases!.push(
+      ...requireObjectArray(childData.property_cases, childPath, 'property_cases')
+    );
+  }
+
+  return { tests: merged };
+}
+
+// ---------------------------------------------------------------------------
+// resolveBuildReport
+// ---------------------------------------------------------------------------
+
+/**
+ * Load a build report artifact from a single file or split directory.
+ * @throws Error with PATH_NOT_FOUND, INDEX_MISSING, CHILD_FILE_MISSING, INVALID_JSON, INVALID_INDEX_PAYLOAD, INVALID_CHILD_PAYLOAD
+ */
+export function resolveBuildReport(buildPath: string): { buildReport: BuildReportArtifact } {
+  const { format, normalizedPath } = resolveArtifactInput(buildPath);
+
+  if (format === 'single_file') {
+    const text = readFileSync(normalizedPath, 'utf8');
+    const buildReport: BuildReportArtifact = parseJson(text, normalizedPath);
+    return { buildReport };
+  }
+
+  return loadSplitBuildReport(normalizedPath);
+}
+
+function loadSplitBuildReport(dirPath: string): { buildReport: BuildReportArtifact } {
+  const abs = resolve(dirPath);
+  const indexPath = join(abs, 'index.json');
+  const indexText = readFileSync(indexPath, 'utf8');
+  const index = parseJson(indexText, indexPath) as Record<string, unknown>;
+
+  const moduleFiles = requireStringArray(index.modules, indexPath, 'modules');
+  const merged: BuildReportArtifact = {
+    ...index,
+    module_results: [],
+  };
+
+  delete merged.modules;
+
+  for (const filename of moduleFiles) {
+    const childPath = join(abs, filename);
+    if (!existsSync(childPath)) {
+      throw new Error(`[CHILD_FILE_MISSING] Referenced child file not found (path: ${childPath})`);
+    }
+    const childText = readFileSync(childPath, 'utf8');
+    const childData = parseJson(childText, childPath) as Record<string, unknown>;
+    merged.module_results!.push(
+      ...requireObjectArray(childData.module_results, childPath, 'module_results')
+    );
+  }
+
+  return { buildReport: merged };
+}
+
+// ---------------------------------------------------------------------------
 // Shared helper
 // ---------------------------------------------------------------------------
 
@@ -215,6 +354,54 @@ function parseJson<T>(text: string, sourcePath: string): T {
   } catch {
     throw new Error(`[INVALID_JSON] Failed to parse JSON (path: ${sourcePath})`);
   }
+}
+
+function requireObjectArray(
+  value: unknown,
+  sourcePath: string,
+  fieldName: string,
+): Array<Record<string, unknown>> {
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `[INVALID_CHILD_PAYLOAD] Expected '${fieldName}' to be an array in split child file (path: ${sourcePath})`
+    );
+  }
+
+  const invalidItemIndex = value.findIndex(
+    (item) => typeof item !== 'object' || item === null,
+  );
+
+  if (invalidItemIndex !== -1) {
+    throw new Error(
+      `[INVALID_CHILD_PAYLOAD] Expected '${fieldName}' entries to be objects in split child file (path: ${sourcePath}, index: ${invalidItemIndex})`
+    );
+  }
+
+  return value as Array<Record<string, unknown>>;
+}
+
+function requireStringArray(
+  value: unknown,
+  sourcePath: string,
+  fieldName: string,
+): string[] {
+  if (!Array.isArray(value)) {
+    throw new Error(
+      `[INVALID_INDEX_PAYLOAD] Expected '${fieldName}' to be an array in split index file (path: ${sourcePath})`
+    );
+  }
+
+  const invalidItemIndex = value.findIndex(
+    (item) => typeof item !== 'string' || item.length === 0,
+  );
+
+  if (invalidItemIndex !== -1) {
+    throw new Error(
+      `[INVALID_INDEX_PAYLOAD] Expected '${fieldName}' entries to be non-empty strings in split index file (path: ${sourcePath}, index: ${invalidItemIndex})`
+    );
+  }
+
+  return value;
 }
 
 // ---------------------------------------------------------------------------

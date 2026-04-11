@@ -3,6 +3,8 @@
 **日期**: 2026-04-07
 **状态**: 待审批（审阅后修订版 v2）
 
+> 历史设计快照：本文记录 2026-04-07 适配实施前的设计判断。当前仓库状态请以 `src/skill-engine/platform-registry.ts`、`src/skill-engine/skill-installer.ts` 与相关测试为准。
+
 ## 背景
 
 NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPilot 框架本身（discover/spec/build 等命令）对 OpenCode 的支持仍处于实验性状态。
@@ -29,6 +31,13 @@ NoPilot 框架的 Lash 已完整支持 OpenCode 作为 Worker 平台，但 NoPil
 - OpenCode 从 `~/.agents/skills/` 加载技能（与 Codex 共享）
 - 同时也从 `~/.claude/skills/` 加载技能
 - **不需要**单独的 `~/.opencode/skills/` 目录
+
+### OpenCode SKILL.md 元数据要求
+
+根据 OpenCode 官方 skills 文档补充确认：
+- 目录型 skill 的 `SKILL.md` 必须以 YAML frontmatter 开头
+- frontmatter 至少包含 `name` 和 `description`
+- 该要求是 OpenCode 发现 skill 的元数据约束，不改变 `~/.agents/skills/` 作为兼容加载路径的结论
 
 ### 技能模板占位符
 

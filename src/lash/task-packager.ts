@@ -107,7 +107,9 @@ export function generatePackage(
   platform: string,
 ): PackageResult {
   // --- Locate the module in spec ---
-  const module = findModule(spec, moduleId);
+  const validatedModules = validateOwnedFiles(spec);
+  const module = findModule(validatedModules, moduleId);
+  const owned = requireOwnedFiles(module);
 
   // --- Validate tests exist for this module ---
   const moduletests = filterTests(tests, moduleId);
@@ -115,7 +117,7 @@ export function generatePackage(
     (moduletests.example_cases ?? []).length === 0 &&
     (moduletests.property_cases ?? []).length === 0
   ) {
-    throw new Error(`missing_tests: no test cases found for ${moduleId}`);
+    throw new Error(buildMissingTestsMessage(moduleId));
   }
 
   // --- Prepare .lash/ directory (only place we write) ---
@@ -140,18 +142,17 @@ export function generatePackage(
   writeJson('module-spec.json', moduleSpec);
 
   // 2. interfaces.json
-  const interfaces = buildInterfaces(spec, moduleId, completedModules);
+  const interfaces = buildInterfaces(validatedModules, moduleId, completedModules);
   writeJson('interfaces.json', interfaces);
 
   // 3. tests.json (subset)
   writeJson('tests.json', moduletests);
 
   // 4. owned_files.txt
-  const owned = (module.owned_files ?? []) as string[];
   write('owned_files.txt', owned.join('\n') + '\n');
 
   // 5. read_only_files.txt
-  const readOnly = buildReadOnlyFiles(spec, moduleId);
+  const readOnly = buildReadOnlyFiles(validatedModules, moduleId);
   write('read_only_files.txt', readOnly.join('\n') + '\n');
 
   // 6. task.md
@@ -168,6 +169,18 @@ export function generatePackage(
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
+
+function validateOwnedFiles(spec: Spec): Spec {
+  const modules = (spec.modules ?? []).map((module) => {
+    const ownedFiles = module.owned_files ?? [];
+    if (ownedFiles.length === 0) {
+      throw new Error(buildMissingOwnedFilesMessage(module.id));
+    }
+    return { ...module, owned_files: [...ownedFiles] };
+  });
+
+  return { ...spec, modules };
+}
 
 function findModule(spec: Spec, moduleId: string): SpecModule {
   for (const mod of spec.modules ?? []) {
@@ -190,6 +203,29 @@ function filterTests(tests: Tests, moduleId: string): Tests {
     example_cases: exampleCases,
     property_cases: propertyCases,
   };
+}
+
+function requireOwnedFiles(module: SpecModule): string[] {
+  const ownedFiles = module.owned_files ?? [];
+  if (ownedFiles.length === 0) {
+    throw new Error(buildMissingOwnedFilesMessage(module.id));
+  }
+  return [...ownedFiles];
+}
+
+function buildMissingTestsMessage(moduleId: string): string {
+  return [
+    `missing_tests: no test cases found for ${moduleId}`,
+    'Provide a tests artifact via --tests <path> (for example specs/tests.json, specs/tests/, or specs/tests/index.json).',
+    'If no tests artifact exists yet, generate it first with commands/build/test-gen.md or /build Step 2.',
+  ].join(' ');
+}
+
+function buildMissingOwnedFilesMessage(moduleId: string): string {
+  return [
+    `missing_owned_files: module ${moduleId} has no owned_files declared in the spec artifact.`,
+    'Add explicit owned_files entries during /spec generation before running lash package or /lash-build.',
+  ].join(' ');
 }
 
 function buildModuleSpec(module: SpecModule): ModuleSpec {
@@ -423,7 +459,7 @@ Launch this Worker with:
 
 Launch this Worker with:
 
-    codex exec -c approval_policy=auto-edit -c system_prompt_file=.lash/worker-instructions.md <task>
+    codex exec --full-auto -c system_prompt_file=.lash/worker-instructions.md <task>
 `;
   } else {
     // opencode — content is prepended to task prompt

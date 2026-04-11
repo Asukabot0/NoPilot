@@ -73,7 +73,7 @@
 - Lash repository archived (legacy Python codebase)
 
 **Architecture highlights:**
-- Config via `lash.config.json` (auto-discovered in `./` or `./lash/`)
+- Config via `lash.config.json` in the current working directory
 - JSON protocol for CLI subcommands (15 atomic operations)
 - Atomic state persistence with 21 transition types
 - Crash recovery and health monitoring built-in

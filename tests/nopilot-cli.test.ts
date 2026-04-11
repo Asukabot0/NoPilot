@@ -72,7 +72,7 @@ describe('nopilot init', () => {
   });
 
   it('installs skills to Claude, Codex, and OpenCode (shared)', () => {
-    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
+    const output = runCli(['init', tmpDir], undefined, { HOME: tmpHome });
 
     const claudeSkills = join(tmpHome, '.claude', 'skills');
     const codexSkills = join(tmpHome, '.agents', 'skills');
@@ -82,6 +82,7 @@ describe('nopilot init', () => {
     // Each skill should be installed as a subdirectory with SKILL.md
     expect(readdirSync(claudeSkills).length).toBeGreaterThan(0);
     expect(readdirSync(codexSkills).length).toBeGreaterThan(0);
+    expect(output).toContain('Skipped opencode (shares skill directory with codex)');
   });
 
   it('does NOT copy schemas to project', () => {
@@ -115,6 +116,17 @@ describe('nopilot init', () => {
     const content = readFileSync(claudeMd, 'utf-8');
     expect(content).toContain('## Lash (Auto-triggered Multi-Agent Build Orchestrator)');
     expect(content).toContain('nopilot paths');
+  });
+
+  it('injects stage entry and recovery rules into CLAUDE.md', () => {
+    const claudeMd = join(tmpDir, 'CLAUDE.md');
+    writeFileSync(claudeMd, '# My Project\n', 'utf-8');
+
+    runCli(['init', tmpDir], undefined, { HOME: tmpHome });
+
+    const content = readFileSync(claudeMd, 'utf-8');
+    expect(content).toContain('显式输入 `/discover`、`/spec`、`/build`');
+    expect(content).toContain('重新加载当前阶段的 SKILL.md');
   });
 
   it('is idempotent — running init twice does not duplicate the directive', () => {
