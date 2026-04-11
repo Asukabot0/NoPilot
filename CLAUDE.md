@@ -6,7 +6,7 @@
 
 ## 当前状态
 
-V0.0.4 Released (main)。60 个 .ts 文件，17724 行 TypeScript，644 个测试。14 个 open issues。Universal Skill Engine 已上线。OpenCode 已激活（与 Codex 共享 ~/.agents/skills/）。
+V0.0.7 Released (main)。83 个 .ts 文件，22451 行 TypeScript，808 个测试。14 个 open issues。Universal Skill Engine 已上线。OpenCode 已激活（与 Codex 共享 ~/.agents/skills/）。Benchmark 评测系统已上线。
 
 ## Lash (Auto-triggered Multi-Agent Build Orchestrator)
 
