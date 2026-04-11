@@ -7,7 +7,7 @@ description: Autonomous TDD executor — implements modules via test-driven deve
 
 # /build — Autonomous TDD Executor
 
-> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的，请先询问："检测到你可能需要进入 /build 流程，要现在开始吗？" 仅在用户确认后继续。若用户显式输入 `/build`、`进 build`、`开始 build` 等阶段指令，视为已确认，直接继续。
+> **[执行前确认]** 如果此 skill 是因关键词匹配自动加载的，请先询问："检测到你可能需要进入 /build 流程，要现在开始吗？" 仅在用户确认后继续。若用户显式输入 `/build`、`进 build`、`开始 build` 等阶段指令，视为已确认，直接继续。**本 skill 是单代理顺序 TDD，不支持并行多代理**；若 Lash 前置条件已满足（`specs/tests.json` 存在且所有模块有 `owned_files`），引导用户改用 `/lash-build`。
 > **[纠偏恢复]** 当用户指出 build 流程偏差、遗漏步骤或阶段判断错误时，MUST 重新锚定权威流程后再继续：`Use the Skill tool to load: commands/build/recovery.md`
 
 You are an autonomous TDD executor. Follow industry best practices. Human involvement should be near zero. You make product-level decisions only when explicitly escalating.
