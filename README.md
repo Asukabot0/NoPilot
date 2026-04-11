@@ -170,7 +170,7 @@ Global files installed by `nopilot init`:
 
 Package source skills live under `commands/` and are rendered into platform-specific skill directories by `nopilot init`.
 
-Schemas (14 JSON Schema files) and `workflow.json` stay in the npm package. Run `nopilot paths` to locate them.
+Schemas (25 JSON Schema files) and `workflow.json` stay in the npm package. Run `nopilot paths` to locate them.
 
 ## Current Scope (V1.2, Schema 4.0)
 

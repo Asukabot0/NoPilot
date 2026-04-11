@@ -1,6 +1,6 @@
 # NoPilot 使用者参考文档
 
-> 版本: V1.2 (Schema 4.0) | 最后更新: 2026-04-04
+> 版本: V1.2 (Schema 4.0) | 最后更新: 2026-04-11
 
 ---
 
@@ -1659,7 +1659,7 @@ lash state resume --state-path custom/state.json
 
 ### 8.1 Schema 体系总览
 
-NoPilot 使用 14 个 JSON Schema（v4.0，基于 JSON Schema draft 2020-12）定义所有制品的结构。
+NoPilot 使用 25 个 JSON Schema（v4.0，基于 JSON Schema draft 2020-12）定义所有制品的结构。
 
 Schema 文件位于 `schemas/` 目录：
 
@@ -2070,7 +2070,7 @@ your-project/                        # 项目目录
 └── ...
 
 <nopilot-package>/                   # npm 包内（通过 nopilot paths 查看位置）
-├── schemas/                         # 14 个 JSON Schema (v4.0)
+├── schemas/                         # 25 个 JSON Schema (v4.0)
 │   ├── discover.schema.json
 │   ├── discover_index.schema.json
 │   ├── discover_history.schema.json
