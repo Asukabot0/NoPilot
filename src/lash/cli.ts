@@ -170,11 +170,12 @@ program
   .description('Spawn a worker process')
   .requiredOption('--task <text>', 'Task description')
   .option('--instruction-file <path>', 'Path to instruction file')
+  .option('--max-budget-usd <amount>', 'Maximum budget in USD for the worker', parseFloat)
   .action(async (
     platform: string,
     moduleId: string,
     worktreePath: string,
-    opts: { task: string; instructionFile?: string },
+    opts: { task: string; instructionFile?: string; maxBudgetUsd?: number },
   ) => {
     const { spawnWorker } = await import('./platform-launcher.js');
     try {
@@ -184,6 +185,7 @@ program
         worktreePath,
         opts.instructionFile ?? null,
         moduleId,
+        opts.maxBudgetUsd,
       );
       out({
         pid: handle.pid,

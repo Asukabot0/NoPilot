@@ -20,7 +20,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "suite_type", "module_ref", "requirement_refs", "description", "category", "ears_ref", "derivation", "input", "expected_output"],
+        "required": ["id", "suite_type", "module_ref", "requirement_refs", "description", "category", "ears_ref", "derivation", "input", "expected_output", "setup"],
         "properties": {
           "id": {
             "type": "string",
@@ -50,7 +50,7 @@
           },
           "input": {},
           "expected_output": {},
-          "setup": { "type": "string" }
+          "setup": { "type": ["string", "null"] }
         }
       }
     },

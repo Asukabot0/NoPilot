@@ -26,7 +26,7 @@ export interface LashConfig {
 // build_state.py — 21 event types + state structures
 // ---------------------------------------------------------------------------
 
-/** All 21 valid build-state transition events. */
+/** All 22 valid build-state transition events. */
 export type BuildEvent =
   | 'worker_spawned'
   | 'worker_completed'
@@ -48,7 +48,8 @@ export type BuildEvent =
   | 'supervisor_failed'
   | 'build_paused'
   | 'build_completed'
-  | 'build_backtracked';
+  | 'build_backtracked'
+  | 'batches_initialized';
 
 /** Top-level build status values. */
 export type BuildStatus =

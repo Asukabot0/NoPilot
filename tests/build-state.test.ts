@@ -13,8 +13,9 @@ import {
   recordTransition,
   getResumePoint,
   archiveState,
+  initializeBatches,
 } from '../src/lash/build-state.js';
-import type { BuildState, BuildEvent } from '../src/lash/types.js';
+import type { BuildState, BuildEvent, ExecutionPlan } from '../src/lash/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers (mirror Python _make_* helpers)
@@ -42,6 +43,7 @@ const VALID_EVENTS: BuildEvent[] = [
   'build_paused',
   'build_completed',
   'build_backtracked',
+  'batches_initialized',
 ];
 
 function makeBaseState(specHash = 'abc123'): BuildState {
@@ -478,5 +480,109 @@ describe('archiveState', () => {
     const result = archiveState(statePath);
     const archiveDir = path.dirname(result.archive_path);
     expect(archiveDir).toBe(tmp);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// initializeBatches
+// ---------------------------------------------------------------------------
+
+function makePlan(): ExecutionPlan {
+  return {
+    spec_hash: 'abc123',
+    tracer: null,
+    batches: [
+      {
+        batch_id: 'BATCH-001',
+        modules: [
+          { module_id: 'MOD-001', depends_on: [], owned_files: ['src/a.ts'], source_root: 'src' },
+          { module_id: 'MOD-002', depends_on: ['MOD-001'], owned_files: ['src/b.ts'], source_root: 'src' },
+        ],
+      },
+      {
+        batch_id: 'BATCH-002',
+        modules: [
+          { module_id: 'MOD-003', depends_on: [], owned_files: ['src/c.ts'], source_root: 'src' },
+        ],
+      },
+    ],
+  };
+}
+
+describe('initializeBatches', () => {
+  it('creates BatchEntry[] from ExecutionPlan with correct structure', () => {
+    const state = makeBaseState();
+    const plan = makePlan();
+
+    const result = initializeBatches(state, plan);
+
+    expect(result.batches).toHaveLength(2);
+
+    // Batch 1
+    expect(result.batches[0].batch_id).toBe('BATCH-001');
+    expect(result.batches[0].status).toBe('pending');
+    expect(result.batches[0].workers).toHaveLength(2);
+    expect(result.batches[0].workers[0]).toEqual({ module_id: 'MOD-001', status: 'pending' });
+    expect(result.batches[0].workers[1]).toEqual({ module_id: 'MOD-002', status: 'pending' });
+
+    // Batch 2
+    expect(result.batches[1].batch_id).toBe('BATCH-002');
+    expect(result.batches[1].status).toBe('pending');
+    expect(result.batches[1].workers).toHaveLength(1);
+    expect(result.batches[1].workers[0]).toEqual({ module_id: 'MOD-003', status: 'pending' });
+  });
+
+  it('sets current_phase to execution and updates timestamp', () => {
+    const state = makeBaseState();
+    // Force a stale timestamp so initializeBatches produces a different one
+    state.updated_at = '2020-01-01T00:00:00.000Z';
+    const plan = makePlan();
+
+    const result = initializeBatches(state, plan);
+
+    expect(result.current_phase).toBe('execution');
+    expect(result.updated_at).not.toBe('2020-01-01T00:00:00.000Z');
+    expect(() => new Date(result.updated_at).toISOString()).not.toThrow();
+  });
+
+  it('does not mutate the input state', () => {
+    const state = makeBaseState();
+    const plan = makePlan();
+    const originalBatches = state.batches;
+
+    initializeBatches(state, plan);
+
+    expect(state.batches).toBe(originalBatches);
+    expect(state.current_phase).toBe('planning');
+  });
+
+  it('round-trip: getResumePoint shows session_resumable=false for all workers', () => {
+    const state = makeBaseState();
+    const plan = makePlan();
+
+    const initialized = initializeBatches(state, plan);
+    const resume = getResumePoint(initialized);
+
+    expect(resume.session_recovery).toHaveLength(3);
+    for (const entry of resume.session_recovery) {
+      expect(entry.session_resumable).toBe(false);
+    }
+  });
+
+  it('round-trip: recordTransition worker_spawned updates worker status after initializeBatches', () => {
+    const state = makeBaseState();
+    const plan = makePlan();
+
+    const initialized = initializeBatches(state, plan);
+
+    const updated = recordTransition(initialized, 'worker_spawned', {
+      module_id: 'MOD-001',
+      batch_id: 'BATCH-001',
+    });
+
+    // Worker status should be updated (not a no-op)
+    expect(updated.batches[0].workers[0].status).toBe('spawned');
+    // Other workers remain pending
+    expect(updated.batches[0].workers[1].status).toBe('pending');
   });
 });

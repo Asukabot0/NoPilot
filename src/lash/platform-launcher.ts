@@ -229,6 +229,7 @@ interface SpawnedProcess {
 /**
  * Spawn a worker process for the given platform and return a WorkerHandle.
  * Mirrors Python spawn_worker().
+ * // TODO: refactor to options object pattern
  */
 export function spawnWorker(
   platform: string,
@@ -236,6 +237,7 @@ export function spawnWorker(
   worktreePath: string,
   instructionFile: string | null,
   moduleId: string = '',
+  maxBudgetUsd?: number,
 ): WorkerHandle {
   const sessionId = newSessionId();
 
@@ -257,6 +259,9 @@ export function spawnWorker(
         '--session-id', sessionId,
         '--permission-mode', 'bypassPermissions',
       ];
+    }
+    if (maxBudgetUsd !== undefined) {
+      cmd.push('--max-budget-usd', String(maxBudgetUsd));
     }
   } else if (platform === 'codex') {
     cmd = [

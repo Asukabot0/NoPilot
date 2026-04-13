@@ -116,6 +116,15 @@ describe('validateTestsJson', () => {
     expect(result.errors.some((e) => e.includes('coverage_guards'))).toBe(true);
   });
 
+  it('TEST-047: example_case missing setup field', () => {
+    const data = makeValidTestsDict();
+    const cases = data['example_cases'] as Record<string, unknown>[];
+    delete cases[0]['setup'];
+    const result = validateTestsJson(data);
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.includes('setup'))).toBe(true);
+  });
+
   it('TEST-047: example_case missing id field', () => {
     const data = makeValidTestsDict();
     const cases = data['example_cases'] as Record<string, unknown>[];
