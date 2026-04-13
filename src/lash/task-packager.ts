@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import type { InterfaceEntry, InterfaceMethod, ModuleSpec, PackageResult } from './types.js';
+import { getAdapter } from './adapters/registry.js';
 
 // ---------------------------------------------------------------------------
 // Internal shapes (mirrors spec.json / discover.json / tests.json)
@@ -410,32 +411,6 @@ You are a Lash Worker agent. Follow these rules strictly:
 
 `;
 
-  let integration: string;
-  if (platform === 'claude-code') {
-    integration = `## Platform Integration (Claude Code)
-
-Launch this Worker with:
-
-    claude -p <task> --session-id <uuid> --permission-mode bypassPermissions --append-system-prompt-file .lash/worker-instructions.md
-`;
-  } else if (platform === 'codex') {
-    integration = `## Platform Integration (Codex)
-
-Launch this Worker with:
-
-    codex exec -c approval_policy=auto-edit -c system_prompt_file=.lash/worker-instructions.md <task>
-`;
-  } else {
-    // opencode — content is prepended to task prompt
-    integration = `## Platform Integration (OpenCode)
-
-This file's content is prepended to the task prompt.
-
-Launch this Worker with:
-
-    opencode run <task> --agent coder
-`;
-  }
-
-  return base + integration;
+  const adapter = getAdapter(platform);
+  return base + adapter.integrationText;
 }
