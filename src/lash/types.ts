@@ -398,3 +398,77 @@ export interface CancelResult {
 export interface ResumeOutput {
   sent: boolean;
 }
+
+// ---------------------------------------------------------------------------
+// PlatformAdapter — agent-agnostic Worker interface (Issue #90)
+// Design: Hybrid data-driven (Spec Kit) + optional method overrides (ComposioHQ)
+// ---------------------------------------------------------------------------
+
+/** How resume feedback is delivered to the agent. */
+export type ResumeMode = 'cli-args' | 'stdin';
+
+/**
+ * Resume command result — includes mode hint for the launcher.
+ * When mode is 'stdin', launcher pipes feedback to stdin.
+ */
+export interface ResumeCommandResult {
+  cmd: string[];
+  mode: ResumeMode;
+}
+
+/**
+ * Data-driven platform adapter config.
+ *
+ * Simple platforms = pure config (~15-25 lines). Complex cases = override methods.
+ *
+ * Capability signaling is implicit:
+ * - `optionalSpawnArgs.maxBudgetUsd` exists → supports budget control
+ * - `optionalSpawnArgs.instructionFile` exists → supports instruction files
+ * - `detect` method exists → supports custom preflight
+ */
+export interface PlatformAdapter {
+  readonly name: Platform;
+  readonly binary: string;
+
+  // --- Declarative data (covers 90% of cases) ---
+
+  /** Args for version check, e.g. ['claude', '--version']. */
+  readonly versionArgs: string[];
+  /** Args for auth probe. */
+  readonly authProbeArgs: string[];
+
+  /** Base spawn args with {placeholders}: {task}, {sessionId}. */
+  readonly spawnArgs: string[];
+  /** Optional spawn args — field presence = capability support. */
+  readonly optionalSpawnArgs?: {
+    instructionFile?: string[];  // e.g. ['--append-system-prompt-file', '{instructionFile}']
+    maxBudgetUsd?: string[];     // e.g. ['--max-budget-usd', '{maxBudgetUsd}']
+  };
+
+  /** Resume args with {placeholders}: {sessionId}, {feedback}. */
+  readonly resumeArgs: string[];
+  /** How resume delivers feedback. 'cli-args' = in args, 'stdin' = piped to stdin. */
+  readonly resumeMode: ResumeMode;
+
+  /** Heartbeat probe args with {placeholders}: {sessionId}. */
+  readonly probeArgs: string[];
+
+  /** Platform-specific integration text for task-packager worker instructions. */
+  readonly integrationText: string;
+
+  // --- Optional method overrides (for complex cases) ---
+
+  /** Override default template-based spawn command building. */
+  buildSpawnCmd?(task: string, opts: {
+    sessionId: string;
+    instructionFile: string | null;
+    maxBudgetUsd?: number;
+  }): string[];
+
+  /** Override default template-based resume command building. */
+  buildResumeCmd?(sessionId: string, feedback: string): ResumeCommandResult;
+
+  /** Custom preflight detection per-adapter. */
+  detect?(): Promise<PreflightResult>;
+}
+
