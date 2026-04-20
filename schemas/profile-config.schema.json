@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile Config",
+  "type": "object",
+  "properties": {
+    "l2_enabled": {
+      "type": "boolean",
+      "default": true
+    },
+    "scan_threshold_files": {
+      "type": "integer",
+      "default": 500
+    },
+    "staleness_threshold_hours": {
+      "type": "integer",
+      "default": 24
+    }
+  },
+  "additionalProperties": false
+}

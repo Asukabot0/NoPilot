@@ -63,7 +63,7 @@
 - Merged into NoPilot as single npm package (no separate installation)
 - Dual CLI: `nopilot` (framework) + `lash` (build runtime) via single `npm install -g nopilot`
 - Technology stack: Commander.js (CLI), Vitest (testing), pnpm (package management)
-- 202 tests passing (multicore test execution, 4.5s full suite)
+- 465 tests passing (multicore test execution)
 - Git worktree isolation per Worker preserved
 - Platform-as-Agent architecture (Claude Code, Codex, OpenCode) preserved
 - External test verification workflow preserved
@@ -73,7 +73,7 @@
 - Lash repository archived (legacy Python codebase)
 
 **Architecture highlights:**
-- Config via `lash.config.json` (auto-discovered in `./` or `./lash/`)
+- Config via `lash.config.json` in the current working directory
 - JSON protocol for CLI subcommands (15 atomic operations)
 - Atomic state persistence with 21 transition types
 - Crash recovery and health monitoring built-in

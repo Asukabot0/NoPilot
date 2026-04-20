@@ -137,7 +137,7 @@ export class StitchProvider implements DesignProvider {
 
     this.quota.increment();
 
-    const count = Math.max(request.count, 3);
+    const count = Math.max(request.count, 5);
     const variants: DesignVariant[] = [];
     for (let i = 0; i < count; i++) {
       const palette = STYLE_PALETTES[i % STYLE_PALETTES.length];

@@ -162,7 +162,8 @@ export class PostProcessor {
         const mimeType = contentType || PostProcessor.guessMimeType(entry.url);
         const dataUri = `data:${mimeType};base64,${base64}`;
 
-        result = result.replace(entry.fullMatch, `${entry.prefix}${dataUri}${entry.suffix}`);
+        const replacement = `${entry.prefix}${dataUri}${entry.suffix}`;
+        result = result.replaceAll(entry.fullMatch, () => replacement);
         inlinedCount++;
       } catch {
         failedUrls.push(entry.url);

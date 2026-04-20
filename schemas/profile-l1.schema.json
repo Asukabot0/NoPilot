@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile L1 Architecture",
+  "type": "object",
+  "required": ["updated_at"],
+  "properties": {
+    "updated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp, auto-set on write"
+    },
+    "directory_structure": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    },
+    "modules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "path", "responsibility"],
+        "properties": {
+          "name": { "type": "string" },
+          "path": { "type": "string" },
+          "responsibility": { "type": "string" }
+        }
+      }
+    },
+    "dependency_directions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "type"],
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "type": { "type": "string" }
+        }
+      }
+    },
+    "communication_patterns": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "design_patterns": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "additionalProperties": true
+}

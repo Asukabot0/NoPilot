@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "run_id",
+    "observation_events",
+    "semantic_events",
+    "warnings"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0"
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observation_events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/observation_event"
+      }
+    },
+    "semantic_events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/semantic_event"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "observation_event": {
+      "type": "object",
+      "required": [
+        "id",
+        "timestamp",
+        "source",
+        "type",
+        "observation_key",
+        "observation_value",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timestamp": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "transcript",
+            "artifact"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "phase_signal",
+            "review_signal",
+            "reverify_signal",
+            "artifact_change"
+          ]
+        },
+        "observation_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observation_value": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "semantic_event": {
+      "type": "object",
+      "required": [
+        "id",
+        "timestamp",
+        "type",
+        "observation_event_ids",
+        "details"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "timestamp": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "phase_entered",
+            "independent_review_dispatched",
+            "fresh_reverification"
+          ]
+        },
+        "observation_event_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "details": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

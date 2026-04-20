@@ -1,0 +1,22 @@
+{
+  "core_scenarios": [
+    {
+      "id": "SCENARIO-001",
+      "description": "Complete greenfield discover on 256K model: User runs /discover with product spec → mode detection (subagent) → idea structuring (main) → direction selection (subagent research + main presentation) → MVP definition (main) → UI taste (subagent Stitch + main presentation, 3 rounds) → requirement lock (subagent generation + main confirmation) → artifact writing (subagent) → critic/supervisor (pre-existing dispatch, out of scope for this feature). Stages marked '(main)' stay in main agent: idea structuring (~4K) and MVP definition (~6K) are lightweight interactive stages not worth subagent overhead. Total main-agent context < 200K.",
+      "requirement_refs": ["REQ-001", "REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007", "REQ-008", "REQ-011"],
+      "priority": "highest"
+    },
+    {
+      "id": "SCENARIO-002",
+      "description": "Subagent failure recovery: During any dispatch, subagent times out or errors → main agent stops, shows error, asks 'retry or fallback?' → user chooses fallback → stage executes inline in main agent with context warning → discover completes (possibly exceeding 200K budget but functionally correct).",
+      "requirement_refs": ["REQ-009"],
+      "priority": "high"
+    },
+    {
+      "id": "SCENARIO-003",
+      "description": "Cross-platform execution: Same discover skill files run on Codex CLI and OpenCode with their native subagent mechanisms. Dispatch contracts are interpreted correctly. Output artifacts are identical.",
+      "requirement_refs": ["REQ-010"],
+      "priority": "high"
+    }
+  ]
+}

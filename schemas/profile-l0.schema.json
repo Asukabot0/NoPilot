@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Profile L0 Infra",
+  "type": "object",
+  "required": ["updated_at"],
+  "properties": {
+    "updated_at": {
+      "type": "string",
+      "description": "ISO 8601 timestamp, auto-set on write"
+    },
+    "languages": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "frameworks": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "package_manager": {
+      "type": ["string", "null"],
+      "enum": ["npm", "yarn", "pnpm", "bun", null]
+    },
+    "runtime": {
+      "type": ["string", "null"]
+    },
+    "build_tools": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "ci": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["provider", "config_path"],
+          "properties": {
+            "provider": { "type": "string" },
+            "config_path": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "test_framework": {
+      "type": ["string", "null"]
+    }
+  },
+  "additionalProperties": true
+}

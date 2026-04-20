@@ -65,12 +65,8 @@ export function hexToSRGB(hex: string): [number, number, number] {
 
   // Expand shorthand (#RGB → #RRGGBB)
   if (clean.length === 3 || clean.length === 4) {
-    clean = clean
-      .split('')
-      .map((c, i) => (i < 3 ? c + c : ''))
-      .join('');
-    // Only take 6 chars for RGB
-    clean = clean.slice(0, 6);
+    // Expand shorthand: #RGB → #RRGGBB, #RGBA → #RRGGBB (alpha dropped)
+    clean = clean[0] + clean[0] + clean[1] + clean[1] + clean[2] + clean[2];
   }
 
   // Take only RGB portion (ignore alpha if present)

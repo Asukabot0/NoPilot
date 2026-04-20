@@ -264,11 +264,11 @@ export function spawnWorker(
       cmd.push('--max-budget-usd', String(maxBudgetUsd));
     }
   } else if (platform === 'codex') {
-    cmd = [
-      'codex', 'exec',
-      '-c', 'approval_policy=auto-edit',
-      task,
-    ];
+    cmd = ['codex', 'exec', '--full-auto'];
+    if (instructionFile) {
+      cmd.push('-c', `system_prompt_file=${instructionFile}`);
+    }
+    cmd.push(task);
   } else if (platform === 'opencode') {
     cmd = [
       'opencode', 'run', task,

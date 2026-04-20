@@ -2,6 +2,9 @@
 .omc/
 .omx/
 
+# NoPilot profile (derived from specs/ artifacts, regenerable)
+.nopilot/profile/
+
 # Build and dependencies
 dist/
 node_modules/
@@ -11,9 +14,13 @@ specs/*.json
 specs/discover/
 specs/spec/
 specs/views/
+specs/mockups/
 
 # Superpowers generated plans/specs
 docs/superpowers/
+
+# Legacy Codex prompts (replaced by skill engine)
+prompts/codex/
 
 # Lash-generated runtime directives (created by nopilot init)
 AGENTS.md
@@ -27,3 +34,21 @@ issues/
 
 # OS files
 .DS_Store
+.worktrees/
+
+# Local tool state
+.sisyphus/
+
+# Local config overrides
+lash.config.json
+
+# Local feature work and data
+specs/features/
+user_data_analysis/
+
+# Benchmark run outputs
+.benchmark/
+
+# Unmerged doc drafts
+docs/design/2026-04-08-nopilot-benchmark-design.md
+docs/plans/2026-04-08-nopilot-benchmark-plan.md
