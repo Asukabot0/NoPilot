@@ -49,7 +49,8 @@ export type BuildEvent =
   | 'supervisor_failed'
   | 'build_paused'
   | 'build_completed'
-  | 'build_backtracked';
+  | 'build_backtracked'
+  | 'batches_initialized';
 
 /** Top-level build status values. */
 export type BuildStatus =

@@ -19,6 +19,7 @@ import type {
   ResumePoint,
   SessionRecoveryEntry,
   ArchiveResult,
+  ExecutionPlan,
 } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -48,6 +49,7 @@ export const VALID_EVENTS: ReadonlySet<BuildEvent> = new Set<BuildEvent>([
   'build_paused',
   'build_completed',
   'build_backtracked',
+  'batches_initialized',
 ]);
 
 const TERMINAL_STATUSES: ReadonlySet<string> = new Set(['completed', 'failed']);
@@ -186,6 +188,25 @@ export function createInitialState(specHash: string): BuildState {
   };
 }
 
+/**
+ * Bridge ExecutionPlan batches into BuildState.
+ * Must be called after plan generation and before the first worker spawn.
+ */
+export function initializeBatches(
+  state: BuildState,
+  plan: ExecutionPlan,
+): BuildState {
+  const batches: BatchEntry[] = plan.batches.map((b) => ({
+    batch_id: b.batch_id,
+    status: 'pending' as const,
+    workers: b.modules.map((mod) => ({
+      module_id: mod.module_id,
+      status: 'pending' as WorkerStatus,
+    })),
+  }));
+  return { ...state, batches, current_phase: 'batch_execution', updated_at: nowIso() };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -310,6 +331,8 @@ export function recordTransition(
     newState.current_phase = 'supervisor';
   } else if (event === 'build_critic_spawned') {
     newState.current_phase = 'build_critic';
+  } else if (event === 'batches_initialized') {
+    newState.current_phase = 'batch_execution';
   }
 
   // --- Apply batch-level transitions ---
