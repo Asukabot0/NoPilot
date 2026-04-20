@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "run_id",
+    "case_id",
+    "case_version",
+    "platform_id",
+    "model_id",
+    "workflow_version",
+    "repo_fixture_hash",
+    "trace_extractor_version",
+    "run_profile"
+  ],
+  "properties": {
+    "run_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "case_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "case_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "platform_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "model_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workflow_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "repo_fixture_hash": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trace_extractor_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_profile": {
+      "type": "string",
+      "const": "phase1-local-cli-v1"
+    }
+  },
+  "additionalProperties": true
+}

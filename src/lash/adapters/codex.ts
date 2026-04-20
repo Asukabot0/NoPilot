@@ -7,8 +7,11 @@ export const codexAdapter: PlatformAdapter = {
   versionArgs: ['codex', '--version'],
   authProbeArgs: ['codex', '--version'],
 
-  spawnArgs: ['codex', 'exec', '-c', 'approval_policy=auto-edit', '{task}'],
-  // No optionalSpawnArgs — codex does not support budget control or instruction files
+  spawnArgs: ['codex', 'exec', '--full-auto', '{task}'],
+  optionalSpawnArgs: {
+    instructionFile: ['-c', 'system_prompt_file={instructionFile}'],
+    // Codex does not support budget control
+  },
 
   resumeArgs: ['codex', 'exec', 'resume', '--last'],
   resumeMode: 'stdin',  // feedback delivered via stdin pipe
@@ -20,6 +23,6 @@ export const codexAdapter: PlatformAdapter = {
 
 Launch this Worker with:
 
-    codex exec -c approval_policy=auto-edit -c system_prompt_file=.lash/worker-instructions.md <task>
+    codex exec --full-auto -c system_prompt_file=.lash/worker-instructions.md <task>
 `,
 };

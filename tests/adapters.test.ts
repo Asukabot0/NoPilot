@@ -98,7 +98,7 @@ describe('buildSpawnCommand', () => {
       sessionId: 'sess-2',
       instructionFile: null,
     });
-    expect(cmd).toEqual(['codex', 'exec', '-c', 'approval_policy=auto-edit', 'fix bug']);
+    expect(cmd).toEqual(['codex', 'exec', '--full-auto', 'fix bug']);
   });
 
   it('codex: ignores maxBudgetUsd silently (no optionalSpawnArgs)', () => {
@@ -110,12 +110,13 @@ describe('buildSpawnCommand', () => {
     expect(cmd).not.toContain('--max-budget-usd');
   });
 
-  it('codex: ignores instructionFile silently', () => {
+  it('codex: passes instructionFile via -c system_prompt_file', () => {
     const cmd = buildSpawnCommand(codexAdapter, 'task', {
       sessionId: 'sess-2',
       instructionFile: 'instr.md',
     });
-    expect(cmd).not.toContain('--append-system-prompt-file');
+    expect(cmd).toContain('-c');
+    expect(cmd).toContain('system_prompt_file=instr.md');
   });
 
   it('opencode: basic spawn', () => {
@@ -232,8 +233,8 @@ describe('adapter capabilities', () => {
     expect(codexAdapter.optionalSpawnArgs?.maxBudgetUsd).toBeUndefined();
   });
 
-  it('codex does NOT support instruction file', () => {
-    expect(codexAdapter.optionalSpawnArgs?.instructionFile).toBeUndefined();
+  it('codex supports instruction file via -c system_prompt_file', () => {
+    expect(codexAdapter.optionalSpawnArgs?.instructionFile).toBeDefined();
   });
 
   it('opencode does NOT support budget control', () => {

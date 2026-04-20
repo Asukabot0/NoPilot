@@ -10,9 +10,9 @@
  * Pure algorithm module — NO subprocess calls, NO I/O beyond JSON parse/stringify.
  * All functions are synchronous.
  */
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
+import { resolveSpec, resolveDiscover } from './spec-resolver.js';
 import type { ExecutionPlan, PlanBatch, PlanModuleNode, TracerConfig } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -63,12 +63,11 @@ interface EdgeEntry {
  *   - invalid_dependency_ref
  */
 export function generatePlan(specPath: string, discoverPath: string): ExecutionPlan {
-  const specBytes = readFileSync(specPath);
-  const specHash = createHash('sha256').update(specBytes).digest('hex');
-  const spec: Spec = JSON.parse(specBytes.toString('utf8'));
+  const { spec: resolvedSpec, specHash } = resolveSpec(specPath);
+  const spec: Spec = resolvedSpec as Spec;
 
-  const discoverText = readFileSync(discoverPath, 'utf8');
-  const discover: Discover = JSON.parse(discoverText);
+  const { discover: resolvedDiscover } = resolveDiscover(discoverPath);
+  const discover: Discover = resolvedDiscover as Discover;
 
   let modules: SpecModule[] = spec.modules ?? [];
   const moduleIds = new Set(modules.map((m) => m.id));
@@ -212,18 +211,18 @@ function reconstructCycle(
 // ---------------------------------------------------------------------------
 
 function inferOwnedFiles(modules: SpecModule[]): SpecModule[] {
-  return modules.map((mod) => {
-    if (!mod.owned_files || mod.owned_files.length === 0) {
-      const sourceRoot = mod.source_root ?? '';
-      const inferred = sourceRoot + '**';
-      console.warn(
-        `Module ${mod.id} has no owned_files; ` +
-        `treating as owning all files under ${JSON.stringify(sourceRoot)} -> ${JSON.stringify(inferred)}`,
-      );
-      return { ...mod, owned_files: [inferred] };
-    }
-    return { ...mod };
-  });
+  const missing = modules
+    .filter((mod) => !mod.owned_files || mod.owned_files.length === 0)
+    .map((mod) => mod.id);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Plan generation failed: module(s) missing owned_files: [${missing.join(', ')}]. ` +
+      `Add owned_files to each module's spec before running lash plan.`,
+    );
+  }
+
+  return modules.map((mod) => ({ ...mod }));
 }
 
 // ---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # NoPilot 使用者参考文档
 
-> 版本: V1.2 (Schema 4.0) | 最后更新: 2026-04-04
+> 版本: V1.2 (Schema 4.0) | 最后更新: 2026-04-11
 
 ---
 
@@ -44,6 +44,7 @@
   - [5.11 构建状态管理](#511-构建状态管理)
 - [6. UI Taste 系统](#6-ui-taste-系统)
   - [6.1 系统定位](#61-系统定位)
+    - [Stitch MCP 配置](#stitch-mcp-配置可选推荐)
   - [6.2 架构概览](#62-架构概览)
   - [6.3 Provider 层](#63-provider-层)
   - [6.4 引擎层](#64-引擎层)
@@ -114,7 +115,7 @@ NoPilot 的下游参与度递减模型：
 | 组件 | 技术 |
 |------|------|
 | 语言 | TypeScript (ES2022, strict mode) |
-| 运行时 | Node.js >= 18.19.0 |
+| 运行时 | Node.js >= 20.0.0 |
 | CLI 框架 | Commander.js |
 | 测试 | Vitest 3.0 |
 | 包管理 | pnpm |
@@ -122,11 +123,11 @@ NoPilot 的下游参与度递减模型：
 
 ### 1.4 当前状态
 
-- **版本**: V1.2 Delivered (Schema 4.0)
-- **代码规模**: 13 个 TypeScript 源文件，3835 行代码
-- **测试**: 202 个测试用例
+- **版本**: npm package `0.0.6`；工作流语义延续 V1.2 / Schema 4.0
+- **代码形态**: 以 TypeScript runtime、skills 分发与 JSON Schema 资产为主
+- **测试**: 使用 Vitest 覆盖 CLI、Lash runtime、profile、ui-taste 等核心模块
 - **分发**: `npm install -g nopilot`，提供双 CLI (`nopilot` + `lash`)
-- **Open Issues**: #17 (Lite 模式), #21 (Preview 命令)
+- **Issue 状态**: 以 GitHub Issues 为准
 
 ---
 
@@ -135,7 +136,9 @@ NoPilot 的下游参与度递减模型：
 ### 2.1 前置条件
 
 - [Claude Code](https://docs.anthropic.com/en/docs/claude-code) 已安装并配置
-- Node.js >= 18.19.0
+- 如需共享 skills 安装或使用 Lash 多平台 Worker，可额外配置 Codex CLI 与 OpenCode CLI
+- Node.js >= 20.0.0
+- (可选) [Google Stitch MCP](https://stitch.withgoogle.com) — 用于 Discover 阶段的高保真 UI mockup 生成。未配置时系统自动降级到 AI 生成的 HTML 或文字问答模式
 
 ### 2.2 安装
 
@@ -164,14 +167,16 @@ git init
 nopilot init
 ```
 
-`nopilot init` 会完成以下操作：
+`nopilot init` 采用统一 skills 分发模型，会完成以下操作：
 
-1. 复制 `commands/*.md` 到 `.claude/commands/`（13 个 slash command 文件）
-2. 复制 `schemas/*.json` 到 `schemas/`（14 个 JSON Schema 文件）
-3. 复制 `workflow.json` 到项目根目录
-4. 向已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令
+1. 将包内 `commands/` 渲染安装到 Claude Code 的 `~/.claude/skills/`
+2. 将同一套 skills 渲染安装到 Codex / OpenCode 共享的 `~/.agents/skills/`（共享目录自动去重）
+3. 创建 `specs/` 目录（含 `.gitkeep`）
+4. 向已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
-如果需要覆盖已有文件：
+> **注意：** Schema 文件和 `workflow.json` 保留在 npm 包内，不复制到项目中。使用 `nopilot paths` 命令查看它们的位置。
+
+如果需要更新已有的 Lash 指令：
 
 ```bash
 nopilot init --force
@@ -181,40 +186,50 @@ nopilot init --force
 
 ```
 my-project/
-├── .claude/commands/        # Slash commands
-│   ├── discover.md          # /discover 命令
-│   ├── spec.md              # /spec 命令
-│   ├── build.md             # /build 命令
-│   ├── visualize.md         # /visualize 命令
-│   ├── supervisor.md        # Supervisor agent
-│   ├── critic.md            # Critic agent
-│   ├── lash-build.md        # Lash 编排主流程
-│   ├── lash-tracer.md       # Lash tracer bullet
-│   ├── lash-batch.md        # Lash 批次执行
-│   ├── lash-verify.md       # Lash 最终验证
-│   ├── lash-conflict-resolver.md
-│   ├── lash-orchestrator.md
-│   └── lash-worker-instructions.md
-├── schemas/                 # 14 个 JSON Schema (v4.0)
 ├── specs/                   # 运行时制品（由命令生成）
-├── workflow.json            # 工作流状态机定义
-└── CLAUDE.md                # 项目上下文（含 Lash 触发指令）
+│   └── .gitkeep
+├── CLAUDE.md                # 项目上下文（含 Lash 触发指令）
+└── ...                      # 你的项目文件
+```
+
+同时，以下全局 skills 会被安装：
+
+```
+~/.claude/skills/            # Claude Code 全局 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
+
+~/.agents/skills/            # Codex 与 OpenCode 共享 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 ```
 
 ### 2.4 运行第一个工作流
 
+先在你的 AI 编码工具中载入已安装的 `discover` skill。
+
 ```bash
 cd my-project
-claude                       # 打开 Claude Code
+claude                       # Claude Code 中运行 /discover
 ```
 
-在 Claude Code 中依次执行：
-
-```
-/discover                    # 第一步：探索需求空间，锁定需求
-/spec                        # 第二步：将需求展开为模块级设计
-/build                       # 第三步：自主 TDD 实现
-```
+Codex 与 OpenCode 共用 `~/.agents/skills/` 中安装的同一套 skills。
 
 每个阶段从 `specs/` 读取上游制品，写入自己的产出。所有制品都是 JSON 格式的机器可读契约。
 
@@ -437,6 +452,9 @@ mvp ◄──────────────── BACKTRACK (回到方向�
 design_philosophy
   │ PHILOSOPHY_CONFIRMED
   ▼
+ui_taste (条件触发) ── SKIP (非前端项目，直接进入 lock)
+  │ TASTE_SELECTED
+  ▼
 lock ◄──────────────── REVISE (修改需求)
   │ APPROVE            BACKTRACK_MVP (回到 MVP)
   ▼                    BACKTRACK_DIR (回到方向选择)
@@ -483,6 +501,21 @@ AI 从你之前的所有决策中提炼 3-5 条设计哲学原则，每条包含
 
 你确认后进入需求锁定。
 
+**Step 3.5: UI Taste 探索 (ui_taste)** *(条件触发)*
+
+仅当产品包含用户界面时触发（web/mobile/desktop app），CLI 工具和纯 API 项目跳过。
+
+流程：
+1. 从 MVP 功能列表推导关键页面
+2. 检测已有前端风格（如有）
+3. 生成 5 个设计变体（Stitch MCP → AI HTML → 文字问答，三级降级）
+4. 启动本地预览服务器，支持设备模拟和并排对比
+5. 用户选择或迭代反馈
+6. 导出 Design Token 和 mockup 到 `specs/mockups/`
+7. 将 `UITasteConstraint` 写入 discover.json 的 `ui_taste` 字段
+
+详细技术文档见 [6. UI Taste 系统](#6-ui-taste-系统)。
+
 **Step 4: 需求锁定 (lock)**
 
 AI 生成完整需求文档，包含：
@@ -524,6 +557,7 @@ AI 生成完整需求文档，包含：
 - `specs/discover.json` -- 锁定的需求、约束、选定方向、设计哲学、技术方向、领域模型
 - `specs/discover_history.json` -- 探索日志：考虑过的方向、决策记录
 - `specs/discover_review.json` -- Critic 审查和 Supervisor 一致性检查结果
+- `specs/mockups/` -- UI mockup HTML 文件和 Design Token（仅前端项目）
 
 ### 4.2 Spec 阶段
 
@@ -562,7 +596,7 @@ Spec 阶段将 Discover 产物分解为以下结构：
 - `name` -- 模块名称
 - `responsibility` -- 职责描述
 - `source_root` -- 源码根目录
-- `owned_files` -- 拥有的文件列表
+- `owned_files` -- 拥有的文件列表；省略时保持为空并由计划生成阶段发出警告
 - `interfaces` -- 接口定义（类型：`api` / `internal` / `event`）
 - `data_models` -- 数据模型
 - `state_machine` -- 状态机（如适用）
@@ -742,12 +776,11 @@ Lash 的核心价值：**把"一个 Agent 串行实现所有模块"变成"多个
 
 当以下条件**全部满足**时，Lash 自动启动（无需手动输入 `/build` 或 `/lash-build`）：
 
-1. 项目中存在 `lash/` 目录
-2. `specs/spec.json` 存在（设计已完成）
-3. `specs/discover.json` 存在（需求已锁定）
-4. 用户意图涉及构建、实现或编码
+1. `specs/spec.json` 存在（设计已完成）
+2. `specs/discover.json` 存在（需求已锁定）
+3. 用户意图涉及构建、实现或编码
 
-当条件 1-3 满足但用户未表达构建意图时，AI 会提示："Specs are ready. I can start a multi-agent parallel build whenever you are ready."
+当条件 1-2 满足但用户未表达构建意图时，AI 会提示："Specs are ready. I can start a multi-agent parallel build whenever you are ready."
 
 ### 5.4 配置
 
@@ -807,6 +840,8 @@ Lash 通过 `lash.config.json` 配置，文件放在项目根目录。所有配�
 3. **循环检测** -- DFS 三色标记法，发现循环依赖时报错
 4. **确定性保证** -- 所有排序使用字母序模块 ID
 
+**文件所有权缺失处理：** 如果模块未声明 `owned_files`，`lash plan` 会保留空 ownership 并输出警告，而不会根据 `source_root` 合成宽泛的通配 ownership。
+
 **Tracer Bullet 选择：** 从 `discover.json` 的 `core_scenarios` 中选择覆盖最少模块的场景。
 
 **输出结构 (ExecutionPlan)：**
@@ -817,7 +852,7 @@ Lash 通过 `lash.config.json` 配置，文件放在项目根目录。所有配�
   "tracer": {
     "scenario_id": "SCENARIO-001",
     "module_ids": ["MOD-001", "MOD-003"],
-    "batch": { "batch_id": "tracer", "modules": [...] }
+    "batch": { "batch_id": "BATCH-TRACER", "modules": [...] }
   },
   "batches": [
     {
@@ -875,15 +910,17 @@ spawn -> heartbeat monitoring -> check -> (resume/cancel)
 
 **done.json 信号文件格式：**
 
+必需字段：
+
 ```json
 {
   "status": "completed",
   "timestamp": "2026-04-04T10:30:00Z",
-  "module_id": "MOD-001",
-  "summary": "All tests passing, implementation complete",
-  "test_summary": { "passed": 15, "failed": 0 }
+  "module_id": "MOD-001"
 }
 ```
+
+可选字段：`summary`（字符串）、`test_summary`（对象，包含 `passed` 和 `failed` 计数）。`status` 可为 `"completed"` 或 `"failed"`。
 
 ### 5.7 任务打包
 
@@ -899,7 +936,7 @@ spawn -> heartbeat monitoring -> check -> (resume/cancel)
 | `task.md` | 任务描述（人类可读） |
 | `worker-instructions.md` | 平台特定的 Worker 指令 |
 
-**文件所有权边界：** Worker 只能修改 `owned_files.txt` 中列出的文件。Worktree Manager 的 `checkUnexpectedFiles` 会在合并前验证 Worker 是否越界修改。
+**文件所有权边界：** Worker 只能修改 `owned_files.txt` 中显式列出的文件。Worktree Manager 的 `checkUnexpectedFiles` 会在合并前按文件路径做范围校验；如果 spec 未提供 `owned_files`，该模块的 ownership 将保持为空，直到 spec 被补全。
 
 **TDD 指令：** 任务包中包含 TDD 流程指令 -- 红灯（运行测试，预期失败）→ 绿灯（写代码使测试通过）→ 重构。
 
@@ -945,7 +982,7 @@ lash worktree cleanup MOD-001
 | 框架 | 检测方式 | 命令 |
 |------|---------|------|
 | Jest (npm) | `package.json` 中有 test script | `npm test` |
-| pytest | 存在 `pytest.ini`、`setup.cfg` 或 `conftest.py` | `pytest` |
+| pytest | 存在 `pyproject.toml`、`setup.py`、`conftest.py` 或 `tests/` 目录中有 `.py` 文件 | `pytest` |
 | go test | 存在 `go.mod` | `go test ./...` |
 | make test | 存在 `Makefile` 且包含 test target | `make test` |
 
@@ -990,7 +1027,7 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 
 **原子写入保证：** 使用"临时文件 + `fs.renameSync`"模式，防止进程崩溃导致状态文件损坏。
 
-**21 种状态转换事件：**
+**22 种状态转换事件：**
 
 | 事件 | 含义 |
 |------|------|
@@ -1003,6 +1040,7 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 | `module_critic_spawned` | 模块 Critic 已启动 |
 | `module_critic_passed` | 模块 Critic 通过 |
 | `module_critic_failed` | 模块 Critic 失败 |
+| `tracer_completed` | Tracer 阶段完成，允许进入批次执行 |
 | `batch_completed` | 批次完成 |
 | `merge_completed` | 合并完成 |
 | `merge_conflict` | 合并冲突 |
@@ -1015,6 +1053,25 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 | `build_paused` | 构建暂停 |
 | `build_completed` | 构建完成 |
 | `build_backtracked` | 构建回溯 |
+
+**5 个运行时 phase：**
+
+| phase | 含义 |
+|------|------|
+| `planning` | Tracer 前的初始阶段 |
+| `batch_execution` | Tracer 完成后，执行并合并批次模块 |
+| `build_critic` | Final verification 中的 Build Critic 审查 |
+| `supervisor` | Final verification 中的 Supervisor 审查 |
+| `acceptance` | 构建已完成，进入最终验收状态 |
+
+**phase 前置条件：**
+
+- 只有 `tracer_completed` 能把 phase 从 `planning` 推进到 `batch_execution`
+- 只有在 `batch_execution` 中才允许触发 `batch_completed` 与 `build_critic_spawned`
+- 只有在 `build_critic` 中才允许触发 `build_critic_passed` / `build_critic_failed` / `supervisor_spawned`，且 `supervisor_spawned` 还要求最近一次 Build Critic verdict 为 `build_critic_passed`
+- 只有在 `supervisor` 中才允许触发 `supervisor_passed` / `supervisor_failed`
+- `build_completed` 只能在 `supervisor` phase 中触发，且最近一次 Build Critic / Supervisor verdict 必须分别为 `build_critic_passed` 与 `supervisor_passed`
+- `build_critic_failed` 与 `supervisor_failed` 会先把顶层构建状态记为 `failed`；若后续要等待人工决策，必须再发送 `build_paused`
 
 **7 种构建状态：**
 
@@ -1054,9 +1111,42 @@ Lash 的构建状态持久化到 `specs/build-state.json`。
 
 ### 6.1 系统定位
 
-UI Taste 系统在 `/discover` 阶段的 Step 0c 激活，用于在需求探索期间确定项目的视觉设计方向。它生成高保真 UI mockup，让用户在需求锁定之前就能看到并选择设计风格。
+UI Taste 系统在 `/discover` 阶段的 Design Philosophy 确认之后、Layer 3 需求锁定之前条件触发（仅当产品包含用户界面时），用于在需求探索期间确定项目的视觉设计方向。它生成高保真 UI mockup，让用户在需求锁定之前就能看到并选择设计风格。
 
 最终产出（`UITasteConstraint`）写入 `discover.json`，作为下游阶段的设计约束。
+
+#### Stitch MCP 配置（可选，推荐）
+
+UI Taste 系统的 Tier 1 模式使用 Google Stitch MCP 生成高保真设计变体。未配置时自动降级到 Tier 2（AI 生成 HTML）或 Tier 3（文字问答）。
+
+**配置步骤：**
+
+1. 访问 [stitch.withgoogle.com](https://stitch.withgoogle.com) 获取 API Key
+2. 在 Claude Code 的 MCP 配置中添加 Stitch 服务器：
+
+```json
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "npx",
+      "args": ["@_davideast/stitch-mcp", "proxy"],
+      "env": {
+        "STITCH_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+3. 重启 Claude Code，验证 Stitch MCP 工具可用（如 `generate_screen_from_text`）
+
+**三级降级策略：**
+
+| Tier | 条件 | 体验 |
+|------|------|------|
+| 1 (最佳) | Stitch MCP 已配置 | Gemini 3.1 Pro 生成高保真 HTML，5 款变体 |
+| 2 (回退) | 无 Stitch，有浏览器 | Claude 直接生成 5 款 HTML mockup |
+| 3 (最小) | CLI / 无浏览器 | 文字问答收集风格偏好 |
 
 ### 6.2 架构概览
 
@@ -1202,14 +1292,44 @@ nopilot init --force
 ```
 
 **执行动作：**
-1. 复制 `commands/*.md` → `<dir>/.claude/commands/`
-2. 复制 `schemas/*.json` → `<dir>/schemas/`
-3. 复制 `workflow.json` → `<dir>/workflow.json`
+1. 将包内 `commands/` 渲染安装到 `~/.claude/skills/`
+2. 将同一套 skills 渲染安装到 Codex / OpenCode 共享的 `~/.agents/skills/`
+3. 创建 `<dir>/specs/` 目录（含 `.gitkeep`）
 4. 向 `CLAUDE.md`、`AGENTS.md`、`opencode.md` 追加 Lash 自动触发指令（幂等操作）
 
 | 选项 | 说明 |
 |------|------|
-| `--force` | 覆盖已有文件（默认跳过已有文件） |
+| `--force` | 更新已有的 Lash 指令（默认跳过已有指令） |
+
+#### `nopilot paths`
+
+打印 NoPilot 包资产与 skills 安装位置（schemas、commands、workflow.json、installed skills、legacy migration 目录）。
+
+```bash
+nopilot paths
+```
+
+**输出示例：**
+
+```json
+{
+  "package_root": "/usr/lib/node_modules/nopilot",
+  "commands": "/usr/lib/node_modules/nopilot/commands",
+  "codex_prompts": "/usr/lib/node_modules/nopilot/prompts/codex",
+  "source_skill_location": "/usr/lib/node_modules/nopilot/commands",
+  "schemas": "/usr/lib/node_modules/nopilot/schemas",
+  "workflow": "/usr/lib/node_modules/nopilot/workflow.json",
+  "installed_skills": {
+    "claude": "/home/user/.claude/skills/",
+    "codex": "/home/user/.agents/skills/",
+    "opencode": "/home/user/.agents/skills/"
+  },
+  "legacy_dirs": {
+    "claude": "/home/user/.claude/commands/",
+    "codex": "/home/user/.codex/prompts/"
+  }
+}
+```
 
 #### `nopilot version`
 
@@ -1344,9 +1464,9 @@ lash package MOD-001 .lash/worktrees/MOD-001 claude-code \
 
 | 选项 | 必须 | 说明 |
 |------|------|------|
-| `--spec <path>` | 是 | spec.json 路径 |
-| `--discover <path>` | 是 | discover.json 路径 |
-| `--tests <path>` | 否 | tests.json 路径 |
+| `--spec <path>` | 是 | spec 制品入口路径，可传 `spec.json`、`spec/` 或 `spec/index.json` |
+| `--discover <path>` | 是 | discover 制品入口路径，可传 `discover.json`、`discover/` 或 `discover/index.json` |
+| `--tests <path>` | 是 | tests 制品入口路径，可传 `tests.json`、`tests/` 或 `tests/index.json`；缺失时 `lash package` 会立即报错并提示先运行 `/build` Step 2 / `commands/build/test-gen.md` 生成 tests 制品 |
 | `--completed <m1,m2>` | 否 | 已完成的模块 ID（逗号分隔） |
 
 **输出：**
@@ -1539,7 +1659,7 @@ lash state resume --state-path custom/state.json
 
 ### 8.1 Schema 体系总览
 
-NoPilot 使用 14 个 JSON Schema（v4.0，基于 JSON Schema draft 2020-12）定义所有制品的结构。
+NoPilot 使用 25 个 JSON Schema（v4.0，基于 JSON Schema draft 2020-12）定义所有制品的结构。
 
 Schema 文件位于 `schemas/` 目录：
 
@@ -1586,6 +1706,7 @@ design_philosophy : array of { principle, justification, source_decisions? }
 domain_model      : object
 nfr               : non-functional requirements
 ui_taste          : UITasteConstraint
+raw_ideas         : array
 ```
 
 `constraints` 对象结构：
@@ -1633,6 +1754,7 @@ context_dependencies : array
 | `id` | `string` (格式 `MOD-xxx`) | 模块 ID |
 | `name` | `string` | 模块名称 |
 | `responsibility` | `string` | 职责描述 |
+| `owned_files` | `string[]` | 模块拥有的文件边界，且列表必须非空；`lash package` 与 `/lash-build` 在缺失或为空时都会阻断执行 |
 | `interfaces` | `array` | 接口定义 |
 | `data_models` | `array` | 数据模型 |
 | `requirement_refs` | `string[]` | 引用的需求 ID |
@@ -1642,7 +1764,6 @@ context_dependencies : array
 | 字段 | 类型 | 含义 |
 |------|------|------|
 | `source_root` | `string` | 源码根目录 |
-| `owned_files` | `string[]` | 拥有的文件 |
 | `state_machine` | `object` | 状态机定义 |
 | `nfr_constraints` | `object` | 非功能约束 |
 | `invariant_refs` | `string[]` | 引用的不变量 ID |
@@ -1786,11 +1907,11 @@ context_dependencies : array
     "discover": { ... },
     "spec": { ... },
     "build": { ... }
-  },
-  "backtrack_triggers": [ ... ],
-  "backtrack_strategy": "full_rerun"
+  }
 }
 ```
+
+> **注意：** 回溯触发器和回溯策略定义在各 stage 的状态机内，不是顶层字段。
 
 ### 10.2 Discover 状态机
 
@@ -1899,39 +2020,7 @@ Key Transitions:
 完整的 NoPilot 项目（初始化后 + 运行完工作流）的文件结构：
 
 ```
-your-project/
-├── .claude/
-│   └── commands/                    # Slash commands (由 nopilot init 创建)
-│       ├── discover.md              # /discover 命令定义
-│       ├── spec.md                  # /spec 命令定义
-│       ├── build.md                 # /build 命令定义
-│       ├── visualize.md             # /visualize 命令定义
-│       ├── supervisor.md            # Supervisor agent 定义
-│       ├── critic.md                # Critic agent 定义
-│       ├── lash-build.md            # Lash 编排主流程
-│       ├── lash-tracer.md           # Lash tracer bullet 阶段
-│       ├── lash-batch.md            # Lash 批次执行阶段
-│       ├── lash-verify.md           # Lash 最终验证阶段
-│       ├── lash-conflict-resolver.md
-│       ├── lash-orchestrator.md
-│       └── lash-worker-instructions.md
-│
-├── schemas/                         # 14 个 JSON Schema (v4.0)
-│   ├── discover.schema.json
-│   ├── discover_index.schema.json
-│   ├── discover_history.schema.json
-│   ├── discover_review.schema.json
-│   ├── spec.schema.json
-│   ├── spec_index.schema.json
-│   ├── spec_review.schema.json
-│   ├── tests.schema.json
-│   ├── tests_index.schema.json
-│   ├── tests_review.schema.json
-│   ├── build_report.schema.json
-│   ├── build_index.schema.json
-│   ├── build_review.schema.json
-│   └── decisions.schema.json
-│
+your-project/                        # 项目目录
 ├── specs/                           # 运行时制品（由命令生成）
 │   ├── discover.json                # 或 discover/index.json + 子文件
 │   ├── discover_history.json        # 或 discover/history.json
@@ -1953,9 +2042,50 @@ your-project/
 │       └── ...
 │
 ├── lash.config.json                 # Lash 配置（可选）
-├── workflow.json                    # 工作流状态机定义
 ├── CLAUDE.md                        # 项目上下文（含 Lash 触发指令）
 └── ...                              # 你的项目源码
+
+~/.claude/skills/                    # Claude Code 全局 skills（由 nopilot init 安装）
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
+
+~/.agents/skills/                    # Codex 与 OpenCode 共享 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
+
+<nopilot-package>/                   # npm 包内（通过 nopilot paths 查看位置）
+├── schemas/                         # 25 个 JSON Schema (v4.0)
+│   ├── discover.schema.json
+│   ├── discover_index.schema.json
+│   ├── discover_history.schema.json
+│   ├── discover_review.schema.json
+│   ├── spec.schema.json
+│   ├── spec_index.schema.json
+│   ├── spec_review.schema.json
+│   ├── tests.schema.json
+│   ├── tests_index.schema.json
+│   ├── tests_review.schema.json
+│   ├── build_report.schema.json
+│   ├── build_index.schema.json
+│   ├── build_review.schema.json
+│   └── decisions.schema.json
+└── workflow.json                    # 工作流状态机定义
 ```
 
 ---
@@ -1994,7 +2124,11 @@ Lash 的 Worktree Manager 在合并前会运行 `checkUnexpectedFiles` 范围检
 
 ### Q: NoPilot 必须和 Claude Code 一起使用吗？
 
-NoPilot 的三阶段工作流（`/discover`、`/spec`、`/build`）目前设计为 Claude Code 的 slash commands。Lash 构建编排器同时支持 Claude Code、Codex 和 OpenCode 作为 Worker 平台。
+不是。`nopilot init` 会把统一 skills 安装到 Claude Code 的 `~/.claude/skills/`，以及 Codex / OpenCode 共享的 `~/.agents/skills/`。
+
+- Claude Code：文档示例使用 `/discover` → `/spec` → `/build`
+- Codex / OpenCode：从各自工具的 skills 入口载入已安装的 `discover`、`spec`、`build` skills
+- Lash 构建编排器：同时支持 Claude Code、Codex、OpenCode 作为 Worker 平台
 
 ### Q: 如何在团队中使用 NoPilot？
 
@@ -2024,7 +2158,7 @@ NoPilot 支持目录拆分模式。例如，`specs/spec.json` 可以拆分为 `s
 |------|------|---------|
 | **V1.0** | 已交付 | 核心三阶段流水线，Supervisor + Critic，异常处理，回溯安全 |
 | **V1.1** | 已交付 | Schema 4.0，`/visualize`，决策账本，生成-审查分离，6Cs 框架，漂移检测 |
-| **V1.2** | 已交付 | Lash Python→TypeScript 重写，合并入 NoPilot，双 CLI，202 个测试 |
+| **V1.2** | 已交付 | Lash Python→TypeScript 重写，合并入 NoPilot，双 CLI |
 | **V1.5** | 计划中 | Lite 模式（简化流程），Brownfield 支持（已有代码库），搜索加固，预飞检查 |
 | **V2** | 计划中 | 增量回溯，MCP/Script 强制层，多模型验证，上下文管理 |
 | **V3** | 计划中 | 跨项目记忆，Spec 漂移检测，变异测试，动态约束维度 |

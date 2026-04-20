@@ -86,7 +86,7 @@ export class AgentHTMLProvider implements DesignProvider {
   async generateVariants(
     request: GenerateVariantsRequest,
   ): Promise<DesignVariant[]> {
-    const count = Math.max(request.count, 3);
+    const count = Math.max(request.count, 5);
     const variants: DesignVariant[] = [];
 
     for (let i = 0; i < count; i++) {

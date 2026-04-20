@@ -1,0 +1,140 @@
+{
+  "phase": "discover",
+  "version": "4.0",
+  "status": "approved",
+  "mode": "full",
+  "featureSlug": "discover-context-diet",
+  "profile_ref": ".nopilot/profile/",
+  "constraints": {
+    "tech_stack": ["TypeScript", "Node.js", "skill markdown (no new runtime code)"],
+    "time": null,
+    "platform": ["claude-code", "codex-cli", "opencode"],
+    "exclusions": ["No changes to user-visible interaction flow", "No changes to discover.json output schema"],
+    "budget": null,
+    "existing_assets": ["discover SKILL.md", "6 sub-skills (mode-detection, idea-intake, completeness, ui-taste, artifact-writer, critic-supervisor)"]
+  },
+  "selected_direction": {
+    "description": "extend existing project",
+    "differentiator": "n/a",
+    "rationale": "feature mode — direction inherited from existing codebase",
+    "pre_mortem": [],
+    "grounding": "ai_judgment_only"
+  },
+  "design_philosophy": [
+    {
+      "principle": "Main agent is a conversation router, not a compute engine",
+      "justification": "User confirmed subagent-first approach: all heavy computation runs in isolated subagent context, main agent only handles user dialogue + dispatch + summary presentation",
+      "source_decisions": ["F2-F7 subagent化"]
+    },
+    {
+      "principle": "Subagent gets full context, main agent gets minimal summary",
+      "justification": "User insight: we don't care about subagent context overflow, only main agent budget matters. Subagent reads full artifacts, returns structured summary.",
+      "source_decisions": ["方案D selection over A/B/C"]
+    },
+    {
+      "principle": "Fail loud, user decides recovery",
+      "justification": "User rejected silent fallback. On subagent failure: stop, report, ask user retry-or-fallback.",
+      "source_decisions": ["REQ-009"]
+    }
+  ],
+  "tech_direction": {
+    "stack": ["skill markdown files", "dispatch contract comments", "platform-agnostic subagent delegation"],
+    "architecture_style": "main-agent-as-router with subagent compute offload",
+    "product_impact": "Discover runs on 256K context models without compression, same UX and output",
+    "rationale": "Pure skill-layer change, no new runtime dependencies, three-platform compatible via each platform's native subagent mechanism"
+  },
+  "domain_model": {
+    "entities": [
+      { "name": "DispatchContract", "description": "Standardized declaration of subagent task: input files, output file, output summary format and max size" },
+      { "name": "ContextBudget", "description": "Per-stage context allocation target for main agent, declared in SKILL.md header" }
+    ],
+    "relationships": [
+      { "from": "SKILL.md", "to": "DispatchContract", "type": "contains", "description": "Each delegatable stage embeds a dispatch contract as HTML comment" },
+      { "from": "DispatchContract", "to": "sub-skill", "type": "references", "description": "Contract may reference sub-skill file for subagent to load" },
+      { "from": "ContextBudget", "to": "DispatchContract", "type": "constrains", "description": "Budget sets max output_summary size for each contract" }
+    ]
+  },
+  "non_functional_requirements": [
+    {
+      "category": "performance",
+      "description": "Main agent context consumption for complete discover run (greenfield, full mode, 3 rounds UI iteration)",
+      "target": "< 200K chars",
+      "source": "user_stated",
+      "priority": "must_have"
+    },
+    {
+      "category": "performance",
+      "description": "Backward compatibility: discover.json output schema unchanged",
+      "target": "Schema identical to v0.0.5",
+      "source": "user_stated",
+      "priority": "must_have"
+    },
+    {
+      "category": "availability",
+      "description": "Three-platform compatibility for dispatch contracts",
+      "target": "Claude Code, Codex CLI, OpenCode all execute correctly",
+      "source": "user_stated",
+      "priority": "must_have"
+    }
+  ],
+  "mvp_features": [
+    {
+      "name": "Skill dedup loading (F1)",
+      "feasibility": "High",
+      "competitive_notes": "Template fix, no platform dependency",
+      "source_refs": [],
+      "requirement_refs": ["REQ-001"]
+    },
+    {
+      "name": "Mode Detection subagent (F2)",
+      "feasibility": "High",
+      "competitive_notes": "Codebase scan is pure read-only, ideal for isolation",
+      "source_refs": [],
+      "requirement_refs": ["REQ-003"]
+    },
+    {
+      "name": "Layer 1 research subagent (F3)",
+      "feasibility": "High",
+      "competitive_notes": "WebFetch + analysis is independent compute",
+      "source_refs": [],
+      "requirement_refs": ["REQ-004"]
+    },
+    {
+      "name": "Layer 3 generation subagent (F4)",
+      "feasibility": "Medium",
+      "competitive_notes": "Needs full upstream artifact as input; multi-round REVISE adds complexity",
+      "source_refs": [],
+      "requirement_refs": ["REQ-005"]
+    },
+    {
+      "name": "Artifact Writing subagent (F5)",
+      "feasibility": "High",
+      "competitive_notes": "Pure file I/O, no user interaction needed",
+      "source_refs": [],
+      "requirement_refs": ["REQ-006"]
+    },
+    {
+      "name": "Stitch MCP subagent (F6)",
+      "feasibility": "Medium",
+      "competitive_notes": "MCP server connection inheritance in subagent process is a risk",
+      "source_refs": [],
+      "requirement_refs": ["REQ-007"]
+    },
+    {
+      "name": "Dispatch Contract standard (F7)",
+      "feasibility": "High",
+      "competitive_notes": "Convention definition, no code change",
+      "source_refs": [],
+      "requirement_refs": ["REQ-008", "REQ-009", "REQ-010"]
+    },
+    {
+      "name": "Context budget guard (F8)",
+      "feasibility": "Low (verification only)",
+      "competitive_notes": "Measured by testing, not enforced at runtime",
+      "source_refs": [],
+      "requirement_refs": ["REQ-011"]
+    }
+  ],
+  "context_dependencies": [],
+  "ui_taste": null
+}

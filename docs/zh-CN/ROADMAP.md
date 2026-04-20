@@ -4,7 +4,7 @@
 
 ## V1 — 核心管线（当前版本）
 
-**状态：** 已实现。Claude Code slash commands，仅 Greenfield。
+**状态：** 已实现。采用统一 skills 分发，支持 Claude Code / Codex / OpenCode，当前公开工作流仍以 Greenfield 为主。
 
 **已交付：**
 - 三阶段工作流：`/discover` → `/spec` → `/build`
@@ -25,7 +25,7 @@
 - 回溯时全量重跑下游阶段（无增量更新）
 - 所有护栏依赖同模型自评（Critic 用独立会话但同模型）
 - 无 MCP/脚本强制约束层（对指令遵循弱的模型）
-- 无正式 JSON Schema 验证
+- 尚未对所有工作流制品启用统一自动 JSON Schema 校验
 - 大项目的上下文窗口压力（适配器须管理，但无配套工具）
 - 无跨项目持久化记忆
 
@@ -96,10 +96,10 @@
 - [ ] 适配器侧上下文预算管理工具
 - [ ] 大制品分块：上下文紧张时按模块分段读取 spec.json
 
-### 正式制品 Schema
-- [ ] `schemas/` 目录下每种制品类型一个 JSON Schema 文件
+### 统一制品 Schema 校验
+- [ ] 统一梳理 `schemas/` 中现有工作流制品 Schema 覆盖范围
 - [ ] Schema 与 workflow.json 同步版本化
-- [ ] 验证集成到制品写入流程
+- [ ] 将校验集成到所有制品写入流程
 
 ---
 

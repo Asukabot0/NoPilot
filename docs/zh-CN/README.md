@@ -20,38 +20,40 @@ NoPilot 是一个三阶段工作流，从需求探索到代码交付，下游人
 ### 前置条件
 
 - 已安装并配置 [Claude Code](https://docs.anthropic.com/en/docs/claude-code)
+- 如需共享 skills 安装或使用 Lash 多平台 Worker，可额外配置 Codex CLI 与 OpenCode CLI
+- Node.js >= 20.0.0
 
-### 方式 A：项目安装（推荐）
-
-将 NoPilot 安装到单个项目中。命令、工作流定义、CLAUDE.md 上下文，全部自包含。
-
-```bash
-git clone https://github.com/Asukabot0/NoPilot.git
-cd NoPilot
-./install.sh --project /path/to/your/project
-```
-
-自动完成：复制命令、`workflow.json`、`README_AGENT.md`，创建 `specs/`，并将 NoPilot 上下文追加到 `CLAUDE.md`。
-
-### 方式 B：全局安装
-
-让 `/discover`、`/spec`、`/build` 在所有 Claude Code 会话中可用。每个项目仍需 `--project` 来设置项目级文件。
+### 安装
 
 ```bash
-git clone https://github.com/Asukabot0/NoPilot.git
-cd NoPilot
-./install.sh --global              # 命令 → ~/.claude/commands/
-./install.sh --project /path/to/your/project  # 项目文件 + CLAUDE.md
+npm install -g nopilot
 ```
 
-### 开始使用
+安装后系统中会有两个 CLI：
+- `nopilot` — 框架工具（项目初始化、资产路径查看）
+- `lash` — 构建运行时（多 Agent 编排、Worker 管理、测试验证）
+
+### 初始化项目
 
 ```bash
 cd your-project
-claude   # 打开 Claude Code
+nopilot init
 ```
 
-输入 `/discover` 开始探索你的项目空间。
+自动完成：将包内 `commands/` 渲染安装到 Claude Code 的 `~/.claude/skills/`，并将同一套 skills 安装到 Codex / OpenCode 共享的 `~/.agents/skills/`，创建 `specs/` 目录，并将 Lash 自动触发指令追加到已有的 `CLAUDE.md`、`AGENTS.md`、`opencode.md`。
+
+Schema 和 workflow.json 保留在 npm 包内，通过 `nopilot paths` 查看位置。
+
+### 开始使用
+
+先在你的 AI 编码工具中载入已安装的 `discover` skill。
+
+```bash
+cd your-project
+claude   # Claude Code 中运行 /discover
+```
+
+Codex 与 OpenCode 共用 `~/.agents/skills/` 中安装的同一套 skills。
 
 ## 为什么这样设计
 
@@ -78,6 +80,8 @@ claude   # 打开 Claude Code
 每个命令从 `specs/` 读取上游制品并写入自己的产出。所有制品都是 JSON 契约。
 
 ## 架构
+
+仓库级正式架构总览见：[`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
 ### Supervisor + Critic 双 Agent
 
@@ -121,31 +125,47 @@ claude   # 打开 Claude Code
 
 ```
 your-project/
-├── .claude/commands/
-│   ├── discover.md      # /discover slash command
-│   ├── spec.md          # /spec slash command
-│   ├── build.md         # /build slash command
-│   ├── supervisor.md    # Supervisor agent（被命令调用）
-│   ├── critic.md        # Critic agent（被命令调用）
-│   └── visualize.md     # /visualize slash command
 ├── specs/               # 运行时制品（由命令生成）
 │   ├── discover.json     # 或 discover/index.json + 子文件
-│   ├── discover_history.json
 │   ├── spec.json         # 或 spec/index.json + 子文件
-│   ├── spec_review.json
 │   ├── tests.json        # 或 tests/index.json + 子文件
-│   ├── tests_review.json
 │   ├── build_report.json # 或 build/index.json + 子文件
-│   └── build_review.json
-├── workflow.json         # 主工作流定义
-└── CLAUDE.md            # 你的项目上下文（添加 NoPilot 部分）
+│   └── ...
+├── CLAUDE.md            # 项目上下文（含 Lash 触发指令）
+└── ...
+
+~/.claude/skills/        # Claude Code 全局 skills（由 nopilot init 安装）
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
+
+~/.agents/skills/        # Codex 与 OpenCode 共享 skills
+├── discover/
+├── spec/
+├── build/
+├── visualize/
+├── supervisor/
+├── critic/
+├── lash-tracer/
+├── lash-verify/
+├── lash-build/
+└── ...
 ```
 
-## V1 范围
+包内源 skills 位于 `commands/`，由 `nopilot init` 渲染到各平台的 skills 目录。
 
-**包含：** 三阶段工作流跑在 Claude Code 上，仅 Greenfield 项目，纯 prompt engineering，完整核心护栏（Supervisor、Critic、反向验证、自动验收）。
+## 当前范围 (V1.2, Schema 4.0)
 
-**不包含：** Brownfield/增量迭代（V2）、iOS 远程 Agent 工具（V4）、多模型路由（V3+）。
+**包含：** 面向 Claude Code、Codex、OpenCode 的统一 skills 分发，仅 Greenfield 项目，纯 prompt engineering，完整核心护栏（Supervisor 漂移检测、Critic AI 偏差目录），生成-审查分离，渐进式想法收集，设计哲学提取，完整性追踪，领域模型和 NFR 输出，制品可视化，大项目目录拆分，集成 Lash 多 Agent 构建引擎（TypeScript），双 CLI（`nopilot` + `lash`），npm 分发。
+
+**不包含：** Brownfield/增量迭代、Agent 共识机制（已声明未接线）、iOS 远程 Agent、多模型路由。
 
 ## License
 

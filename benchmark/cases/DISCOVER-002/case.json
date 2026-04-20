@@ -1,0 +1,11 @@
+{
+  "id": "DISCOVER-002",
+  "case_version": "2026-04-09",
+  "run_profile": "phase1-local-cli-v1",
+  "fixture": "fixture",
+  "budget": {
+    "max_turns": 6,
+    "timeout_seconds": 180,
+    "max_cost_usd": 3
+  }
+}

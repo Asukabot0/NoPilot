@@ -1,0 +1,288 @@
+{
+  "requirements": [
+    {
+      "id": "REQ-001",
+      "user_story": "As a developer, I want discover skill to load only once and arguments not duplicated, so that ~39K context is not wasted on duplicate injection and argument copying",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-001-AC-1",
+          "type": "condition",
+          "ears": "IF discover skill has already been injected into context, THEN Skill tool invocation SHALL return 'already loaded' without re-injecting content",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-001-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN /discover command is invoked with arguments, THEN arguments SHALL appear only in the user message block, NOT appended to skill text as an ARGUMENTS section",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Modify SKILL.md template to remove ARGUMENTS append logic; add dedup guard for Skill tool re-invocation",
+        "test_complexity": "Low",
+        "effort_estimate": "< 1 hour"
+      }
+    },
+    {
+      "id": "REQ-003",
+      "user_story": "As a developer, I want codebase exploration to run in a subagent, so that main agent only receives a mode verdict (~500 chars) instead of 23K of file reads",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-003-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN mode detection begins, THEN a subagent SHALL be dispatched with contract { input: project root path, output_summary: 'mode=greenfield|feature + one-line rationale' }",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-003-AC-2",
+          "type": "condition",
+          "ears": "IF subagent returns, THEN main agent context increase SHALL be < 1K chars",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Rewrite mode-detection.md to use dispatch contract instead of inline Read/Glob",
+        "test_complexity": "Medium",
+        "effort_estimate": "2-3 hours"
+      }
+    },
+    {
+      "id": "REQ-004",
+      "user_story": "As a developer, I want competitive research and direction generation to run in a subagent, so that main agent only receives structured direction summaries (~2K) instead of 18K",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-004-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN Layer 1 direction generation begins, THEN a subagent SHALL be dispatched to perform competitive research and generate 3-5 directions",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-004-AC-2",
+          "type": "condition",
+          "ears": "IF subagent returns, THEN summary in main context SHALL contain direction name + differentiator + biggest risk per direction, total < 3K chars",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Add dispatch contract to SKILL.md Layer 1 section",
+        "test_complexity": "Medium",
+        "effort_estimate": "2-3 hours"
+      }
+    },
+    {
+      "id": "REQ-005",
+      "user_story": "As a developer, I want requirement lock table generation to run in a subagent reading the full artifact, so that main agent only receives a summary (~2K) instead of 24K",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-005-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN user approves Layer 2, THEN Layer 3 generation SHALL be dispatched to a subagent that reads all files under specs/discover/ (or specs/features/feat-{featureSlug}/discover/) directory",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-2",
+          "type": "condition",
+          "ears": "IF subagent returns, THEN main agent SHALL receive requirement count + invariant count + high-risk items list, total < 3K chars",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-005-AC-3",
+          "type": "condition",
+          "ears": "IF user requests REVISE on specific requirements, THEN revision SHALL be dispatched to subagent with revision instructions",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Restructure SKILL.md Layer 3 to dispatch-first; main agent only presents summary and collects user actions",
+        "test_complexity": "Medium",
+        "effort_estimate": "3-4 hours"
+      }
+    },
+    {
+      "id": "REQ-006",
+      "user_story": "As a developer, I want artifact JSON construction and file writing to run in a subagent, so that main agent only receives a completion confirmation (~500 chars) instead of 22K",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-006-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN Layer 3 is approved, THEN artifact writing SHALL be dispatched to a subagent",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-006-AC-2",
+          "type": "condition",
+          "ears": "IF subagent returns, THEN main agent SHALL receive 'artifact written to [path]' confirmation, < 500 chars",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Wrap artifact-writer.md as subagent dispatch target",
+        "test_complexity": "Low",
+        "effort_estimate": "1-2 hours"
+      }
+    },
+    {
+      "id": "REQ-007",
+      "user_story": "As a developer, I want all Stitch MCP calls to run in a subagent, returning only screen ID + description summary (~1K per screen), so that 353K of raw component JSON never enters main context",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-007-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN UI Taste exploration calls Stitch MCP, THEN all Stitch calls SHALL execute in a subagent",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-007-AC-2",
+          "type": "condition",
+          "ears": "IF subagent returns screen results, THEN summary SHALL contain screen ID + one-line visual description per screen, total < 2K per batch",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-007-AC-3",
+          "type": "condition",
+          "ears": "IF user requests iteration on specific screens, THEN iteration dispatch SHALL include user feedback + target screen IDs",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Rewrite ui-taste.md to use dispatch contract for all Stitch interactions",
+        "test_complexity": "Medium",
+        "effort_estimate": "3-4 hours"
+      }
+    },
+    {
+      "id": "REQ-008",
+      "user_story": "As a developer, I want each subagent dispatch to follow a standardized contract, so that behavior is consistent across stages and platforms",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-008-AC-1",
+          "type": "state",
+          "ears": "EVERY dispatch contract SHALL contain: task (string), input (file paths), output_file (path), output_summary (format + max size)",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-008-AC-2",
+          "type": "state",
+          "ears": "EVERY dispatch contract SHALL be written as HTML comment block <!-- DISPATCH CONTRACT ... --> in the skill markdown",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Define dispatch contract schema; embed in all affected sub-skills",
+        "test_complexity": "Low",
+        "effort_estimate": "1 hour"
+      }
+    },
+    {
+      "id": "REQ-009",
+      "user_story": "As a developer, I want the system to stop and ask me 'retry or fallback?' when a subagent dispatch fails, so that I maintain control over error recovery",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-009-AC-1",
+          "type": "event_driven",
+          "ears": "WHEN subagent dispatch fails (timeout/error/unsupported), THEN main agent SHALL stop and present error to user",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-009-AC-2",
+          "type": "event_driven",
+          "ears": "WHEN error is presented, THEN main agent SHALL ask 'retry or fallback to main agent execution?'",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-009-AC-3",
+          "type": "condition",
+          "ears": "IF user chooses fallback, THEN main agent SHALL execute the stage inline with a warning about increased context consumption",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-009-AC-4",
+          "type": "event_driven",
+          "ears": "WHEN subagent dispatch fails after partial output_file write, THEN the partial file SHALL be deleted before retry or fallback",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Add error handling template to dispatch contract standard; include partial file cleanup step",
+        "test_complexity": "Low",
+        "effort_estimate": "1 hour"
+      }
+    },
+    {
+      "id": "REQ-010",
+      "user_story": "As a developer, I want dispatch contracts to be platform-agnostic, so that Claude Code / Codex / OpenCode all execute the same discover skill correctly",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-010-AC-1",
+          "type": "state",
+          "ears": "Dispatch contracts SHALL use platform-agnostic language (no Claude Code-specific tool names)",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-010-AC-2",
+          "type": "state",
+          "ears": "Each platform's AI agent SHALL interpret dispatch contracts and invoke subagents using that platform's native mechanism (Claude Code: Agent tool, Codex CLI: subagent spawn, OpenCode: Task tool)",
+          "source_refs": []
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Review all dispatch contracts for platform-specific language; document mapping for Codex TOML and OpenCode YAML",
+        "test_complexity": "Medium",
+        "effort_estimate": "2-3 hours"
+      }
+    },
+    {
+      "id": "REQ-011",
+      "user_story": "As a developer, I want the total main-agent context to stay under 200K chars for a complete discover run, so that the skill works on 256K context models",
+      "acceptance_criteria": [
+        {
+          "id": "REQ-011-AC-1",
+          "type": "condition",
+          "ears": "IF a complete discover run (greenfield, full mode, 3 rounds UI iteration) completes, THEN cumulative main-agent user+assistant message content (excluding system prompts and tool schemas) SHALL be < 200K chars",
+          "source_refs": []
+        },
+        {
+          "id": "REQ-011-AC-2",
+          "type": "regression_guard",
+          "ears": "THE SYSTEM SHALL continue to produce identical discover.json artifact structure when context-diet optimizations are applied",
+          "source_refs": ["INV-001"]
+        }
+      ],
+      "source": "user_stated",
+      "downstream_impact": {
+        "tech_implications": "Verification via simulated discover run with context measurement",
+        "test_complexity": "Medium",
+        "effort_estimate": "2-3 hours (testing)"
+      }
+    }
+  ],
+  "invariants": [
+    {
+      "id": "INV-001",
+      "statement": "discover.json output schema SHALL remain unchanged regardless of subagent usage",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007"]
+    },
+    {
+      "id": "INV-002",
+      "statement": "User-visible interaction flow (questions, choices, confirmations) SHALL remain functionally identical",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-001", "REQ-003", "REQ-004", "REQ-005", "REQ-006", "REQ-007"]
+    },
+    {
+      "id": "INV-003",
+      "statement": "All user decisions SHALL be persisted to artifact files before any subagent dispatch that depends on them",
+      "scope": "system-wide",
+      "requirement_refs": ["REQ-005", "REQ-006", "REQ-007"]
+    }
+  ]
+}
