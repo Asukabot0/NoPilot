@@ -454,7 +454,7 @@
 ## Progress Snapshot: 2026-04-11 17:00
 - 触发方式: /doc-maintainer 文档维护扫描
 - 代码统计: 83 个 src .ts 文件, 22451 行 TypeScript, 808 个测试 (44 test files, all passing), 25 个 JSON Schema 文件
-- 当前版本: V0.0.7 Released (main)
+- 当前版本: V0.1.0 Released (main)
 - 当前分支: dev
 - 本次工作:
   - 文档维护扫描: 发现 schema 文件数从 14 增长至 25 (新增 benchmark 与 profile 相关 schema)，open issues 从 14 减少至 11

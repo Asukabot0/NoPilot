@@ -123,7 +123,7 @@ NoPilot 的下游参与度递减模型：
 
 ### 1.4 当前状态
 
-- **版本**: npm package `0.0.7`；工作流语义延续 V1.2 / Schema 4.0
+- **版本**: npm package `0.1.0`；工作流语义延续 V1.2 / Schema 4.0
 - **代码形态**: 以 TypeScript runtime、skills 分发与 JSON Schema 资产为主
 - **测试**: 使用 Vitest 覆盖 CLI、Lash runtime、profile、ui-taste 等核心模块
 - **分发**: `npm install -g nopilot`，提供双 CLI (`nopilot` + `lash`)
