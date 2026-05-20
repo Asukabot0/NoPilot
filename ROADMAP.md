@@ -125,6 +125,25 @@
 - [ ] Auto-resume crashed Workers (not just detect crash)
 - [ ] Merge conflict auto-resolution for trivial conflicts (formatting, import ordering)
 
+### Refactor-Proofing (Tech Debt Investment)
+
+Four small investments now make the V2→V3 and V3→V4 inflection points 30-50% cheaper.
+These are tracked separately from feature work.
+
+- [ ] **Unify artifact I/O behind an `ArtifactStore` interface.** Today `fs.writeFileSync` is
+  scattered across many call sites. Wrap it in a `LocalFsStore` implementing a small interface;
+  future `RemoteStore` (V4) can drop in without rewriting call sites.
+- [ ] **Add an `execution_model_version` field to `workflow.json`.** Today nothing distinguishes
+  prompt-driven from runtime-driven semantics. Adding the field now lets the V3 runtime detect
+  and migrate older workflow definitions safely.
+- [ ] **Schema versioning + migration scaffolding.** Add a `schema_version` field to all artifact
+  types; ship an empty `migrations/` directory with a stub runner. Future schema changes will not
+  break existing projects.
+- [ ] **Concentrate CLI side-effects in `lash` subcommands, not in skill markdown.** Today some
+  side-effects (file writes, state mutations) are described in markdown and executed by the LLM.
+  Migrate them into atomic `lash` subcommands. This also eliminates the documentation/CLI
+  consistency risk demonstrated by the historical `lash state read` issue.
+
 ---
 
 ## V2 — Reliability & Efficiency
@@ -164,6 +183,22 @@
 - [ ] JSON Schema files for every artifact type in `schemas/`
 - [ ] Schemas versioned alongside workflow.json
 - [ ] Validation integrated into artifact write flow
+
+---
+
+### Architectural Inflection Point — V2 → V3
+
+NoPilot's first major architectural shift happens between V2 and V3:
+**prompt-driven workflow → runtime-driven orchestration.**
+
+Today the workflow lives primarily in `commands/*.md`, with `workflow.json` as a declarative
+schema interpreted by an LLM reading skill files. Enterprise needs (audit, replayability,
+deterministic state transitions, mid-run interruption/recovery) require promoting the workflow
+to an executable orchestrator. Skills will become prompt templates invoked **by** the runtime
+rather than the runtime itself.
+
+Estimated impact: ~30-40% of core code (commands/, workflow runtime, Lash dispatch, artifact I/O).
+Mitigated by the V1.5 refactor-proofing items below.
 
 ---
 
@@ -209,6 +244,19 @@
 
 ---
 
+### Architectural Inflection Point — V3 → V4
+
+The second major shift: **local CLI → team backend service.**
+
+V1.x ~ V3 keeps all artifacts in the user's local `specs/` folder; CLI runs on the developer's
+machine. Team-layer features (shared specs, PR webhooks, web dashboard, multi-user concurrent
+spec edits, audit logs) require centralized storage and server-side coordination.
+
+Scope: add a backend service tier. **Core algorithms (Critic / Supervisor / Lash dispatch /
+failure classifier) are not rewritten** — only their I/O and state-store boundaries.
+
+---
+
 ## V4 — Platform Expansion
 
 **Goal:** NoPilot runs beyond Claude Code. iOS remote agent, parallel execution, multi-LLM backend.
@@ -237,6 +285,51 @@
 - [ ] Pipeline status: which stage, which state, what's blocking
 - [ ] Decision history: all human decisions and AI auto_decisions in timeline view
 - [ ] Backtrack cost estimator: predicted re-run time before confirming
+
+---
+
+## North Star — Long-term Vision (Non-committed, Directional)
+
+> The sections below describe **direction**, not deliverables. Items here have no version
+> assignment and no timeline commitment. They exist to anchor product positioning and to
+> filter design partners. Concrete delivery items that emerge from this vision will be
+> promoted into a numbered version (V5+) when ready.
+
+### Team Layer
+
+- Shared spec / decisions ledger across team members
+- PR / issue / CI-failure entry points (in addition to `/discover`)
+- Web dashboard: traceability graph, pipeline status, decision timeline
+- Multi-model verification (Critic and Supervisor on independent models)
+- MCP-enforced constraints in Lash worker boundaries
+
+### Enterprise Layer
+
+- SSO / RBAC / audit log / private deployment
+- Compliance reporting (SOC2-friendly evidence trails)
+- Multi-tenant artifact store
+- Private model routing and data-residency controls
+
+### AI Delivery Governance Layer
+
+NoPilot's most distinct long-term position. **All four points below are governance, not execution.**
+
+- **Risk-tiered release contracts.** Every AI-generated change is annotated with risk tier,
+  rollback plan, canary strategy, and observability whitelist — consumed by the team's existing
+  CD system.
+- **Feature-flag advisory.** Integrate with LaunchDarkly / Unleash / Statsig to recommend
+  flag configuration based on spec risk tier. The flag platform remains authoritative.
+- **Evidence-driven post-deploy validation.** Production signals from Sentry / Datadog / New Relic
+  flow back into the evidence graph as post-hoc acceptance for the originating change.
+- **Rollback recommendation, human-approved execution.** When an incident is linked back to a
+  NoPilot-produced change, NoPilot surfaces the change provenance and a rollback proposal.
+  The actual rollback is executed by the CD system after human approval.
+
+### Non-Goals (restated)
+
+NoPilot will **not** replace CI/CD, feature-flag platforms, APM, or incident-management tools.
+NoPilot will **not** auto-execute production-impacting changes without explicit human approval
+above risk tier L1.
 
 ---
 
