@@ -4,9 +4,15 @@
 > 用户侧 CLAUDE 模板在 `CLAUDE.dev.md`，供用户安装 NoPilot 后复制到自己项目使用。
 > Claude **不需要**加载 `CLAUDE.dev.md`——它是分发模板，不是当前仓库的指令。
 
+## 长期愿景
+
+NoPilot 终局是企业级 AI 交付治理平台，路径是个人 → 团队 → 企业三阶段（详见 ROADMAP.md North Star）。
+当前 V1.x 处于个人层；做产品决策时如果在「方便当前阶段」与「兼容长期演化」之间冲突，
+优先后者，但不引入超出当前阶段范围的实现。
+
 ## 当前状态
 
-V0.0.7 Released (main)。83 个 .ts 文件，22451 行 TypeScript，808 个测试。14 个 open issues。Universal Skill Engine 已上线。OpenCode 已激活（与 Codex 共享 ~/.agents/skills/）。Benchmark 评测系统已上线。
+V0.1.0 Released (main)。引入 MCP 约束执行层 + agent-agnostic PlatformAdapter 接口 + 长期愿景文档化。83 个 .ts 文件，22451 行 TypeScript，808 个测试。Universal Skill Engine 已上线。OpenCode 已激活（与 Codex 共享 ~/.agents/skills/）。Benchmark 评测系统已上线。
 
 ## Lash (Auto-triggered Multi-Agent Build Orchestrator)
 

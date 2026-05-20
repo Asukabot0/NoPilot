@@ -5,7 +5,7 @@
 - 代码统计: 11 个 .py 文件, 2909 行 Python 代码, 0 个测试（NoPilot 本体无测试套件）
 - Prompt 文件: 10 个 command .md (2567 行) + 7 个 lash prompt .md (401 行)
 - Schema 文件: 14 个 JSON Schema 文件
-- 当前版本: V1.1 (Schema 4.0) — Delivered
+- 当前版本: V1.2 (Schema 4.0) — Delivered
 - Lash 状态: Python helper layer 完成 (8 个核心模块), V1.0 release blockers 已修复
 - Issues: 13 个 open issues (2 个 P0, 6 个 P1, 3 个 P2), 全部 open 状态
 - 近期工作: schema 版本号 3.0→4.0 升级, Lash 集成, .gitattributes 配置
@@ -450,3 +450,18 @@
   - `lash-build` 仍通过 prompt 合同驱动 verify orchestration；若后续引入结构化 runtime contract，可进一步减少文档与实现漂移风险
 - 值得深入研究的问题:
   - 是否应在 `build-state.json` 中显式持久化”最近一次 review verdict”而不是完全依赖 `transition_log` 倒推 gate，以降低未来状态机复杂度
+
+## Progress Snapshot: 2026-04-11 17:00
+- 触发方式: /doc-maintainer 文档维护扫描
+- 代码统计: 83 个 src .ts 文件, 22451 行 TypeScript, 808 个测试 (44 test files, all passing), 25 个 JSON Schema 文件
+- 当前版本: V0.1.0 Released (main)
+- 当前分支: dev
+- 本次工作:
+  - 文档维护扫描: 发现 schema 文件数从 14 增长至 25 (新增 benchmark 与 profile 相关 schema)，open issues 从 14 减少至 11
+  - 修正 README.md 中 JSON Schema 文件计数 (14 → 25)
+  - 识别 docs/zh-CN/ARCHITECTURE.md 缺少 benchmark 子系统文档
+  - 识别 docs/zh-CN/USER_GUIDE.md 中 schema 计数与目录结构过时
+- 当前问题:
+  - ARCHITECTURE.md 尚未覆盖 benchmark 子系统 (src/benchmark/ 含 18 个模块)，需要补充 §3.7 与 §5 的目录速览
+  - USER_GUIDE.md 的 schema 参考章节仍按 14 个 schema 描述，需同步更新
+- 基线对比: 上次快照 2026-04-10 04:05 | v0.0.7 已发布, schema 文件 14→25, open issues 14→11

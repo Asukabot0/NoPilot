@@ -228,6 +228,43 @@ describe('spawnWorker', () => {
       'Unknown platform: unknown-platform',
     );
   });
+
+  it('claude-code with maxBudgetUsd includes --max-budget-usd flag', () => {
+    const mockProc = makeMockProc({ pid: 50 });
+    mockSpawn.mockReturnValue(mockProc);
+
+    spawnWorker('claude-code', 'task', '/tmp/wt', null, 'MOD-001', 5.0);
+
+    const [bin, args] = mockSpawn.mock.calls[0] as [string, string[], unknown];
+    const fullCmd = [bin, ...args];
+
+    expect(fullCmd).toContain('--max-budget-usd');
+    expect(fullCmd).toContain('5');
+  });
+
+  it('claude-code without maxBudgetUsd omits --max-budget-usd flag', () => {
+    const mockProc = makeMockProc({ pid: 51 });
+    mockSpawn.mockReturnValue(mockProc);
+
+    spawnWorker('claude-code', 'task', '/tmp/wt', null, 'MOD-001');
+
+    const [bin, args] = mockSpawn.mock.calls[0] as [string, string[], unknown];
+    const fullCmd = [bin, ...args];
+
+    expect(fullCmd).not.toContain('--max-budget-usd');
+  });
+
+  it('codex ignores maxBudgetUsd silently', () => {
+    const mockProc = makeMockProc({ pid: 52 });
+    mockSpawn.mockReturnValue(mockProc);
+
+    spawnWorker('codex', 'task', '/tmp/wt', null, 'MOD-001', 5.0);
+
+    const [bin, args] = mockSpawn.mock.calls[0] as [string, string[], unknown];
+    const fullCmd = [bin, ...args];
+
+    expect(fullCmd).not.toContain('--max-budget-usd');
+  });
 });
 
 // ---------------------------------------------------------------------------

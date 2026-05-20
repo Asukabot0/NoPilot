@@ -1,6 +1,6 @@
 # NoPilot 使用者参考文档
 
-> 版本: V1.2 (Schema 4.0) | 最后更新: 2026-04-04
+> 版本: V1.2 (Schema 4.0) | 最后更新: 2026-04-11
 
 ---
 
@@ -123,7 +123,7 @@ NoPilot 的下游参与度递减模型：
 
 ### 1.4 当前状态
 
-- **版本**: npm package `0.0.6`；工作流语义延续 V1.2 / Schema 4.0
+- **版本**: npm package `0.1.0`；工作流语义延续 V1.2 / Schema 4.0
 - **代码形态**: 以 TypeScript runtime、skills 分发与 JSON Schema 资产为主
 - **测试**: 使用 Vitest 覆盖 CLI、Lash runtime、profile、ui-taste 等核心模块
 - **分发**: `npm install -g nopilot`，提供双 CLI (`nopilot` + `lash`)
@@ -1659,7 +1659,7 @@ lash state resume --state-path custom/state.json
 
 ### 8.1 Schema 体系总览
 
-NoPilot 使用 14 个 JSON Schema（v4.0，基于 JSON Schema draft 2020-12）定义所有制品的结构。
+NoPilot 使用 25 个 JSON Schema（v4.0，基于 JSON Schema draft 2020-12）定义所有制品的结构。
 
 Schema 文件位于 `schemas/` 目录：
 
@@ -2070,7 +2070,7 @@ your-project/                        # 项目目录
 └── ...
 
 <nopilot-package>/                   # npm 包内（通过 nopilot paths 查看位置）
-├── schemas/                         # 14 个 JSON Schema (v4.0)
+├── schemas/                         # 25 个 JSON Schema (v4.0)
 │   ├── discover.schema.json
 │   ├── discover_index.schema.json
 │   ├── discover_history.schema.json

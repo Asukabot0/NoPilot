@@ -23,27 +23,8 @@ import type {
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// ---------------------------------------------------------------------------
-// Platform CLI command templates
-// ---------------------------------------------------------------------------
-
-const PLATFORM_BINARIES: Record<string, string> = {
-  'claude-code': 'claude',
-  codex: 'codex',
-  opencode: 'opencode',
-};
-
-const PLATFORM_VERSION_CMDS: Record<string, string[]> = {
-  'claude-code': ['claude', '--version'],
-  codex: ['codex', '--version'],
-  opencode: ['opencode', '--version'],
-};
-
-const PLATFORM_AUTH_CMDS: Record<string, string[]> = {
-  'claude-code': ['claude', '-p', 'hi', '--max-budget-usd', '0.01'],
-  codex: ['codex', '--version'],
-  opencode: ['opencode', 'run', 'echo', 'ok'],
-};
+import { getAdapter, hasAdapter } from './adapters/registry.js';
+import { buildSpawnCommand, buildResumeCommand, buildProbeCommand } from './adapters/engine.js';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -143,7 +124,26 @@ export async function preflight(platforms: string[]): Promise<PreflightOutput> {
   const results: PreflightOutput = {};
 
   for (const platform of platforms) {
-    const binary = PLATFORM_BINARIES[platform] ?? platform;
+    // Gracefully handle unknown platforms (Critic MAJOR #1)
+    if (!hasAdapter(platform)) {
+      results[platform] = {
+        available: false,
+        version: null,
+        auth_ok: false,
+        error: `Unknown platform: ${platform}`,
+      };
+      continue;
+    }
+
+    const adapter = getAdapter(platform);
+
+    // Custom detect override (ComposioHQ pattern)
+    if (adapter.detect) {
+      results[platform] = await adapter.detect();
+      continue;
+    }
+
+    const binary = adapter.binary;
 
     // Step 1: binary check via 'which'
     let whichResult: { returncode: number; stdout: string; stderr: string };
@@ -170,10 +170,9 @@ export async function preflight(platforms: string[]): Promise<PreflightOutput> {
     }
 
     // Step 2: version check
-    const versionCmd = PLATFORM_VERSION_CMDS[platform] ?? [binary, '--version'];
     let version: string | null = null;
     try {
-      const verResult = await runCommand(versionCmd);
+      const verResult = await runCommand(adapter.versionArgs);
       version = verResult.stdout.trim() || null;
       if (verResult.returncode !== 0) {
         results[platform] = {
@@ -195,10 +194,9 @@ export async function preflight(platforms: string[]): Promise<PreflightOutput> {
     }
 
     // Step 3: auth probe
-    const authCmd = PLATFORM_AUTH_CMDS[platform] ?? [binary, '--version'];
     let authOk = false;
     try {
-      const authResult = await runCommand(authCmd);
+      const authResult = await runCommand(adapter.authProbeArgs);
       authOk = authResult.returncode === 0;
     } catch {
       authOk = false;
@@ -229,6 +227,7 @@ interface SpawnedProcess {
 /**
  * Spawn a worker process for the given platform and return a WorkerHandle.
  * Mirrors Python spawn_worker().
+ * // TODO: refactor to options object pattern
  */
 export function spawnWorker(
   platform: string,
@@ -236,42 +235,12 @@ export function spawnWorker(
   worktreePath: string,
   instructionFile: string | null,
   moduleId: string = '',
+  maxBudgetUsd?: number,
 ): WorkerHandle {
   const sessionId = newSessionId();
 
-  let cmd: string[];
-
-  if (platform === 'claude-code') {
-    if (instructionFile) {
-      cmd = [
-        'claude',
-        '-p', task,
-        '--session-id', sessionId,
-        '--permission-mode', 'bypassPermissions',
-        '--append-system-prompt-file', instructionFile,
-      ];
-    } else {
-      cmd = [
-        'claude',
-        '-p', task,
-        '--session-id', sessionId,
-        '--permission-mode', 'bypassPermissions',
-      ];
-    }
-  } else if (platform === 'codex') {
-    cmd = ['codex', 'exec', '--full-auto'];
-    if (instructionFile) {
-      cmd.push('-c', `system_prompt_file=${instructionFile}`);
-    }
-    cmd.push(task);
-  } else if (platform === 'opencode') {
-    cmd = [
-      'opencode', 'run', task,
-      '--agent', 'coder',
-    ];
-  } else {
-    throw new Error(`Unknown platform: ${platform}`);
-  }
+  const adapter = getAdapter(platform);
+  const cmd = buildSpawnCommand(adapter, task, { sessionId, instructionFile, maxBudgetUsd });
 
   const [bin, ...args] = cmd;
   const proc = spawn(bin, args, {
@@ -304,51 +273,29 @@ export function spawnWorker(
  * Mirrors Python resume_worker().
  */
 export async function resumeWorker(handle: WorkerHandle, feedback: string): Promise<void> {
-  const platform = handle.platform;
+  const adapter = getAdapter(handle.platform);
+  const result = buildResumeCommand(adapter, handle.session_id, feedback);
+  const [bin, ...args] = result.cmd;
 
-  if (platform === 'claude-code') {
-    const cmd = [
-      'claude',
-      '--resume', handle.session_id,
-      '-p', feedback,
-    ];
-    const [bin, ...args] = cmd;
-    const proc = spawn(bin, args, {
-      cwd: handle.worktree_path,
-      stdio: 'ignore',
-      env: workerEnv(),
-    });
-    proc.on('error', () => { /* binary not found — handled by caller via heartbeat */ });
-  } else if (platform === 'codex') {
-    const cmd = ['codex', 'exec', 'resume', '--last'];
-    const [bin, ...args] = cmd;
+  if (result.mode === 'stdin') {
     const proc = spawn(bin, args, {
       cwd: handle.worktree_path,
       stdio: ['pipe', 'pipe', 'pipe'],
       env: workerEnv(),
     });
-    // Write feedback to stdin and close (mirrors Python proc.communicate(input=feedback.encode()))
     proc.stdin?.write(feedback, 'utf8');
     proc.stdin?.end();
-    // Wait for the process to exit
     await new Promise<void>((resolve) => {
       proc.on('close', () => resolve());
       proc.on('error', () => resolve());
     });
-  } else if (platform === 'opencode') {
-    const cmd = [
-      'opencode', 'run', feedback,
-      '--session', handle.session_id,
-    ];
-    const [bin, ...args] = cmd;
+  } else {
     const proc = spawn(bin, args, {
       cwd: handle.worktree_path,
       stdio: 'ignore',
       env: workerEnv(),
     });
     proc.on('error', () => { /* binary not found — handled by caller via heartbeat */ });
-  } else {
-    throw new Error(`Unknown platform: ${platform}`);
   }
 }
 
@@ -557,24 +504,9 @@ export async function monitorHeartbeat(
     };
   }
 
-  // Send probe via resume
-  const platform = handle.platform;
-  let probeCmd: string[] = [];
-
-  if (platform === 'claude-code') {
-    probeCmd = [
-      'claude',
-      '--resume', handle.session_id,
-      '-p', 'heartbeat probe: please respond',
-    ];
-  } else if (platform === 'codex') {
-    probeCmd = ['codex', 'exec', 'resume', '--last'];
-  } else if (platform === 'opencode') {
-    probeCmd = [
-      'opencode', 'run', 'heartbeat probe: please respond',
-      '--session', handle.session_id,
-    ];
-  }
+  // Send probe via adapter
+  const adapter = getAdapter(handle.platform);
+  const probeCmd = buildProbeCommand(adapter, handle.session_id);
 
   let responded = false;
   if (probeCmd.length > 0) {

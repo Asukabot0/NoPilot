@@ -17,13 +17,14 @@ NoPilot 不是单一 CLI，而是由两条主线组成的仓库：
 1. `nopilot` CLI：负责框架初始化、技能分发、包内资产定位
 2. `lash` CLI：负责多 Agent 构建运行时、Worker 编排、测试验证与状态恢复
 
-围绕这两条主线，仓库形成五个稳定子系统：
+围绕这两条主线，仓库形成六个稳定子系统：
 
 1. Universal Skill Engine
 2. Lash Build Runtime
 3. Profile Sidecar
 4. UI Taste
 5. Workflow / Schema Assets
+6. Benchmark
 
 整体关系可概括为：
 
@@ -302,6 +303,45 @@ Schema 资产分为两类：
 - Discover 产物中的 `ui_taste`
 - Profile L3 中镜像后的 `ui_taste`
 
+### 3.7 Benchmark
+
+职责：为 NoPilot 工作流提供自动化评测系统，支持工作流回归守卫与平台/模型横评。
+
+对应目录：
+
+- `src/benchmark/`
+- `benchmark/`（测试用例与 suite 定义）
+
+核心模块：
+
+1. `adapter-runner.ts` / `adapter-registry.ts`：平台适配器运行器与注册表
+2. `case-loader.ts` / `suite-manifest.ts`：测试用例加载与 suite 编排
+3. `fixture-workspace.ts`：合成 fixture 工作区管理
+4. `run-profile.ts` / `run-writer.ts`：运行配置与结果持久化
+5. `trace-extractor.ts` / `event-log-writer.ts`：Trace 提取与事件日志
+6. `scorer.ts` / `oracle-checker.ts`：三维评分器（process/outcome/efficiency）与 oracle 判分
+7. `verdict-writer.ts` / `regression-diff.ts`：判定结果写入与回归差异对比
+8. `failure-taxonomy.ts`：F1-F11 失败分类
+9. `reporter.ts` / `review-store.ts`：报告生成与人工复核存储
+10. `semantic-mapper.ts`：语义事件映射
+11. `schema-loader.ts`：Schema 加载与校验
+
+关键特征：
+
+1. 三层结构：case layer / run layer / evaluation layer
+2. 评分模型：process 50 / outcome 30 / efficiency 20
+3. 平台适配器：Claude Code、Codex、OpenCode
+4. 运行资产位于 `benchmark/`（版本化），运行产物位于 `.nopilot/benchmark/runs/`（本地）
+
+相关 Schema：
+
+- `benchmark-case.schema.json`
+- `benchmark-run.schema.json`
+- `benchmark-trace.schema.json`
+- `benchmark-report.schema.json`
+- `benchmark-oracle.schema.json`
+- `benchmark-verdict.schema.json`
+
 ## 4. 关键数据流
 
 ### 4.1 框架初始化流
@@ -385,10 +425,15 @@ feature mode / downstream design context reuse
 - `README.md`：对外概览
 - `README_AGENT.md`：面向 Agent 的参考说明
 - `CLAUDE.dev.md`：项目注入模板来源
+- `benchmark/`：评测用例与 suite 定义
 
 ### `commands/`
 
 统一源 skills 仓库。
+
+### `benchmark/`
+
+评测用例与 suite 定义，版本化随仓库管理。
 
 ### `src/`
 

@@ -1,6 +1,6 @@
 {
   "name": "nopilot",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "AI Native development workflow with Lash multi-agent build engine",
   "type": "module",
   "bin": {
@@ -24,6 +24,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "ajv": "^8.18.0",
     "commander": "^13.0.0",
     "eta": "^4.5.1"

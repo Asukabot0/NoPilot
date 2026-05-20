@@ -2,6 +2,11 @@
 
 NoPilot is an AI Native three-stage development workflow (`discover` → `spec` → `build`) distributed as installed skills for Claude Code, Codex, and OpenCode.
 
+> **North Star:** NoPilot's long-term vision is enterprise-grade AI delivery governance — a control
+> layer that governs AI-generated changes while existing CI/CD, feature flags, APM, and incident
+> tools execute them. See the README "Long-term Vision" section and ROADMAP North Star section.
+> The current release is the personal-layer Greenfield workflow framework.
+
 ## Installation
 
 ### 1. Install and initialize

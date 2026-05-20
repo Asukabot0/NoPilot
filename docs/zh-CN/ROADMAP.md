@@ -61,6 +61,23 @@
 - [ ] `/spec` 完成时触发环境就绪检查（API key、数据库、所需 CLI）
 - [ ] 缺失依赖在 `/build` 启动前暴露，而非在 L0 异常时才发现
 
+### 防重构准备（技术债投资）
+
+四件现在做的小投资，能让 V2→V3 和 V3→V4 两次重构拐点的成本降低 30-50%。
+独立于功能工作单独跟踪。
+
+- [ ] **把 artifact I/O 统一到 `ArtifactStore` 接口背后。** 当前 `fs.writeFileSync` 散落在
+  很多调用点。用一个 `LocalFsStore` 实现一个小接口包起来；未来的 `RemoteStore`（V4）
+  可以无侵入替换，不需要改调用点。
+- [ ] **给 `workflow.json` 加 `execution_model_version` 字段。** 当前没有任何字段能区分
+  prompt-driven 与 runtime-driven 语义。现在加字段，未来 V3 runtime 能识别并安全迁移
+  旧版工作流定义。
+- [ ] **Schema 版本化 + migration 脚手架。** 给所有 artifact 类型加 `schema_version` 字段；
+  附带一个空的 `migrations/` 目录与 stub runner。未来 schema 变更不会破坏现有项目。
+- [ ] **把 CLI 副作用集中到 `lash` 子命令里，而不是散在 skill markdown。** 当前部分副作用
+  （写文件、改状态）是写在 markdown 里由 LLM 执行。把它们迁移到原子 `lash` 子命令中。
+  这也顺带消除了 `lash state read` 这类历史文档/CLI 不一致风险。
+
 ---
 
 ## V2 — 可靠性与效率
@@ -103,6 +120,20 @@
 
 ---
 
+### 架构重构拐点 —— V2 → V3
+
+NoPilot 的第一次核心架构调整发生在 V2 与 V3 之间：
+**prompt-driven 工作流 → runtime-driven 编排。**
+
+当前工作流主要存在于 `commands/*.md` 中，`workflow.json` 是声明式 schema，由 LLM 阅读 skill
+文件来推进流程。企业级需求（审计、可重放、确定性状态转移、运行中可中断/可恢复）要求把工作流
+升级为可执行的 orchestrator。skills 会退化为被 runtime **调用**的 prompt 模板，而不再是 runtime 本身。
+
+影响范围估算：核心代码约 30-40%（commands/、workflow runtime、Lash 调度、artifact I/O）。
+通过下面 V1.5 的"防重构准备"投资来降低这次重构的成本。
+
+---
+
 ## V3 — 智能与学习
 
 **目标：** NoPilot 从经验中学习。跨项目模式、spec 漂移检测、更丰富的验证。
@@ -140,6 +171,19 @@
 
 ---
 
+### 架构重构拐点 —— V3 → V4
+
+第二次核心架构调整：**本地 CLI → 团队后端服务。**
+
+V1.x ~ V3 把所有 artifact 存在用户本地 `specs/` 文件夹中，CLI 跑在开发者的机器上。
+团队层功能（共享规格、PR webhook、Web Dashboard、多人并发改 spec、审计日志）
+要求中心化存储与服务端协调。
+
+范围：增加一层后端服务。**核心算法（Critic / Supervisor / Lash 调度 / 失败分类）不重写**，
+只调整它们的 I/O 与状态存储边界。
+
+---
+
 ## V4 — 平台扩展
 
 **目标：** NoPilot 跑出 Claude Code。iOS 远程 Agent、并行执行、多 LLM 后端。
@@ -168,6 +212,47 @@
 - [ ] 管线状态：当前阶段、当前状态、阻塞原因
 - [ ] 决策历史：所有人类决策和 AI auto_decisions 的时间线视图
 - [ ] 回溯成本估算器：确认回溯前预测重跑时间
+
+---
+
+## North Star — 长期愿景（无时间承诺，方向性）
+
+> 下面的内容描述**方向**，不是可交付项。这里没有版本号、没有时间承诺。
+> 存在的意义是锚定产品定位、筛选合适的早期客户。从这个愿景里成熟的具体交付，
+> 会在条件具备时晋升为带版本号的路线图（V5+）。
+
+### 团队层
+
+- 团队成员共享规格与决策账本
+- PR / Issue / CI 失败入口（在 `/discover` 之外）
+- Web Dashboard：可追溯性图、流水线状态、决策时间线
+- 多模型校验（Critic 与 Supervisor 跑在不同模型上）
+- Lash worker 边界由 MCP 强制执行
+
+### 企业层
+
+- SSO / RBAC / 审计日志 / 私有部署
+- 合规报告（SOC2 友好的证据链）
+- 多租户 artifact 存储
+- 私有模型路由与数据驻留控制
+
+### AI 交付治理层
+
+NoPilot 长期最独特的定位。**下面四条都是治理，不是执行。**
+
+- **风险分级发布契约。** 每一次 AI 生成的变更都标注风险等级、回滚预案、灰度策略、
+  可观测指标白名单 —— 由团队既有 CD 系统消费执行。
+- **Feature Flag 顾问。** 与 LaunchDarkly / Unleash / Statsig 协同，根据规格风险等级
+  **建议** flag 配置。flag 平台保留最终权威。
+- **证据驱动的部署后验证。** Sentry / Datadog / New Relic 的生产信号回流到 evidence graph，
+  作为对应变更的事后验收。
+- **回滚建议，人工批准执行。** 当事件被回溯到某次 NoPilot 产出的变更时，
+  NoPilot 提供变更溯源与回滚预案。**回滚动作由 CD 系统在人工批准后执行。**
+
+### 不做清单（重申）
+
+NoPilot **不会**替代 CI/CD、Feature Flag 平台、APM、事件管理工具。
+NoPilot **不会**在 L1 风险等级以上自动执行影响生产的变更，必须有人类批准。
 
 ---
 
