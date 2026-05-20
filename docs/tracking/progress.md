@@ -5,7 +5,7 @@
 - 代码统计: 11 个 .py 文件, 2909 行 Python 代码, 0 个测试（NoPilot 本体无测试套件）
 - Prompt 文件: 10 个 command .md (2567 行) + 7 个 lash prompt .md (401 行)
 - Schema 文件: 14 个 JSON Schema 文件
-- 当前版本: V1.1 (Schema 4.0) — Delivered
+- 当前版本: V1.2 (Schema 4.0) — Delivered
 - Lash 状态: Python helper layer 完成 (8 个核心模块), V1.0 release blockers 已修复
 - Issues: 13 个 open issues (2 个 P0, 6 个 P1, 3 个 P2), 全部 open 状态
 - 近期工作: schema 版本号 3.0→4.0 升级, Lash 集成, .gitattributes 配置

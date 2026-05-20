@@ -67,7 +67,7 @@ Agent(prompt="Follow the instructions in commands/lash-tracer.md. current_phase=
 
 Wait for the agent to complete. Read its result.
 
-**[产出验证]** 子代理返回后，运行 `lash state read`，检查 `transition_log` 中是否新增了与 tracer 相关的事件（如 `worker_completed`、`test_passed`、`test_failed`）。若 transition_log 无任何新增条目，说明子代理静默退出：重新 dispatch 一次。若第二次仍无产出，停止并向用户报告当前 state 内容，等待决策。
+**[产出验证]** 子代理返回后，运行 `cat specs/build-state.json | jq .transition_log`，检查 `transition_log` 中是否新增了与 tracer 相关的事件（如 `worker_completed`、`test_passed`、`test_failed`）。若 transition_log 无任何新增条目，说明子代理静默退出：重新 dispatch 一次。若第二次仍无产出，停止并向用户报告当前 state 内容（`cat specs/build-state.json`），等待决策。
 
 If tracer fails with L2/L3: present the escalation to the user and halt.
 If tracer succeeds: proceed to Step 5.
@@ -93,7 +93,7 @@ If batches are independent, you MAY dispatch multiple batch agents in parallel u
 
 After each batch agent returns:
 
-**[产出验证]** 运行 `lash state read`，检查该 batch 的 worker 状态是否已更新（应存在 `worker_completed` 或 `worker_failed` 事件）。若 transition_log 中无该 batch 的任何新增事件，说明子代理静默退出：重新 dispatch 该 batch 一次。若重试后仍无产出，停止并向用户报告当前 state，等待决策。
+**[产出验证]** 运行 `cat specs/build-state.json | jq .transition_log`，检查该 batch 的 worker 状态是否已更新（应存在 `worker_completed` 或 `worker_failed` 事件）。若 transition_log 中无该 batch 的任何新增事件，说明子代理静默退出：重新 dispatch 该 batch 一次。若重试后仍无产出，停止并向用户报告当前 state（`cat specs/build-state.json`），等待决策。
 
 Update state:
 ```
@@ -109,7 +109,7 @@ Agent(prompt="Follow the instructions in commands/lash-verify.md. current_phase=
 
 The verify agent handles: full test suite, auto-acceptance, Build Critic, Supervisor.
 
-**[产出验证]** verify 子代理返回后，运行 `lash state read`，确认 `transition_log` 中同时存在 `build_critic_passed` 和 `supervisor_passed` 事件。若任一缺失，不得进入 Step 7：向用户报告当前 state 内容并等待决策。
+**[产出验证]** verify 子代理返回后，运行 `cat specs/build-state.json | jq .transition_log`，确认 `transition_log` 中同时存在 `build_critic_passed` 和 `supervisor_passed` 事件。若任一缺失，不得进入 Step 7：向用户报告当前 state 内容（`cat specs/build-state.json`）并等待决策。
 
 ## Step 7: Completion
 
