@@ -16,6 +16,25 @@ NoPilot is a three-stage workflow that takes you from requirement exploration to
 
 **What you get:** Structured JSON artifacts at each stage that serve as machine-readable contracts, with HTML visualization for human review. Perfect traceability from requirements through to delivered code.
 
+## Long-term Vision
+
+NoPilot's North Star is an **enterprise-grade AI delivery governance platform** — a control layer
+that lets organizations adopt AI coding agents (Claude Code, Codex, Cursor, Copilot, OpenCode, …)
+without losing auditability, contract integrity, or release safety.
+
+We get there in three stages, each building on the previous:
+
+1. **Personal layer (current — V1.x):** Single-developer Greenfield workflow framework.
+   Spec-as-contract, generation-review separation, multi-agent orchestration via Lash.
+2. **Team layer (V2 → V3):** Shared specs and decision ledger, PR / issue / CI-failure entry points,
+   web dashboard for traceability, multi-model verification, MCP enforcement.
+3. **Enterprise layer (V4 → North Star):** SSO/RBAC, audit logs, private deployment,
+   compliance reports, AI Delivery Governance — risk-tiered release contracts that integrate with
+   (never replace) the team's existing CI/CD, feature flags, APM, and incident management tools.
+
+The framing is consistent across all three stages: **NoPilot governs the AI-generated change;
+existing infrastructure executes it.**
+
 ## Installation
 
 ### Prerequisites
@@ -66,6 +85,33 @@ Codex and OpenCode share the installed skills under `~/.agents/skills/`.
 5. **AI autonomy with full audit trail.** Low-risk technical details are decided by AI without interrupting flow. Every decision gets recorded.
 
 6. **Failures route to decisions, not execution.** When something breaks, it means an upstream decision needs revision, not that code needs debugging.
+
+## Non-Goals
+
+To keep NoPilot focused, we explicitly **do not** plan to:
+
+- **Replace CI/CD pipelines.** Jenkins, GitHub Actions, ArgoCD, Spinnaker remain the executors.
+  NoPilot produces release contracts they consume.
+- **Replace feature flag platforms.** LaunchDarkly, Unleash, Statsig keep their role.
+  NoPilot recommends flag configuration based on spec risk tier.
+- **Replace APM / observability tools.** Sentry, Datadog, New Relic continue to monitor production.
+  NoPilot consumes their signals as post-deploy verification evidence.
+- **Replace incident management.** PagerDuty, Opsgenie keep handling on-call.
+  NoPilot supplies change provenance and rollback recommendations when an incident is linked back.
+- **Write to production databases or invoke paid third-party APIs without human approval.**
+- **Promise L5 fully-autonomous delivery.** Risk-tier L3 (security, payments, permissions,
+  data migration, compliance) always requires human approval, by design.
+
+### Risk-tier Autonomy (at a glance)
+
+| Tier | Scope | Autonomy | Approval |
+|---|---|---|---|
+| **L1** | Docs, configs, internal tools, low-risk UI tweaks | Auto-PR + auto-merge to non-prod | None required (audited) |
+| **L2** | Standard business features | Auto-PR + auto-verification | Human approval before prod |
+| **L3** | Security, auth/permissions, payments, data migration, compliance | NoPilot only produces evidence + rollback plan | Human approval **always required** |
+
+> **Orthogonal to the L0–L3 exception tiers.** Exception tier describes "how a failure is routed",
+> risk tier describes "how autonomously a task may execute". Both coexist.
 
 ## Workflow
 
